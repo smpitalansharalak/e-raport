@@ -96,25 +96,14 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     console.debug('[AuthContext] initializing auth listener')
-    // 1. Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      console.debug('[AuthContext] getSession result:', session)
-      if (session?.user) {
-        setUser(session.user)
-        fetchProfile(session.user.id).finally(() => setLoading(false))
-      } else {
-        setUser(null)
-        setProfile(null)
-        setRole(null)
-        setLoading(false)
-      }
-      setInitialized(true)
-    })
 
-    // 2. Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.debug('[AuthContext] onAuthStateChange', event, session)
+    let ignoreInitialEvent = true
+
+    const initializeAuth = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession()
+        console.debug('[AuthContext] getSession result:', session, 'error:', error)
+
         if (session?.user) {
           setUser(session.user)
           await fetchProfile(session.user.id)
@@ -123,8 +112,42 @@ export const AuthProvider = ({ children }) => {
           setProfile(null)
           setRole(null)
         }
+      } catch (err) {
+        console.error('[AuthContext] getSession failed', err)
+        setUser(null)
+        setProfile(null)
+        setRole(null)
+      } finally {
         setLoading(false)
         setInitialized(true)
+      }
+    }
+
+    initializeAuth()
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (ignoreInitialEvent) {
+          ignoreInitialEvent = false
+          if (event === 'SIGNED_IN' && session?.user) {
+            console.debug('[AuthContext] ignored initial SIGNED_IN event')
+            return
+          }
+        }
+
+        console.debug('[AuthContext] onAuthStateChange', event, session)
+        if (session?.user) {
+          setUser(session.user)
+          await fetchProfile(session.user.id)
+          setLoading(false)
+          setInitialized(true)
+        } else {
+          setUser(null)
+          setProfile(null)
+          setRole(null)
+          setLoading(false)
+          setInitialized(true)
+        }
       }
     )
 

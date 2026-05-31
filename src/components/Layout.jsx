@@ -5,12 +5,9 @@ import Header from './Header'
 import Sidebar from './Sidebar'
 
 export default function Layout() {
-  const { user, loading, sidebarOpen, setSidebarOpen, signOut } = useAuth()
-  const { initialized } = useAuth()
+  const { user, loading, initialized, sidebarOpen, setSidebarOpen, signOut } = useAuth()
 
   console.debug('[Layout] render', { user, loading, initialized })
-
-  console.debug('[Layout] render', { user, loading })
 
   useEffect(() => {
     if (!user) return;
