@@ -19,12 +19,12 @@ const queryClient = new QueryClient({
 })
 
 function RoleGuard({ allowedRoles, children }) {
-  const { role, loading, user } = useAuth()
+  const { role, loading, user, initialized } = useAuth()
   const location = useLocation()
-  console.debug('[RoleGuard] evaluate', { user, loading, role, allowedRoles, pathname: location.pathname })
+  console.debug('[RoleGuard] evaluate', { user, loading, initialized, role, allowedRoles, pathname: location.pathname })
 
   // While auth state is resolving, show a loader
-  if (loading) {
+  if (!initialized || loading) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-slate-800 border-t-emerald-500 rounded-full animate-spin" />
