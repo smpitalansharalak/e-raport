@@ -447,7 +447,7 @@ export default function InputRapor() {
             <option value="">-- Pilih Periode Rapor --</option>
             {periods.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.name} (Kelas {p.class_name})
+                Kelas {p.class_name} — Semester {p.semester} ({p.academic_year})
               </option>
             ))}
           </select>
