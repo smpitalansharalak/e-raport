@@ -27,21 +27,21 @@ function StudentForm({ editingStudent, onSaved, onCancel }) {
   } = useForm({
     defaultValues: editingStudent
       ? {
-          nisn: editingStudent.nisn,
-          name: editingStudent.name,
-          class_name: editingStudent.class_name,
-          academic_year: editingStudent.academic_year,
-          phase: editingStudent.phase,
-          parent_name: editingStudent.parent_name || '',
-        }
+        nisn: editingStudent.nisn,
+        name: editingStudent.name,
+        class_name: editingStudent.class_name,
+        academic_year: editingStudent.academic_year,
+        phase: editingStudent.phase,
+        parent_name: editingStudent.parent_name || '',
+      }
       : {
-          nisn: '',
-          name: '',
-          class_name: '',
-          academic_year: '2025/2026',
-          phase: 'D',
-          parent_name: '',
-        },
+        nisn: '',
+        name: '',
+        class_name: '',
+        academic_year: '2025/2026',
+        phase: 'D',
+        parent_name: '',
+      },
   })
 
   const onSubmit = async (data) => {
