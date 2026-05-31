@@ -129,8 +129,8 @@ export const AuthProvider = ({ children }) => {
       async (event, session) => {
         if (ignoreInitialEvent) {
           ignoreInitialEvent = false
-          if (event === 'SIGNED_IN' && session?.user) {
-            console.debug('[AuthContext] ignored initial SIGNED_IN event')
+          if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
+            console.debug(`[AuthContext] ignored initial ${event} event`)
             return
           }
         }
