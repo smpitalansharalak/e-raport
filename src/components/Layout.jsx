@@ -7,8 +7,6 @@ import Sidebar from './Sidebar'
 export default function Layout() {
   const { user, loading, initialized, sidebarOpen, setSidebarOpen, signOut } = useAuth()
 
-  console.debug('[Layout] render', { user, loading, initialized })
-
   useEffect(() => {
     if (!user) return;
 

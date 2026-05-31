@@ -7,7 +7,6 @@ import { LogIn, Lock, User, Eye, EyeOff, AlertCircle, Info, School } from 'lucid
 
 export default function Login() {
   const { user, loading } = useAuth()
-  console.debug('[Login] render', { user, loading })
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [showPassword, setShowPassword] = useState(false)

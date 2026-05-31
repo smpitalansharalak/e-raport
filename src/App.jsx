@@ -21,7 +21,6 @@ const queryClient = new QueryClient({
 function RoleGuard({ allowedRoles, children }) {
   const { role, loading, user, initialized } = useAuth()
   const location = useLocation()
-  console.debug('[RoleGuard] evaluate', { user, loading, initialized, role, allowedRoles, pathname: location.pathname })
 
   // While auth state is resolving, show a loader
   if (!initialized || loading) {
