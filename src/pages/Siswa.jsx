@@ -10,26 +10,213 @@ import {
   X,
   AlertCircle,
   Check,
-  User,
 } from 'lucide-react'
 
+// ─────────────────────────────────────────────
+// Modal form extracted as its own component so
+// React fully re-mounts it (fresh useForm state)
+// every time the modal opens, preventing the
+// "Menyimpan..." stuck bug on the second add.
+// ─────────────────────────────────────────────
+function StudentForm({ editingStudent, onSaved, onCancel }) {
+  const [formError, setFormError] = useState('')
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm({
+    defaultValues: editingStudent
+      ? {
+          nisn: editingStudent.nisn,
+          name: editingStudent.name,
+          class_name: editingStudent.class_name,
+          academic_year: editingStudent.academic_year,
+          phase: editingStudent.phase,
+          parent_name: editingStudent.parent_name || '',
+        }
+      : {
+          nisn: '',
+          name: '',
+          class_name: '',
+          academic_year: '2025/2026',
+          phase: 'D',
+          parent_name: '',
+        },
+  })
+
+  const onSubmit = async (data) => {
+    setFormError('')
+    try {
+      if (editingStudent) {
+        const { error } = await supabase
+          .from('students')
+          .update({
+            nisn: data.nisn,
+            name: data.name,
+            class_name: data.class_name,
+            academic_year: data.academic_year,
+            phase: data.phase,
+            parent_name: data.parent_name,
+          })
+          .eq('id', editingStudent.id)
+        if (error) throw error
+        onSaved('Data siswa berhasil diperbarui!')
+      } else {
+        const { error } = await supabase.from('students').insert({
+          nisn: data.nisn,
+          name: data.name,
+          class_name: data.class_name,
+          academic_year: data.academic_year,
+          phase: data.phase,
+          parent_name: data.parent_name,
+        })
+        if (error) throw error
+        onSaved('Siswa baru berhasil ditambahkan!')
+      }
+    } catch (err) {
+      console.error('Save student failed:', err)
+      setFormError(
+        err.message?.includes('duplicate')
+          ? 'NISN sudah terdaftar di sistem.'
+          : err.message || 'Gagal menyimpan data siswa.'
+      )
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      {formError && (
+        <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-xl flex items-center gap-2 text-xs">
+          <AlertCircle size={16} className="shrink-0" />
+          <span>{formError}</span>
+        </div>
+      )}
+
+      <div>
+        <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+          NISN
+        </label>
+        <input
+          type="text"
+          placeholder="Nomor Induk Siswa Nasional"
+          className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors"
+          {...register('nisn', {
+            required: 'NISN wajib diisi',
+            pattern: { value: /^\d+$/, message: 'NISN harus berupa angka' },
+          })}
+        />
+        {errors.nisn && (
+          <span className="text-[11px] text-rose-500 mt-1 block">{errors.nisn.message}</span>
+        )}
+      </div>
+
+      <div>
+        <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+          Nama Lengkap Siswa
+        </label>
+        <input
+          type="text"
+          placeholder="Nama Lengkap Siswa"
+          className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors"
+          {...register('name', { required: 'Nama lengkap wajib diisi' })}
+        />
+        {errors.name && (
+          <span className="text-[11px] text-rose-500 mt-1 block">{errors.name.message}</span>
+        )}
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+            Kelas
+          </label>
+          <input
+            type="text"
+            placeholder="Contoh: VII A"
+            className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors"
+            {...register('class_name', { required: 'Kelas wajib diisi' })}
+          />
+          {errors.class_name && (
+            <span className="text-[11px] text-rose-500 mt-1 block">{errors.class_name.message}</span>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+            Fase
+          </label>
+          <select
+            className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors"
+            {...register('phase', { required: 'Fase wajib dipilih' })}
+          >
+            <option value="D">D (SMP)</option>
+            <option value="E">E (SMA-10)</option>
+            <option value="F">F (SMA-11/12)</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+            Tahun Ajaran
+          </label>
+          <input
+            type="text"
+            placeholder="Contoh: 2025/2026"
+            className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors"
+            {...register('academic_year', { required: 'Tahun ajaran wajib diisi' })}
+          />
+          {errors.academic_year && (
+            <span className="text-[11px] text-rose-500 mt-1 block">{errors.academic_year.message}</span>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+            Orang Tua / Wali
+          </label>
+          <input
+            type="text"
+            placeholder="Nama Orang Tua"
+            className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors"
+            {...register('parent_name')}
+          />
+        </div>
+      </div>
+
+      <div className="flex gap-3 justify-end pt-4 border-t border-slate-800">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="px-4 py-2 text-xs font-bold text-slate-400 hover:text-slate-200 bg-slate-950 hover:bg-slate-900 border border-slate-800 rounded-xl transition-all cursor-pointer"
+        >
+          Batal
+        </button>
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="px-4 py-2 text-xs font-bold text-slate-950 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
+        >
+          {isSubmitting ? 'Menyimpan...' : 'Simpan'}
+        </button>
+      </div>
+    </form>
+  )
+}
+
+// ─────────────────────────────────────────────
+// Main Siswa page
+// ─────────────────────────────────────────────
 export default function Siswa() {
   const [students, setStudents] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [showModal, setShowModal] = useState(false)
   const [editingStudent, setEditingStudent] = useState(null)
-  const [error, setError] = useState('')
+  const [modalKey, setModalKey] = useState(0)   // incremented on each open → forces remount
   const [success, setSuccess] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    reset,
-    formState: { errors },
-  } = useForm()
+  const [pageError, setPageError] = useState('')
 
   useEffect(() => {
     fetchStudents()
@@ -42,12 +229,11 @@ export default function Siswa() {
         .from('students')
         .select('*')
         .order('name', { ascending: true })
-
       if (error) throw error
       setStudents(data || [])
     } catch (err) {
       console.error('Error fetching students:', err)
-      setError('Gagal mengambil data siswa.')
+      setPageError('Gagal mengambil data siswa.')
     } finally {
       setLoading(false)
     }
@@ -55,85 +241,29 @@ export default function Siswa() {
 
   const openAddModal = () => {
     setEditingStudent(null)
-    reset({
-      nisn: '',
-      name: '',
-      class_name: '',
-      academic_year: '2025/2026',
-      phase: 'D',
-      parent_name: '',
-    })
-    setError('')
+    setModalKey(k => k + 1)   // ensure fresh form every open
     setShowModal(true)
   }
 
   const openEditModal = (student) => {
     setEditingStudent(student)
-    reset({
-      nisn: student.nisn,
-      name: student.name,
-      class_name: student.class_name,
-      academic_year: student.academic_year,
-      phase: student.phase,
-      parent_name: student.parent_name,
-    })
-    setError('')
+    setModalKey(k => k + 1)
     setShowModal(true)
   }
 
-  const onSubmit = async (data) => {
-    setError('')
-    setSuccess('')
-    setSubmitting(true)
+  const closeModal = () => setShowModal(false)
 
-    try {
-      if (editingStudent) {
-        // Edit flow
-        const { error } = await supabase
-          .from('students')
-          .update({
-            nisn: data.nisn,
-            name: data.name,
-            class_name: data.class_name,
-            academic_year: data.academic_year,
-            phase: data.phase,
-            parent_name: data.parent_name,
-          })
-          .eq('id', editingStudent.id)
-
-        if (error) throw error
-        setSuccess('Data siswa berhasil diperbarui!')
-      } else {
-        // Add flow
-        const { error } = await supabase.from('students').insert({
-          nisn: data.nisn,
-          name: data.name,
-          class_name: data.class_name,
-          academic_year: data.academic_year,
-          phase: data.phase,
-          parent_name: data.parent_name,
-        })
-
-        if (error) throw error
-        setSuccess('Siswa baru berhasil ditambahkan!')
-      }
-
-      setShowModal(false)
-      fetchStudents()
-      setTimeout(() => setSuccess(''), 3000)
-    } catch (err) {
-      console.error('Save student failed:', err)
-      setError(err.message?.includes('duplicate') ? 'NISN sudah terdaftar di sistem.' : 'Gagal menyimpan data siswa.')
-    } finally {
-      setSubmitting(false)
-    }
+  const handleSaved = (message) => {
+    setShowModal(false)
+    fetchStudents()
+    setSuccess(message)
+    setTimeout(() => setSuccess(''), 3000)
   }
 
   const handleDelete = async (id) => {
     if (!window.confirm('Apakah Anda yakin ingin menghapus siswa ini? Semua data nilai yang terkait juga akan dihapus.')) return
-    setError('')
+    setPageError('')
     setSuccess('')
-
     try {
       const { error } = await supabase.from('students').delete().eq('id', id)
       if (error) throw error
@@ -142,7 +272,7 @@ export default function Siswa() {
       setTimeout(() => setSuccess(''), 3000)
     } catch (err) {
       console.error('Delete student failed:', err)
-      setError('Gagal menghapus data siswa.')
+      setPageError('Gagal menghapus data siswa.')
     }
   }
 
@@ -182,10 +312,10 @@ export default function Siswa() {
         </button>
       </div>
 
-      {error && (
+      {pageError && (
         <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-xl flex items-center gap-2 text-sm">
           <AlertCircle size={18} className="shrink-0" />
-          <span>{error}</span>
+          <span>{pageError}</span>
         </div>
       )}
 
@@ -287,132 +417,20 @@ export default function Siswa() {
                 {editingStudent ? 'Edit Data Siswa' : 'Tambah Siswa Baru'}
               </h3>
               <button
-                onClick={() => setShowModal(false)}
+                onClick={closeModal}
                 className="text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
               >
                 <X size={18} />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-                  NISN
-                </label>
-                <input
-                  type="text"
-                  placeholder="Nomor Induk Siswa Nasional"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors"
-                  {...register('nisn', {
-                    required: 'NISN wajib diisi',
-                    pattern: { value: /^\d+$/, message: 'NISN harus berupa angka' },
-                  })}
-                />
-                {errors.nisn && (
-                  <span className="text-[11px] text-rose-500 mt-1 block">
-                    {errors.nisn.message}
-                  </span>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-                  Nama Lengkap Siswa
-                </label>
-                <input
-                  type="text"
-                  placeholder="Nama Lengkap Siswa"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors"
-                  {...register('name', { required: 'Nama lengkap wajib diisi' })}
-                />
-                {errors.name && (
-                  <span className="text-[11px] text-rose-500 mt-1 block">
-                    {errors.name.message}
-                  </span>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-                    Kelas
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Contoh: VII A"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors"
-                    {...register('class_name', { required: 'Kelas wajib diisi' })}
-                  />
-                  {errors.class_name && (
-                    <span className="text-[11px] text-rose-500 mt-1 block">
-                      {errors.class_name.message}
-                    </span>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-                    Fase
-                  </label>
-                  <select
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors"
-                    {...register('phase', { required: 'Fase wajib dipilih' })}
-                  >
-                    <option value="D">D (SMP)</option>
-                    <option value="E">E (SMA-10)</option>
-                    <option value="F">F (SMA-11/12)</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-                    Tahun Ajaran
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Contoh: 2025/2026"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors"
-                    {...register('academic_year', { required: 'Tahun ajaran wajib diisi' })}
-                  />
-                  {errors.academic_year && (
-                    <span className="text-[11px] text-rose-500 mt-1 block">
-                      {errors.academic_year.message}
-                    </span>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-                    Orang Tua / Wali
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Nama Orang Tua"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors"
-                    {...register('parent_name')}
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-3 justify-end pt-4 border-t border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="px-4 py-2 text-xs font-bold text-slate-400 hover:text-slate-200 bg-slate-950 hover:bg-slate-900 border border-slate-800 rounded-xl transition-all cursor-pointer"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="px-4 py-2 text-xs font-bold text-slate-950 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 rounded-xl transition-all cursor-pointer"
-                >
-                  {submitting ? 'Menyimpan...' : 'Simpan'}
-                </button>
-              </div>
-            </form>
+            {/* key=modalKey forces a full remount of StudentForm on every open */}
+            <StudentForm
+              key={modalKey}
+              editingStudent={editingStudent}
+              onSaved={handleSaved}
+              onCancel={closeModal}
+            />
           </div>
         </div>
       )}
