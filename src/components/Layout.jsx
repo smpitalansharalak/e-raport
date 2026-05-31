@@ -1,11 +1,40 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import Header from './Header'
 import Sidebar from './Sidebar'
 
 export default function Layout() {
-  const { user, loading, sidebarOpen, setSidebarOpen } = useAuth()
+  const { user, loading, sidebarOpen, setSidebarOpen, signOut } = useAuth()
+
+  useEffect(() => {
+    if (!user) return;
+
+    let inactivityTimer;
+
+    const resetTimer = () => {
+      if (inactivityTimer) clearTimeout(inactivityTimer);
+      // 3 hours in milliseconds: 3 * 60 * 60 * 1000 = 10800000
+      inactivityTimer = setTimeout(() => {
+        signOut();
+      }, 10800000);
+    };
+
+    // Initialize the timer
+    resetTimer();
+
+    // Event listeners for user activity
+    const events = ['mousemove', 'keydown', 'click', 'scroll'];
+    const handleActivity = () => resetTimer();
+
+    events.forEach(event => window.addEventListener(event, handleActivity));
+
+    // Cleanup function
+    return () => {
+      if (inactivityTimer) clearTimeout(inactivityTimer);
+      events.forEach(event => window.removeEventListener(event, handleActivity));
+    };
+  }, [user, signOut]);
 
   if (loading) {
     return (
