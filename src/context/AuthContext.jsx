@@ -87,8 +87,10 @@ export const AuthProvider = ({ children }) => {
   }
 
   useEffect(() => {
+    console.debug('[AuthContext] initializing auth listener')
     // 1. Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.debug('[AuthContext] getSession result:', session)
       if (session?.user) {
         setUser(session.user)
         fetchProfile(session.user.id).finally(() => setLoading(false))
@@ -103,6 +105,7 @@ export const AuthProvider = ({ children }) => {
     // 2. Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.debug('[AuthContext] onAuthStateChange', event, session)
         if (session?.user) {
           setUser(session.user)
           await fetchProfile(session.user.id)
