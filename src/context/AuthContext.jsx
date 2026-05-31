@@ -23,6 +23,7 @@ export const AuthProvider = ({ children }) => {
   const toggleSidebar = () => setSidebarOpen(prev => !prev)
 
   const fetchProfile = async (userId) => {
+    console.debug('[AuthContext] fetchProfile start for', userId)
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -30,6 +31,7 @@ export const AuthProvider = ({ children }) => {
         .eq('id', userId)
         .maybeSingle()
 
+      console.debug('[AuthContext] fetchProfile result', { data, error })
       if (error) {
         console.error('Error fetching profile:', error.message)
         setProfile(null)
@@ -57,9 +59,11 @@ export const AuthProvider = ({ children }) => {
             console.error('Error upserting profile:', upsertErr.message)
             setProfile(null)
             setRole(null)
+            console.debug('[AuthContext] fetchProfile upsertErr -> setRole(null)')
           } else {
             setProfile(upsertedProfile)
             setRole(upsertedProfile?.role || derivedRole)
+            console.debug('[AuthContext] fetchProfile upserted role', upsertedProfile?.role || derivedRole)
           }
         } else {
           setProfile(null)
@@ -72,11 +76,13 @@ export const AuthProvider = ({ children }) => {
           name: displayName || data.name,
         })
         setRole(data.role)
+        console.debug('[AuthContext] fetchProfile loaded role', data.role)
       }
     } catch (err) {
       console.error('Unexpected error fetching profile:', err)
       setProfile(null)
       setRole(null)
+      console.debug('[AuthContext] fetchProfile caught error -> setRole(null)')
     }
   }
 

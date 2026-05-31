@@ -20,6 +20,7 @@ const queryClient = new QueryClient({
 
 function RoleGuard({ allowedRoles, children }) {
   const { role, loading, user } = useAuth()
+  console.debug('[RoleGuard] evaluate', { user, loading, role, allowedRoles })
 
   // While auth state is resolving, show a loader
   if (loading) {
