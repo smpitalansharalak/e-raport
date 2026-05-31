@@ -19,7 +19,9 @@ const queryClient = new QueryClient({
 })
 
 function RoleGuard({ allowedRoles, children }) {
-  const { role, loading } = useAuth()
+  const { role, loading, user } = useAuth()
+
+  // While auth state is resolving, show a loader
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
@@ -27,7 +29,22 @@ function RoleGuard({ allowedRoles, children }) {
       </div>
     )
   }
-  if (!role || !allowedRoles.includes(role)) return <Navigate to="/" replace />
+
+  // If there's no authenticated user, send them to login
+  if (!user) return <Navigate to="/login" replace />
+
+  // If user exists but role hasn't been loaded yet, show loader instead of redirecting
+  if (!role) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-slate-800 border-t-emerald-500 rounded-full animate-spin" />
+      </div>
+    )
+  }
+
+  // If role is loaded but not allowed, navigate away
+  if (!allowedRoles.includes(role)) return <Navigate to="/" replace />
+
   return children
 }
 
