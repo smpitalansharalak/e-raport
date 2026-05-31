@@ -1,5 +1,5 @@
 import React from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import Layout from './components/Layout'
@@ -20,7 +20,8 @@ const queryClient = new QueryClient({
 
 function RoleGuard({ allowedRoles, children }) {
   const { role, loading, user } = useAuth()
-  console.debug('[RoleGuard] evaluate', { user, loading, role, allowedRoles })
+  const location = useLocation()
+  console.debug('[RoleGuard] evaluate', { user, loading, role, allowedRoles, pathname: location.pathname })
 
   // While auth state is resolving, show a loader
   if (loading) {
@@ -43,8 +44,19 @@ function RoleGuard({ allowedRoles, children }) {
     )
   }
 
-  // If role is loaded but not allowed, navigate away
-  if (!allowedRoles.includes(role)) return <Navigate to="/" replace />
+  // If role is loaded but not allowed, navigate away (avoid redirecting to same path)
+  if (!allowedRoles.includes(role)) {
+    if (location.pathname === '/') {
+      return (
+        <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-300">
+          <div className="text-center">
+            <p className="font-semibold">Anda tidak memiliki akses ke halaman ini.</p>
+          </div>
+        </div>
+      )
+    }
+    return <Navigate to="/" replace />
+  }
 
   return children
 }

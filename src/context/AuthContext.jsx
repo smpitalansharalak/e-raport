@@ -6,6 +6,7 @@ const AuthContext = createContext({
   profile: null,
   role: null,
   loading: true,
+  initialized: false,
   sidebarOpen: false,
   setSidebarOpen: () => {},
   toggleSidebar: () => {},
@@ -18,6 +19,7 @@ export const AuthProvider = ({ children }) => {
   const [profile, setProfile] = useState(null)
   const [role, setRole] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [initialized, setInitialized] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const toggleSidebar = () => setSidebarOpen(prev => !prev)
@@ -106,6 +108,7 @@ export const AuthProvider = ({ children }) => {
         setRole(null)
         setLoading(false)
       }
+      setInitialized(true)
     })
 
     // 2. Listen for auth changes
@@ -121,6 +124,7 @@ export const AuthProvider = ({ children }) => {
           setRole(null)
         }
         setLoading(false)
+        setInitialized(true)
       }
     )
 
@@ -145,6 +149,7 @@ export const AuthProvider = ({ children }) => {
         user,
         profile,
         role,
+        initialized,
         loading,
         sidebarOpen,
         setSidebarOpen,

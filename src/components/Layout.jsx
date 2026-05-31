@@ -6,6 +6,9 @@ import Sidebar from './Sidebar'
 
 export default function Layout() {
   const { user, loading, sidebarOpen, setSidebarOpen, signOut } = useAuth()
+  const { initialized } = useAuth()
+
+  console.debug('[Layout] render', { user, loading, initialized })
 
   console.debug('[Layout] render', { user, loading })
 
@@ -38,7 +41,7 @@ export default function Layout() {
     };
   }, [user, signOut]);
 
-  if (loading) {
+  if (!initialized || loading) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center">
         <div className="relative w-16 h-16">
