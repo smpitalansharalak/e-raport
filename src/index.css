@@ -1,0 +1,108 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
+
+:root {
+  --color-slate-950: #f8fafc; /* light page background (slate 50) */
+  --color-slate-900: #ffffff; /* white card backgrounds */
+  --color-slate-850: #f1f5f9; /* input fields / border grey (slate 100) */
+  --color-slate-800: #e2e8f0; /* standard light borders (slate 200) */
+  --color-slate-700: #cbd5e1; /* hover backgrounds / border (slate 300) */
+  --color-slate-650: #64748b; /* muted icons / text (slate 500) */
+  --color-slate-600: #475569; /* secondary text (slate 600) */
+  --color-slate-500: #334155; /* primary text (slate 700) */
+  --color-slate-450: #334155;
+  --color-slate-400: #334155; /* standard text (slate 700) */
+  --color-slate-350: #1e293b; /* dark secondary text (slate 800) */
+  --color-slate-300: #0f172a; /* titles / black text (slate 900) */
+  --color-slate-250: #0f172a;
+  --color-slate-200: #0f172a;
+  --color-slate-150: #0f172a;
+  --color-slate-100: #0f172a; /* main headings (slate 900) */
+
+  /* High contrast colors for light backgrounds */
+  --color-emerald-400: #059669; /* emerald 600 */
+  --color-emerald-500: #059669; /* emerald 600 */
+  --color-indigo-400: #4f46e5;  /* indigo 600 */
+  --color-indigo-500: #4f46e5;  /* indigo 600 */
+  --color-indigo-950: #eef2ff;  /* indigo 50 */
+  --color-indigo-900: #e0e7ff;  /* indigo 100 */
+  --color-indigo-350: #3730a3;
+  --color-indigo-300: #3730a3;  /* indigo 800 */
+  --color-indigo-200: #1e1b4b;  /* indigo 950 */
+  --color-rose-400: #dc2626;    /* rose 600 */
+  --color-rose-500: #dc2626;    /* rose 600 */
+  --color-amber-400: #d97706;   /* amber 600 */
+  --color-amber-500: #d97706;   /* amber 600 */
+}
+
+/* Custom styles and fonts */
+
+:root {
+  font-family: 'Outfit', sans-serif;
+  color-scheme: light; /* Force light rendering on browser UI components */
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+
+/* Custom scrollbars for a premium feel */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(5, 150, 105, 0.2);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(5, 150, 105, 0.4);
+}
+
+@media print {
+  /* Hide sidebar, headers, back buttons, and export buttons */
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+    font-family: 'Outfit', sans-serif;
+  }
+
+  /* Ensure page backgrounds and colors are printed exactly as shown */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Configure margins for printed report card pages */
+  @page {
+    size: A4;
+    margin: 1.5cm 2cm;
+  }
+
+  .print-card {
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  table {
+    page-break-inside: avoid;
+  }
+
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+}
