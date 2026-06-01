@@ -81,7 +81,7 @@ export default function Login() {
           <Info size={16} className="shrink-0 mt-0.5" />
           <div className="leading-relaxed">
             <span className="font-semibold text-indigo-200 block mb-0.5">Sistem Autentikasi:</span>
-            Masuk menggunakan <span className="text-emerald-400 font-bold">username</span>, bukan nama lengkap. <code className="text-emerald-400 font-bold bg-slate-950 px-1 py-0.5 rounded">profiles</code>.
+            Masuk menggunakan <span className="text-emerald-400 font-bold">username</span>, bukan nama lengkap. Pastikan username sudah terdaftar di sistem untuk dapat mengakses aplikasi.
           </div>
         </div>
 
