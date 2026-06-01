@@ -21,28 +21,25 @@ export default function InputRapor() {
   const [selectedPeriodId, setSelectedPeriodId] = useState('')
   const [selectedSubjectId, setSelectedSubjectId] = useState('')
 
-  // State loaded after choosing period & subject
   const [students, setStudents] = useState([])
   const [materials, setMaterials] = useState([])
-  const [learningTargets, setLearningTargets] = useState([]) // flat list of TPs
+  const [learningTargets, setLearningTargets] = useState([])
   const [summatives, setSummatives] = useState([])
-  const [scores, setScores] = useState({}) // key: student_id, value: score object
+  const [scores, setScores] = useState({})
 
   const [isGridLoaded, setIsGridLoaded] = useState(false)
-  const [loading, setLoading] = useState(false)
+  // FIX: Pisahkan loading state untuk dropdown fetch dan save
+  const [loadingDropdowns, setLoadingDropdowns] = useState(false)
   const [loadingGrid, setLoadingGrid] = useState(false)
+  const [loadingSave, setLoadingSave] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
-  // Modals
   const [showMaterialModal, setShowMaterialModal] = useState(false)
   const [showSummativeModal, setShowSummativeModal] = useState(false)
 
-  // Material Form state
   const [newMaterialName, setNewMaterialName] = useState('')
   const [tpInputs, setTpInputs] = useState({ materialId: '', code: '', description: '' })
-
-  // Summative Form state
   const [newSummativeName, setNewSummativeName] = useState('')
 
   useEffect(() => {
@@ -52,10 +49,9 @@ export default function InputRapor() {
   }, [profile])
 
   const fetchDropdowns = async () => {
-    setLoading(true)
+    setLoadingDropdowns(true)
     setError('')
     try {
-      // 1. Fetch periods
       const { data: pData, error: pErr } = await supabase
         .from('report_periods')
         .select('*')
@@ -64,7 +60,6 @@ export default function InputRapor() {
       if (pErr) throw pErr
       setPeriods(pData || [])
 
-      // 2. Fetch subjects taught by the teacher (if admin, fetch all)
       if (profile.role === 'admin') {
         const { data: sData, error: sErr } = await supabase
           .from('subjects')
@@ -75,9 +70,7 @@ export default function InputRapor() {
       } else {
         const { data: tsData, error: tsErr } = await supabase
           .from('teacher_subjects')
-          .select(`
-            subject:subjects(id, name, class_name)
-          `)
+          .select(`subject:subjects(id, name, class_name)`)
           .eq('teacher_id', profile.id)
         if (tsErr) throw tsErr
         setTeacherSubjects(tsData.map((row) => row.subject).filter(Boolean))
@@ -86,11 +79,10 @@ export default function InputRapor() {
       console.error('Error fetching dropdowns:', err)
       setError('Gagal memuat filter kelas/mapel.')
     } finally {
-      setLoading(false)
+      setLoadingDropdowns(false)
     }
   }
 
-  // Load grading grid
   const handleLoadGrid = async () => {
     if (!selectedPeriodId || !selectedSubjectId) {
       setError('Pilih periode rapor dan mata pelajaran terlebih dahulu.')
@@ -108,20 +100,19 @@ export default function InputRapor() {
       const selectedSubject = teacherSubjects.find((s) => s.id === selectedSubjectId)
       if (!selectedSubject) throw new Error('Mata pelajaran tidak ditemukan')
 
-      // Validate that the subject class matches the period's class
       if (selectedSubject.class_name) {
         const periodClass = selectedPeriod.class_name || ''
         const subjectClass = selectedSubject.class_name
-
-        const isMatch = periodClass.toLowerCase().startsWith(subjectClass.toLowerCase()) ||
+        const isMatch =
+          periodClass.toLowerCase().startsWith(subjectClass.toLowerCase()) ||
           periodClass.toLowerCase().includes(subjectClass.toLowerCase())
-
         if (!isMatch) {
-          throw new Error(`Anda tidak mengajar mata pelajaran ${selectedSubject.name} untuk kelas ${periodClass} (Mata pelajaran ini diset untuk Kelas ${subjectClass}).`)
+          throw new Error(
+            `Anda tidak mengajar mata pelajaran ${selectedSubject.name} untuk kelas ${periodClass} (Mata pelajaran ini diset untuk Kelas ${subjectClass}).`
+          )
         }
       }
 
-      // 1. Fetch students in this class
       const { data: sData, error: sErr } = await supabase
         .from('students')
         .select('*')
@@ -130,13 +121,12 @@ export default function InputRapor() {
       if (sErr) throw sErr
       setStudents(sData || [])
 
-      // 2. Fetch materials & TPs
-      await fetchMaterialsAndTps()
+      // Fetch materials, TPs, summatives secara paralel
+      const [matsResult, sumsResult] = await Promise.all([
+        fetchMaterialsAndTpsInternal(),
+        fetchSummativesInternal(),
+      ])
 
-      // 3. Fetch summatives
-      await fetchSummatives()
-
-      // 4. Fetch existing scores
       const { data: scoreData, error: scoreErr } = await supabase
         .from('student_scores')
         .select('*')
@@ -144,9 +134,7 @@ export default function InputRapor() {
         .eq('subject_id', selectedSubjectId)
       if (scoreErr) throw scoreErr
 
-      // Format scores map
       const sMap = {}
-      // Initialize with default template for each student
       sData.forEach((s) => {
         sMap[s.id] = {
           student_id: s.id,
@@ -161,18 +149,19 @@ export default function InputRapor() {
         }
       })
 
-      // Merge existing database scores
       scoreData.forEach((row) => {
-        sMap[row.student_id] = {
-          ...sMap[row.student_id],
-          scores_formative: row.scores_formative || {},
-          scores_summative: row.scores_summative || {},
-          sts_practice: row.sts_practice !== null ? row.sts_practice : '',
-          sts_written: row.sts_written !== null ? row.sts_written : '',
-          sas_practice: row.sas_practice !== null ? row.sas_practice : '',
-          sas_written: row.sas_written !== null ? row.sas_written : '',
-          highest_achievement: row.highest_achievement || '',
-          lowest_achievement: row.lowest_achievement || '',
+        if (sMap[row.student_id]) {
+          sMap[row.student_id] = {
+            ...sMap[row.student_id],
+            scores_formative: row.scores_formative || {},
+            scores_summative: row.scores_summative || {},
+            sts_practice: row.sts_practice !== null && row.sts_practice !== undefined ? String(row.sts_practice) : '',
+            sts_written: row.sts_written !== null && row.sts_written !== undefined ? String(row.sts_written) : '',
+            sas_practice: row.sas_practice !== null && row.sas_practice !== undefined ? String(row.sas_practice) : '',
+            sas_written: row.sas_written !== null && row.sas_written !== undefined ? String(row.sas_written) : '',
+            highest_achievement: row.highest_achievement || '',
+            lowest_achievement: row.lowest_achievement || '',
+          }
         }
       })
 
@@ -186,6 +175,45 @@ export default function InputRapor() {
     }
   }
 
+  // FIX: Internal fetch yang return data tanpa set state (untuk paralel load)
+  const fetchMaterialsAndTpsInternal = async () => {
+    const { data: mData, error: mErr } = await supabase
+      .from('materials')
+      .select('*')
+      .eq('report_period_id', selectedPeriodId)
+      .eq('subject_id', selectedSubjectId)
+      .order('created_at', { ascending: true })
+    if (mErr) throw mErr
+    setMaterials(mData || [])
+
+    if (mData && mData.length > 0) {
+      const { data: tpData, error: tpErr } = await supabase
+        .from('learning_targets')
+        .select('*')
+        .in('material_id', mData.map((m) => m.id))
+        .order('code', { ascending: true })
+      if (tpErr) throw tpErr
+      setLearningTargets(tpData || [])
+      return { materials: mData, learningTargets: tpData }
+    } else {
+      setLearningTargets([])
+      return { materials: [], learningTargets: [] }
+    }
+  }
+
+  const fetchSummativesInternal = async () => {
+    const { data: sumData, error: sumErr } = await supabase
+      .from('summatives')
+      .select('*')
+      .eq('report_period_id', selectedPeriodId)
+      .eq('subject_id', selectedSubjectId)
+      .order('created_at', { ascending: true })
+    if (sumErr) throw sumErr
+    setSummatives(sumData || [])
+    return sumData || []
+  }
+
+  // Untuk dipanggil dari modal — hanya refresh struktur kolom, TIDAK reset scores
   const fetchMaterialsAndTps = async () => {
     const { data: mData, error: mErr } = await supabase
       .from('materials')
@@ -220,56 +248,58 @@ export default function InputRapor() {
     setSummatives(sumData || [])
   }
 
-  // UPDATE CELL SCORES IN STATE
+  // FIX: handleScoreChange diperbaiki — konversi Number hanya untuk field numerik
   const handleScoreChange = (studentId, type, field, value) => {
-    const updated = { ...scores[studentId] }
+    setScores((prev) => {
+      const updated = { ...prev[studentId] }
 
-    if (type === 'formative') {
-      updated.scores_formative = {
-        ...updated.scores_formative,
-        [field]: value === '' ? '' : Number(value),
+      if (type === 'formative') {
+        updated.scores_formative = {
+          ...updated.scores_formative,
+          [field]: value,  // simpan sebagai string dulu, konversi saat save
+        }
+      } else if (type === 'summative') {
+        updated.scores_summative = {
+          ...updated.scores_summative,
+          [field]: value,  // simpan sebagai string dulu, konversi saat save
+        }
+      } else {
+        // FIX: untuk field 'other' (sts/sas/achievement), simpan nilai apa adanya
+        updated[field] = value
       }
-    } else if (type === 'summative') {
-      updated.scores_summative = {
-        ...updated.scores_summative,
-        [field]: value === '' ? '' : Number(value),
-      }
-    } else {
-      updated[field] = value === '' ? '' : value
-    }
 
-    setScores({
-      ...scores,
-      [studentId]: updated,
+      return {
+        ...prev,
+        [studentId]: updated,
+      }
     })
   }
 
-  // AUTO CALCULATION FORMULAS FOR DISPLAY
   const calculateFormativeAvg = (studentScoreObj) => {
-    const vals = Object.values(studentScoreObj.scores_formative).filter(
-      (v) => v !== '' && v !== null && !isNaN(v)
+    const vals = Object.values(studentScoreObj.scores_formative || {}).filter(
+      (v) => v !== '' && v !== null && v !== undefined && !isNaN(Number(v))
     )
     if (vals.length === 0) return 0
-    const sum = vals.reduce((a, b) => a + b, 0)
+    const sum = vals.reduce((a, b) => a + Number(b), 0)
     return Number((sum / vals.length).toFixed(1))
   }
 
   const calculateSummativeAvg = (studentScoreObj) => {
-    const vals = Object.values(studentScoreObj.scores_summative).filter(
-      (v) => v !== '' && v !== null && !isNaN(v)
+    const vals = Object.values(studentScoreObj.scores_summative || {}).filter(
+      (v) => v !== '' && v !== null && v !== undefined && !isNaN(Number(v))
     )
     if (vals.length === 0) return 0
-    const sum = vals.reduce((a, b) => a + b, 0)
+    const sum = vals.reduce((a, b) => a + Number(b), 0)
     return Number((sum / vals.length).toFixed(1))
   }
 
   const calculateAvgOfTwo = (v1, v2) => {
-    const n1 = v1 !== '' && v1 !== null ? Number(v1) : null
-    const n2 = v2 !== '' && v2 !== null ? Number(v2) : null
+    const n1 = v1 !== '' && v1 !== null && v1 !== undefined ? Number(v1) : null
+    const n2 = v2 !== '' && v2 !== null && v2 !== undefined ? Number(v2) : null
 
-    if (n1 !== null && n2 !== null) return (n1 + n2) / 2
-    if (n1 !== null) return n1
-    if (n2 !== null) return n2
+    if (n1 !== null && !isNaN(n1) && n2 !== null && !isNaN(n2)) return (n1 + n2) / 2
+    if (n1 !== null && !isNaN(n1)) return n1
+    if (n2 !== null && !isNaN(n2)) return n2
     return 0
   }
 
@@ -278,52 +308,81 @@ export default function InputRapor() {
     const sAvg = calculateSummativeAvg(studentScoreObj)
     const stsAvg = calculateAvgOfTwo(studentScoreObj.sts_practice, studentScoreObj.sts_written)
     const sasAvg = calculateAvgOfTwo(studentScoreObj.sas_practice, studentScoreObj.sas_written)
-
     const final = (fAvg + sAvg + stsAvg + sasAvg) / 4
     return Math.round(final)
   }
 
-  // SAVE Penilaian
+  // FIX: Konversi tipe data yang benar saat save
+  const toNullableNumber = (val) => {
+    if (val === '' || val === null || val === undefined) return null
+    const n = Number(val)
+    return isNaN(n) ? null : n
+  }
+
+  const toNumberOrEmpty = (val) => {
+    if (val === '' || val === null || val === undefined) return ''
+    const n = Number(val)
+    return isNaN(n) ? '' : n
+  }
+
   const handleSaveScores = async () => {
     setError('')
     setSuccess('')
-    setLoading(true)
+    setLoadingSave(true)  // FIX: Pakai loadingSave, bukan loading
 
     try {
       const payload = Object.values(scores).map((studentScore) => {
+        // FIX: Konversi semua nilai formative dan summative ke Number dengan benar
+        const scoresFormativeNumeric = {}
+        Object.entries(studentScore.scores_formative || {}).forEach(([key, val]) => {
+          const n = toNullableNumber(val)
+          if (n !== null) scoresFormativeNumeric[key] = n
+        })
+
+        const scoresSummativeNumeric = {}
+        Object.entries(studentScore.scores_summative || {}).forEach(([key, val]) => {
+          const n = toNullableNumber(val)
+          if (n !== null) scoresSummativeNumeric[key] = n
+        })
+
         const finalScore = calculateFinalRaporScore(studentScore)
+
         return {
           student_id: studentScore.student_id,
           report_period_id: selectedPeriodId,
           subject_id: selectedSubjectId,
-          scores_formative: studentScore.scores_formative,
-          scores_summative: studentScore.scores_summative,
-          sts_practice: studentScore.sts_practice === '' ? null : Number(studentScore.sts_practice),
-          sts_written: studentScore.sts_written === '' ? null : Number(studentScore.sts_written),
-          sas_practice: studentScore.sas_practice === '' ? null : Number(studentScore.sas_practice),
-          sas_written: studentScore.sas_written === '' ? null : Number(studentScore.sas_written),
+          scores_formative: scoresFormativeNumeric,
+          scores_summative: scoresSummativeNumeric,
+          sts_practice: toNullableNumber(studentScore.sts_practice),
+          sts_written: toNullableNumber(studentScore.sts_written),
+          sas_practice: toNullableNumber(studentScore.sas_practice),
+          sas_written: toNullableNumber(studentScore.sas_written),
           highest_achievement: studentScore.highest_achievement || null,
           lowest_achievement: studentScore.lowest_achievement || null,
           final_score: finalScore,
         }
       })
 
-      const { error } = await supabase.from('student_scores').upsert(payload, {
-        onConflict: 'student_id,report_period_id,subject_id',
-      })
+      console.log('Saving payload:', JSON.stringify(payload, null, 2)) // debug log
 
-      if (error) throw error
+      const { data, error: saveErr } = await supabase
+        .from('student_scores')
+        .upsert(payload, {
+          onConflict: 'student_id,report_period_id,subject_id',
+        })
+
+      if (saveErr) throw saveErr
+
       setSuccess('Seluruh nilai siswa berhasil disimpan!')
       setTimeout(() => setSuccess(''), 4000)
     } catch (err) {
       console.error('Error saving scores:', err)
       setError('Gagal menyimpan nilai: ' + err.message)
     } finally {
-      setLoading(false)
+      setLoadingSave(false)
     }
   }
 
-  // ADD MATERIAL AND TP OPERATIONS
   const handleAddMaterial = async () => {
     if (!newMaterialName.trim()) return
     try {
@@ -336,7 +395,7 @@ export default function InputRapor() {
       setNewMaterialName('')
       await fetchMaterialsAndTps()
     } catch (err) {
-      alert('Gagal menambah lingkup materi')
+      alert('Gagal menambah lingkup materi: ' + err.message)
     }
   }
 
@@ -347,7 +406,7 @@ export default function InputRapor() {
       if (error) throw error
       await fetchMaterialsAndTps()
     } catch (err) {
-      alert('Gagal menghapus lingkup materi')
+      alert('Gagal menghapus lingkup materi: ' + err.message)
     }
   }
 
@@ -363,7 +422,7 @@ export default function InputRapor() {
       setTpInputs({ ...tpInputs, code: '', description: '' })
       await fetchMaterialsAndTps()
     } catch (err) {
-      alert('Gagal menambah tujuan pembelajaran')
+      alert('Gagal menambah tujuan pembelajaran: ' + err.message)
     }
   }
 
@@ -374,11 +433,10 @@ export default function InputRapor() {
       if (error) throw error
       await fetchMaterialsAndTps()
     } catch (err) {
-      alert('Gagal menghapus TP')
+      alert('Gagal menghapus TP: ' + err.message)
     }
   }
 
-  // ADD SUMMATIVE OPERATIONS
   const handleAddSummative = async () => {
     if (!newSummativeName.trim()) return
     try {
@@ -391,7 +449,7 @@ export default function InputRapor() {
       setNewSummativeName('')
       await fetchSummatives()
     } catch (err) {
-      alert('Gagal menambah sumatif')
+      alert('Gagal menambah sumatif: ' + err.message)
     }
   }
 
@@ -402,8 +460,20 @@ export default function InputRapor() {
       if (error) throw error
       await fetchSummatives()
     } catch (err) {
-      alert('Gagal menghapus sumatif')
+      alert('Gagal menghapus sumatif: ' + err.message)
     }
+  }
+
+  // FIX: Tutup modal tanpa memanggil handleLoadGrid() agar scores tidak di-reset
+  const handleCloseMaterialModal = async () => {
+    setShowMaterialModal(false)
+    // Hanya refresh struktur kolom (material & TP headers), BUKAN reload seluruh grid
+    await fetchMaterialsAndTps()
+  }
+
+  const handleCloseSummativeModal = async () => {
+    setShowSummativeModal(false)
+    await fetchSummatives()
   }
 
   return (
@@ -467,13 +537,15 @@ export default function InputRapor() {
           >
             <option value="">-- Pilih Mata Pelajaran --</option>
             {(() => {
-              const currentPeriod = periods.find(p => p.id === selectedPeriodId)
-              const filtered = teacherSubjects.filter(sub => {
+              const currentPeriod = periods.find((p) => p.id === selectedPeriodId)
+              const filtered = teacherSubjects.filter((sub) => {
                 if (!currentPeriod) return true
                 if (!sub.class_name) return true
                 const pClass = currentPeriod.class_name || ''
-                return pClass.toLowerCase().startsWith(sub.class_name.toLowerCase()) ||
+                return (
+                  pClass.toLowerCase().startsWith(sub.class_name.toLowerCase()) ||
                   pClass.toLowerCase().includes(sub.class_name.toLowerCase())
+                )
               })
               return filtered.map((sub) => (
                 <option key={sub.id} value={sub.id}>
@@ -517,11 +589,11 @@ export default function InputRapor() {
 
             <button
               onClick={handleSaveScores}
-              disabled={loading}
+              disabled={loadingSave}  // FIX: Pakai loadingSave
               className="bg-emerald-500 hover:bg-emerald-400 disabled:bg-emerald-600 disabled:opacity-50 text-slate-950 px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 shadow transition-colors cursor-pointer"
             >
               <Save size={14} />
-              Simpan Semua Nilai
+              {loadingSave ? 'Menyimpan...' : 'Simpan Semua Nilai'}
             </button>
           </div>
 
@@ -530,12 +602,10 @@ export default function InputRapor() {
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse table-fixed min-w-[1500px]">
                 <thead>
-                  {/* Row 1: Category + Material Group Headers */}
                   <tr className="bg-slate-950 text-slate-450 text-[10px] uppercase font-bold tracking-widest text-center border-b border-slate-800/80">
                     <th className="py-2.5 px-4 text-left font-medium text-slate-500" rowSpan={2} style={{ width: '250px' }}>Informasi Siswa</th>
-                    {/* Formatif: one column group per material */}
                     {materials.map((mat) => {
-                      const tpsInMat = learningTargets.filter(tp => tp.material_id === mat.id)
+                      const tpsInMat = learningTargets.filter((tp) => tp.material_id === mat.id)
                       if (tpsInMat.length === 0) return null
                       return (
                         <th key={mat.id} className="py-2.5 px-2 border-l border-slate-850 bg-indigo-500/5 text-indigo-300" colSpan={tpsInMat.length}>
@@ -557,18 +627,15 @@ export default function InputRapor() {
                     <th className="py-2.5 px-2 border-l border-slate-850 text-left font-medium text-slate-500" rowSpan={2} style={{ width: '450px' }}>Deskripsi Capaian</th>
                   </tr>
 
-                  {/* Row 2: Individual TP codes + Summative + STS/SAS sub-headers */}
                   <tr className="bg-slate-900 text-slate-400 text-xs font-semibold border-b border-slate-800">
-                    {/* TP codes grouped under each material */}
                     {materials.map((mat) => {
-                      const tpsInMat = learningTargets.filter(tp => tp.material_id === mat.id)
+                      const tpsInMat = learningTargets.filter((tp) => tp.material_id === mat.id)
                       return tpsInMat.map((tp, idx) => (
                         <th key={tp.id} className={`py-3 px-1.5 text-center font-mono text-[10px] truncate ${idx === 0 ? 'border-l border-slate-850' : ''}`} title={`${mat.name}: ${tp.description}`}>
                           {tp.code}
                         </th>
                       ))
                     })}
-                    {/* Summative sub-headers */}
                     {summatives.map((sum, idx) => (
                       <th key={sum.id} className={`py-3 px-1.5 text-center text-[10px] truncate ${idx === 0 ? 'border-l border-slate-850' : ''}`} title={sum.name}>
                         {sum.name}
@@ -577,11 +644,9 @@ export default function InputRapor() {
                     {summatives.length > 0 && (
                       <th className="py-3 px-1.5 text-center border-l border-slate-850 text-slate-500 text-[10px] font-bold uppercase">Rrt</th>
                     )}
-                    {/* STS */}
                     <th className="py-3 px-1 text-center border-l border-slate-850 text-[10px]">Prak</th>
                     <th className="py-3 px-1 text-center text-[10px]">Tulis</th>
                     <th className="py-3 px-1 text-center text-slate-500 text-[10px] font-bold">Rrt</th>
-                    {/* SAS */}
                     <th className="py-3 px-1 text-center border-l border-slate-850 text-[10px]">Prak</th>
                     <th className="py-3 px-1 text-center text-[10px]">Tulis</th>
                     <th className="py-3 px-1 text-center text-slate-500 text-[10px] font-bold">Rrt</th>
@@ -589,7 +654,16 @@ export default function InputRapor() {
                 </thead>
                 <tbody className="divide-y divide-slate-800/60 text-sm text-slate-200">
                   {students.map((student) => {
-                    const studentScore = scores[student.id] || {}
+                    const studentScore = scores[student.id] || {
+                      scores_formative: {},
+                      scores_summative: {},
+                      sts_practice: '',
+                      sts_written: '',
+                      sas_practice: '',
+                      sas_written: '',
+                      highest_achievement: '',
+                      lowest_achievement: '',
+                    }
                     const formativeAvg = calculateFormativeAvg(studentScore)
                     const summativeAvg = calculateSummativeAvg(studentScore)
                     const stsAvg = calculateAvgOfTwo(studentScore.sts_practice, studentScore.sts_written)
@@ -598,15 +672,13 @@ export default function InputRapor() {
 
                     return (
                       <tr key={student.id} className="hover:bg-slate-900/20 transition-all">
-                        {/* Student Name */}
                         <td className="py-3.5 px-4 truncate">
                           <p className="font-semibold text-slate-200 leading-tight">{student.name}</p>
                           <p className="text-[10px] text-slate-500 font-mono mt-0.5">{student.nisn}</p>
                         </td>
 
-                        {/* Formative TP Columns Grouped by Material */}
                         {materials.map((mat) => {
-                          const tpsInMat = learningTargets.filter(tp => tp.material_id === mat.id)
+                          const tpsInMat = learningTargets.filter((tp) => tp.material_id === mat.id)
                           return tpsInMat.map((tp, idx) => (
                             <td key={tp.id} className={`py-3.5 px-1 text-center ${idx === 0 ? 'border-l border-slate-850' : ''}`}>
                               <input
@@ -628,7 +700,6 @@ export default function InputRapor() {
                           </td>
                         )}
 
-                        {/* Summative Columns */}
                         {summatives.map((sum) => (
                           <td key={sum.id} className="py-3.5 px-1 border-l border-slate-850 text-center">
                             <input
@@ -649,7 +720,6 @@ export default function InputRapor() {
                           </td>
                         )}
 
-                        {/* STS Columns */}
                         <td className="py-3.5 px-1 border-l border-slate-850 text-center">
                           <input
                             type="number"
@@ -675,10 +745,9 @@ export default function InputRapor() {
                           />
                         </td>
                         <td className="py-3.5 px-1 text-center font-bold text-xs text-amber-500">
-                          {stsAvg}
+                          {stsAvg || 0}
                         </td>
 
-                        {/* SAS Columns */}
                         <td className="py-3.5 px-1 border-l border-slate-850 text-center">
                           <input
                             type="number"
@@ -704,15 +773,13 @@ export default function InputRapor() {
                           />
                         </td>
                         <td className="py-3.5 px-1 text-center font-bold text-xs text-amber-500">
-                          {sasAvg}
+                          {sasAvg || 0}
                         </td>
 
-                        {/* Final Rapor Score */}
                         <td className="py-3.5 px-1 border-l border-slate-850 text-center font-extrabold text-sm text-emerald-400 bg-emerald-500/5">
                           {finalRapor}
                         </td>
 
-                        {/* Capaian Textareas */}
                         <td className="py-3.5 px-4 border-l border-slate-850 space-y-1.5">
                           <div className="flex items-center gap-1.5">
                             <span className="text-[9px] font-bold text-emerald-500/80 uppercase tracking-wide shrink-0">Tinggi</span>
@@ -721,12 +788,7 @@ export default function InputRapor() {
                               placeholder="Capaian kompetensi tertinggi..."
                               value={studentScore.highest_achievement ?? ''}
                               onChange={(e) =>
-                                handleScoreChange(
-                                  student.id,
-                                  'other',
-                                  'highest_achievement',
-                                  e.target.value
-                                )
+                                handleScoreChange(student.id, 'other', 'highest_achievement', e.target.value)
                               }
                               className="w-full bg-slate-950 border border-slate-850 rounded-lg p-1 text-[11px] text-slate-200 placeholder-slate-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 resize-y"
                             />
@@ -738,12 +800,7 @@ export default function InputRapor() {
                               placeholder="Capaian kompetensi terendah..."
                               value={studentScore.lowest_achievement ?? ''}
                               onChange={(e) =>
-                                handleScoreChange(
-                                  student.id,
-                                  'other',
-                                  'lowest_achievement',
-                                  e.target.value
-                                )
+                                handleScoreChange(student.id, 'other', 'lowest_achievement', e.target.value)
                               }
                               className="w-full bg-slate-950 border border-slate-850 rounded-lg p-1 text-[11px] text-slate-200 placeholder-slate-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 resize-y"
                             />
@@ -768,11 +825,9 @@ export default function InputRapor() {
                 <h3 className="text-lg font-bold text-slate-100">Atur Lingkup Materi & TP</h3>
                 <p className="text-xs text-slate-400 mt-0.5">Tujuan Pembelajaran Formatif</p>
               </div>
+              {/* FIX: Gunakan handleCloseMaterialModal, bukan handleLoadGrid langsung */}
               <button
-                onClick={() => {
-                  setShowMaterialModal(false)
-                  handleLoadGrid() // Refresh grid headers
-                }}
+                onClick={handleCloseMaterialModal}
                 className="text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
               >
                 <X size={18} />
@@ -780,18 +835,17 @@ export default function InputRapor() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Left Column: Materials CRUD */}
               <div className="space-y-4">
                 <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
                   1. Lingkup Materi (Bab)
                 </span>
-
                 <div className="flex gap-2">
                   <input
                     type="text"
                     placeholder="Nama Materi (e.g. Bab 1)"
                     value={newMaterialName}
                     onChange={(e) => setNewMaterialName(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddMaterial()}
                     className="flex-1 bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-emerald-500"
                   />
                   <button
@@ -801,7 +855,6 @@ export default function InputRapor() {
                     Tambah
                   </button>
                 </div>
-
                 <div className="space-y-2 max-h-56 overflow-y-auto border border-slate-850 rounded-xl p-3 bg-slate-950/40">
                   {materials.length === 0 ? (
                     <p className="text-xs text-slate-555 italic text-center py-4">Belum ada lingkup materi.</p>
@@ -809,10 +862,7 @@ export default function InputRapor() {
                     materials.map((m) => (
                       <div key={m.id} className="flex justify-between items-center bg-slate-950 p-2 rounded-lg border border-slate-850 text-xs">
                         <span className="text-slate-250 truncate">{m.name}</span>
-                        <button
-                          onClick={() => handleDeleteMaterial(m.id)}
-                          className="text-rose-500 hover:text-rose-400 p-1 cursor-pointer"
-                        >
+                        <button onClick={() => handleDeleteMaterial(m.id)} className="text-rose-500 hover:text-rose-400 p-1 cursor-pointer">
                           <Trash2 size={13} />
                         </button>
                       </div>
@@ -821,12 +871,10 @@ export default function InputRapor() {
                 </div>
               </div>
 
-              {/* Right Column: TPs CRUD */}
               <div className="space-y-4">
                 <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
                   2. Tujuan Pembelajaran (TP)
                 </span>
-
                 <div className="space-y-2 border border-slate-850 p-3 rounded-xl bg-slate-950/20">
                   <select
                     value={tpInputs.materialId}
@@ -835,12 +883,9 @@ export default function InputRapor() {
                   >
                     <option value="">-- Pilih Materi Bab --</option>
                     {materials.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.name}
-                      </option>
+                      <option key={m.id} value={m.id}>{m.name}</option>
                     ))}
                   </select>
-
                   <div className="flex gap-2">
                     <input
                       type="text"
@@ -857,7 +902,6 @@ export default function InputRapor() {
                       className="flex-1 bg-slate-950 border border-slate-850 rounded-lg p-2 text-xs text-slate-200 focus:outline-none"
                     />
                   </div>
-
                   <button
                     onClick={handleAddTp}
                     className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 py-1.5 rounded-lg text-xs font-bold"
@@ -865,7 +909,6 @@ export default function InputRapor() {
                     Tambah TP
                   </button>
                 </div>
-
                 <div className="space-y-2 max-h-40 overflow-y-auto border border-slate-850 rounded-xl p-3 bg-slate-950/40">
                   {learningTargets.length === 0 ? (
                     <p className="text-xs text-slate-555 italic text-center py-4">Belum ada tujuan pembelajaran.</p>
@@ -879,10 +922,7 @@ export default function InputRapor() {
                             <span className="text-slate-300">{tp.description}</span>
                             <span className="block text-[9px] text-slate-500 truncate mt-0.5">({mat?.name || 'Materi'})</span>
                           </div>
-                          <button
-                            onClick={() => handleDeleteTp(tp.id)}
-                            className="text-rose-500 hover:text-rose-400 p-1 cursor-pointer self-center"
-                          >
+                          <button onClick={() => handleDeleteTp(tp.id)} className="text-rose-500 hover:text-rose-400 p-1 cursor-pointer self-center">
                             <Trash2 size={13} />
                           </button>
                         </div>
@@ -895,10 +935,7 @@ export default function InputRapor() {
 
             <div className="flex justify-end pt-4 border-t border-slate-800">
               <button
-                onClick={() => {
-                  setShowMaterialModal(false)
-                  handleLoadGrid() // Refresh grid layout
-                }}
+                onClick={handleCloseMaterialModal}
                 className="px-5 py-2 text-xs font-bold text-slate-950 bg-emerald-500 hover:bg-emerald-400 rounded-xl transition-all cursor-pointer"
               >
                 Selesai
@@ -908,7 +945,7 @@ export default function InputRapor() {
         </div>
       )}
 
-      {/* MODAL CONFIG SUMATIF LINGKUP MATERI */}
+      {/* MODAL CONFIG SUMATIF */}
       {showSummativeModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl shadow-xl overflow-hidden p-6 space-y-6">
@@ -917,11 +954,9 @@ export default function InputRapor() {
                 <h3 className="text-lg font-bold text-slate-100">Atur Sumatif</h3>
                 <p className="text-xs text-slate-400 mt-0.5">Lingkup Materi Sumatif</p>
               </div>
+              {/* FIX: Gunakan handleCloseSummativeModal */}
               <button
-                onClick={() => {
-                  setShowSummativeModal(false)
-                  handleLoadGrid() // Refresh grid headers
-                }}
+                onClick={handleCloseSummativeModal}
                 className="text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
               >
                 <X size={18} />
@@ -935,6 +970,7 @@ export default function InputRapor() {
                   placeholder="Nama Sumatif (e.g. Sumatif Bab 1)"
                   value={newSummativeName}
                   onChange={(e) => setNewSummativeName(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddSummative()}
                   className="flex-1 bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-emerald-500"
                 />
                 <button
@@ -944,7 +980,6 @@ export default function InputRapor() {
                   Tambah
                 </button>
               </div>
-
               <div className="space-y-2 max-h-60 overflow-y-auto border border-slate-850 rounded-xl p-3 bg-slate-950/40">
                 {summatives.length === 0 ? (
                   <p className="text-xs text-slate-555 italic text-center py-4">Belum ada lingkup sumatif.</p>
@@ -952,10 +987,7 @@ export default function InputRapor() {
                   summatives.map((s) => (
                     <div key={s.id} className="flex justify-between items-center bg-slate-950 p-2.5 rounded-lg border border-slate-850 text-xs">
                       <span className="text-slate-250 truncate">{s.name}</span>
-                      <button
-                        onClick={() => handleDeleteSummative(s.id)}
-                        className="text-rose-500 hover:text-rose-400 p-1 cursor-pointer"
-                      >
+                      <button onClick={() => handleDeleteSummative(s.id)} className="text-rose-500 hover:text-rose-400 p-1 cursor-pointer">
                         <Trash2 size={13} />
                       </button>
                     </div>
@@ -966,10 +998,7 @@ export default function InputRapor() {
 
             <div className="flex justify-end pt-4 border-t border-slate-800">
               <button
-                onClick={() => {
-                  setShowSummativeModal(false)
-                  handleLoadGrid() // Refresh grid layout
-                }}
+                onClick={handleCloseSummativeModal}
                 className="px-5 py-2 text-xs font-bold text-slate-950 bg-emerald-500 hover:bg-emerald-400 rounded-xl transition-all cursor-pointer"
               >
                 Selesai

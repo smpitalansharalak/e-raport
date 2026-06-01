@@ -34,12 +34,6 @@ export default function CetakRapor() {
         size: A4 portrait;
         margin: 15mm 15mm 15mm 15mm;
       }
-      @media print {
-        body {
-          -webkit-print-color-adjust: exact;
-          print-color-adjust: exact;
-        }
-      }
     `,
   })
 
@@ -382,7 +376,7 @@ const RaporSheet = React.forwardRef(function RaporSheet(
 
       {/* Title */}
       <div className="text-center my-6">
-        <p className="font-bold text-base tracking-widest underline decoration-dotted">
+        <p className="font-bold text-base tracking-widest underline">
           LAPORAN HASIL BELAJAR
         </p>
       </div>
