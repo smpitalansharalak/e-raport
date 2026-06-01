@@ -28,7 +28,7 @@ export default function GantiPassword() {
       }
 
       // Re-authenticate using Supabase SDK so the client has a valid session
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password: oldPassword,
       })
@@ -40,12 +40,27 @@ export default function GantiPassword() {
         )
       }
 
-      const { error: updateErr } = await supabase.auth.updateUser({ password: newPassword })
-      if (updateErr) {
-        if (updateErr.message?.toLowerCase().includes('session')) {
-          throw new Error('Gagal menyimpan password baru karena sesi tidak valid. Silakan login ulang dan coba lagi.')
-        }
-        throw updateErr
+      const accessToken = signInData?.session?.access_token
+      if (!accessToken) {
+        throw new Error('Gagal membuat sesi autentikasi. Silakan login ulang dan coba lagi.')
+      }
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+      const updateRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
+        method: 'PUT',
+        headers: {
+          apikey: supabaseAnonKey,
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ password: newPassword }),
+      })
+
+      if (!updateRes.ok) {
+        const errorBody = await updateRes.json().catch(() => null)
+        const message = errorBody?.error_description || errorBody?.error || 'Gagal menyimpan password baru. Silakan coba lagi.'
+        throw new Error(message)
       }
 
       setSuccess('Password berhasil diperbarui! Silakan gunakan password baru Anda mulai sekarang.')
