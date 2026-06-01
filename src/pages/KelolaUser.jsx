@@ -18,6 +18,7 @@ export default function KelolaUser() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [savingId, setSavingId] = useState(null)
+  const [resettingId, setResettingId] = useState(null)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
@@ -30,7 +31,7 @@ export default function KelolaUser() {
         { data: subjectsData, error: sErr },
         { data: tsData, error: tsErr },
       ] = await Promise.all([
-        supabase.from('profiles').select('id, name, email, role, secondary_role').order('name'),
+        supabase.from('profiles').select('id, username, name, email, role, secondary_role').order('name'),
         supabase.from('subjects').select('id, name, class_name').order('name'),
         supabase.from('teacher_subjects').select('teacher_id, subject_id'),
       ])
@@ -78,6 +79,39 @@ export default function KelolaUser() {
     }
   }
 
+  const handlePasswordReset = async (profileId, profileName) => {
+    setError('')
+    setSuccess('')
+    setResettingId(profileId)
+    try {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      if (sessionError || !session?.access_token) {
+        throw new Error('Sesi tidak valid. Silakan login ulang dan coba lagi.')
+      }
+
+      const res = await fetch('/api/reset-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ userId: profileId }),
+      })
+
+      const body = await res.json()
+      if (!res.ok) {
+        throw new Error(body?.error || 'Gagal mereset password pengguna.')
+      }
+
+      setSuccess(`Password ${profileName} berhasil direset menjadi 12345678.`)
+      setTimeout(() => setSuccess(''), 2500)
+    } catch (err) {
+      setError(err.message || 'Gagal mereset password pengguna.')
+    } finally {
+      setResettingId(null)
+    }
+  }
+
   const toggleSubject = async (teacherId, subjectId) => {
     setError('')
     setSavingId(teacherId)
@@ -111,6 +145,7 @@ export default function KelolaUser() {
 
   const filteredProfiles = profiles.filter(p =>
     p.name.toLowerCase().includes(search.toLowerCase()) ||
+    p.username?.toLowerCase().includes(search.toLowerCase()) ||
     p.email.toLowerCase().includes(search.toLowerCase())
   )
 
@@ -168,11 +203,27 @@ export default function KelolaUser() {
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-base font-bold text-slate-200">{p.name}</h3>
+                  {p.username && <p className="text-xs text-slate-500 mt-0.5">@{p.username}</p>}
                   <p className="text-xs text-slate-500 mt-0.5">{p.email}</p>
                 </div>
-                {savingId === p.id && (
+                {(savingId === p.id || resettingId === p.id) && (
                   <span className="text-[10px] text-emerald-400 animate-pulse font-medium">Menyimpan...</span>
                 )}
+              </div>
+
+              <div className="flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  disabled={resettingId === p.id || savingId === p.id}
+                  onClick={() => {
+                    if (window.confirm(`Reset password ${p.name} menjadi 12345678?`)) {
+                      handlePasswordReset(p.id, p.name)
+                    }
+                  }}
+                  className="text-[11px] rounded-full border border-rose-500/40 bg-rose-500/10 px-3 py-1.5 text-rose-200 hover:bg-rose-500/20 disabled:opacity-50"
+                >
+                  {resettingId === p.id ? 'Reset...' : 'Reset Password'}
+                </button>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 pt-2 border-t border-slate-800/60">
