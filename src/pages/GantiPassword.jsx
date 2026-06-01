@@ -23,38 +23,37 @@ export default function GantiPassword() {
 
     try {
       const email = profile?.email
-      if (!email) throw new Error('Tidak dapat menemukan email akun Anda.')
-
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
-
-      // Step 1: Re-authenticate with old password via direct REST fetch to verify identity.
-      // This is completely stateless and bypasses the GoTrue SDK locks/deadlocks.
-      const res = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
-        method: 'POST',
-        headers: {
-          'apikey': supabaseAnonKey,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email,
-          password: oldPassword,
-        }),
-      })
-
-      if (!res.ok) {
-        throw new Error('Password lama salah. Silakan periksa kembali.')
+      if (!email) {
+        throw new Error('Email akun tidak tersedia. Silakan login ulang atau hubungi administrator.')
       }
 
-      // Step 2: Update to new password on the main client
+      // Re-authenticate using Supabase SDK so the client has a valid session
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password: oldPassword,
+      })
+      if (signInError) {
+        throw new Error(
+          signInError.message === 'Invalid login credentials'
+            ? 'Password lama salah. Silakan periksa kembali.'
+            : 'Gagal memverifikasi password lama. Silakan coba lagi.'
+        )
+      }
+
       const { error: updateErr } = await supabase.auth.updateUser({ password: newPassword })
-      if (updateErr) throw updateErr
+      if (updateErr) {
+        if (updateErr.message?.toLowerCase().includes('session')) {
+          throw new Error('Gagal menyimpan password baru karena sesi tidak valid. Silakan login ulang dan coba lagi.')
+        }
+        throw updateErr
+      }
 
       setSuccess('Password berhasil diperbarui! Silakan gunakan password baru Anda mulai sekarang.')
       reset()
       setTimeout(() => setSuccess(''), 6000)
     } catch (err) {
-      setError(err.message || 'Terjadi kesalahan saat mengganti password.')
+      const message = err?.message || 'Terjadi kesalahan saat mengganti password.'
+      setError(message)
     } finally {
       setLoading(false)
     }
