@@ -54,7 +54,7 @@ export default function Header() {
       </div>
 
       <div className="flex items-center gap-4">
-        <div className="flex items-center gap-3 border-r border-slate-800 pr-4">
+        <div className="hidden sm:flex items-center gap-3 border-r border-slate-800 pr-4">
           <div className="text-right">
             <p className="text-sm font-semibold text-slate-200">
               {profile?.name || 'User'}
