@@ -284,7 +284,7 @@ export default function CetakRapor() {
                   <div className="bg-white text-black p-8 rounded-2xl border border-slate-200 shadow-md max-h-[800px] overflow-y-auto select-none">
                 {/* Header */}
                 <div className="flex items-center justify-center border-b-2 border-black pb-4 bg-white">
-                  <img src="/favicon.svg" alt="Logo" className="h-6 mr-2" />
+                  <img src="/logo.webp" alt="Logo" className="h-6 mr-2" />
                   <div className="text-center">
                     <p className="font-bold text-sm tracking-wide">YAYASAN AL-ANSHAR AN’NUR</p>
                     <p className="font-extrabold text-base leading-none my-1 uppercase">
