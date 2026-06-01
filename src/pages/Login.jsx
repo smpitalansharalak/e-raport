@@ -24,17 +24,29 @@ export default function Login() {
 
   if (user) return <Navigate to="/" replace />
 
-  const onSubmit = async ({ name, password }) => {
+  const onSubmit = async ({ username, password }) => {
     setError('')
     setSubmitting(true)
-    const trimmed = name.trim()
-    const email = trimmed.toLowerCase() === 'admin' || trimmed === 'admin@smpital-anshar.com'
-      ? 'admin@smpital-anshar.com'
-      : 'guru@smpital-anshar.com'
+    const trimmedUsername = username.trim().toLowerCase()
 
     try {
-      localStorage.setItem('user_display_name', trimmed)
-      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('email, name')
+        .ilike('username', trimmedUsername)
+        .maybeSingle()
+
+      if (profileError) throw profileError
+      if (!profile) {
+        setError('Username tidak ditemukan. Pastikan username sudah terdaftar.')
+        return
+      }
+
+      localStorage.setItem('user_display_name', profile.name || trimmedUsername)
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: profile.email,
+        password,
+      })
       if (signInError) throw signInError
       navigate('/')
     } catch (err) {
@@ -69,7 +81,7 @@ export default function Login() {
           <Info size={16} className="shrink-0 mt-0.5" />
           <div className="leading-relaxed">
             <span className="font-semibold text-indigo-200 block mb-0.5">Sistem Autentikasi:</span>
-            Gunakan nama <code className="text-emerald-400 font-bold bg-slate-950 px-1 py-0.5 rounded">admin</code> untuk Administrator, atau nama Anda sendiri untuk guru pengajar.
+            Masuk menggunakan <span className="text-emerald-400 font-bold">username</span>, bukan nama lengkap. Username harus terdaftar di tabel <code className="text-emerald-400 font-bold bg-slate-950 px-1 py-0.5 rounded">profiles</code>.
           </div>
         </div>
 
@@ -81,10 +93,10 @@ export default function Login() {
         )}
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          {/* Nama */}
+          {/* Username */}
           <div>
             <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-              Nama Lengkap
+              Username
             </label>
             <div className="relative">
               <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-500 pointer-events-none">
@@ -92,12 +104,12 @@ export default function Login() {
               </span>
               <input
                 type="text"
-                placeholder="Contoh: Admin atau Nama Anda"
+                placeholder="Contoh: username atau admin"
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2.5 pl-10 pr-4 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors"
-                {...register('name', { required: 'Nama lengkap wajib diisi' })}
+                {...register('username', { required: 'Username wajib diisi' })}
               />
             </div>
-            {errors.name && <span className="text-[11px] text-rose-500 mt-1 block">{errors.name.message}</span>}
+            {errors.username && <span className="text-[11px] text-rose-500 mt-1 block">{errors.username.message}</span>}
           </div>
 
           {/* Password */}

@@ -3,6 +3,7 @@
 -- 1. PROFILES & ROLES
 CREATE TABLE public.profiles (
     id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
+    username TEXT UNIQUE NOT NULL,
     name TEXT NOT NULL,
     email TEXT UNIQUE NOT NULL,
     role TEXT NOT NULL CHECK (role IN ('admin', 'guru_mapel', 'wali_kelas')) DEFAULT 'guru_mapel',
@@ -153,9 +154,10 @@ CREATE POLICY "Allow all actions for authenticated" ON public.student_attendance
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-    INSERT INTO public.profiles (id, name, email, role)
+    INSERT INTO public.profiles (id, username, name, email, role)
     VALUES (
         new.id,
+        LOWER(SPLIT_PART(new.email, '@', 1)),
         COALESCE(new.raw_user_meta_data->>'name', SPLIT_PART(new.email, '@', 1)),
         new.email,
         -- The first user to sign up will be 'admin', subsequent users are 'guru_mapel'
