@@ -12,12 +12,14 @@ import {
   Check,
 } from 'lucide-react'
 
-// ─────────────────────────────────────────────
-// Modal form extracted as its own component so
-// React fully re-mounts it (fresh useForm state)
-// every time the modal opens, preventing the
-// "Menyimpan..." stuck bug on the second add.
-// ─────────────────────────────────────────────
+const STATUS_COLORS = {
+  aktif: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
+  naik_kelas: 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400',
+  lulus: 'bg-amber-500/10 border-amber-500/20 text-amber-400',
+  alumni: 'bg-slate-800/60 border-slate-700/40 text-slate-400',
+}
+const STATUS_LABELS = { aktif: 'Aktif', naik_kelas: 'Naik Kelas', lulus: 'Lulus', alumni: 'Alumni' }
+
 function StudentForm({ editingStudent, onSaved, onCancel }) {
   const [formError, setFormError] = useState('')
   const {
@@ -69,12 +71,12 @@ function StudentForm({ editingStudent, onSaved, onCancel }) {
           academic_year: data.academic_year,
           phase: data.phase,
           parent_name: data.parent_name,
+          status: 'aktif',
         })
         if (error) throw error
         onSaved('Siswa baru berhasil ditambahkan!')
       }
     } catch (err) {
-      console.error('Save student failed:', err)
       setFormError(
         err.message?.includes('duplicate')
           ? 'NISN sudah terdaftar di sistem.'
@@ -87,68 +89,38 @@ function StudentForm({ editingStudent, onSaved, onCancel }) {
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       {formError && (
         <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-xl flex items-center gap-2 text-xs">
-          <AlertCircle size={16} className="shrink-0" />
-          <span>{formError}</span>
+          <AlertCircle size={16} className="shrink-0" /><span>{formError}</span>
         </div>
       )}
 
       <div>
-        <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-          NISN
-        </label>
-        <input
-          type="text"
-          placeholder="Nomor Induk Siswa Nasional"
+        <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">NISN</label>
+        <input type="text" placeholder="Nomor Induk Siswa Nasional"
           className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors"
-          {...register('nisn', {
-            required: 'NISN wajib diisi',
-            pattern: { value: /^\d+$/, message: 'NISN harus berupa angka' },
-          })}
-        />
-        {errors.nisn && (
-          <span className="text-[11px] text-rose-500 mt-1 block">{errors.nisn.message}</span>
-        )}
+          {...register('nisn', { required: 'NISN wajib diisi', pattern: { value: /^\d+$/, message: 'NISN harus berupa angka' } })} />
+        {errors.nisn && <span className="text-[11px] text-rose-500 mt-1 block">{errors.nisn.message}</span>}
       </div>
 
       <div>
-        <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-          Nama Lengkap Siswa
-        </label>
-        <input
-          type="text"
-          placeholder="Nama Lengkap Siswa"
+        <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Nama Lengkap Siswa</label>
+        <input type="text" placeholder="Nama Lengkap Siswa"
           className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors"
-          {...register('name', { required: 'Nama lengkap wajib diisi' })}
-        />
-        {errors.name && (
-          <span className="text-[11px] text-rose-500 mt-1 block">{errors.name.message}</span>
-        )}
+          {...register('name', { required: 'Nama lengkap wajib diisi' })} />
+        {errors.name && <span className="text-[11px] text-rose-500 mt-1 block">{errors.name.message}</span>}
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-            Kelas
-          </label>
-          <input
-            type="text"
-            placeholder="Contoh: VII A"
+          <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Kelas</label>
+          <input type="text" placeholder="Contoh: VII A"
             className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors"
-            {...register('class_name', { required: 'Kelas wajib diisi' })}
-          />
-          {errors.class_name && (
-            <span className="text-[11px] text-rose-500 mt-1 block">{errors.class_name.message}</span>
-          )}
+            {...register('class_name', { required: 'Kelas wajib diisi' })} />
+          {errors.class_name && <span className="text-[11px] text-rose-500 mt-1 block">{errors.class_name.message}</span>}
         </div>
-
         <div>
-          <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-            Fase
-          </label>
-          <select
-            className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors"
-            {...register('phase', { required: 'Fase wajib dipilih' })}
-          >
+          <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Fase</label>
+          <select className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors"
+            {...register('phase', { required: 'Fase wajib dipilih' })}>
             <option value="D">D (SMP)</option>
             <option value="E">E (SMA-10)</option>
             <option value="F">F (SMA-11/12)</option>
@@ -158,46 +130,27 @@ function StudentForm({ editingStudent, onSaved, onCancel }) {
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-            Tahun Ajaran
-          </label>
-          <input
-            type="text"
-            placeholder="Contoh: 2025/2026"
+          <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Tahun Ajaran</label>
+          <input type="text" placeholder="Contoh: 2025/2026"
             className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors"
-            {...register('academic_year', { required: 'Tahun ajaran wajib diisi' })}
-          />
-          {errors.academic_year && (
-            <span className="text-[11px] text-rose-500 mt-1 block">{errors.academic_year.message}</span>
-          )}
+            {...register('academic_year', { required: 'Tahun ajaran wajib diisi' })} />
+          {errors.academic_year && <span className="text-[11px] text-rose-500 mt-1 block">{errors.academic_year.message}</span>}
         </div>
-
         <div>
-          <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-            Orang Tua / Wali
-          </label>
-          <input
-            type="text"
-            placeholder="Nama Orang Tua"
+          <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Orang Tua / Wali</label>
+          <input type="text" placeholder="Nama Orang Tua"
             className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors"
-            {...register('parent_name')}
-          />
+            {...register('parent_name')} />
         </div>
       </div>
 
       <div className="flex gap-3 justify-end pt-4 border-t border-slate-800">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="px-4 py-2 text-xs font-bold text-slate-400 hover:text-slate-200 bg-slate-950 hover:bg-slate-900 border border-slate-800 rounded-xl transition-all cursor-pointer"
-        >
+        <button type="button" onClick={onCancel}
+          className="px-4 py-2 text-xs font-bold text-slate-400 hover:text-slate-200 bg-slate-950 hover:bg-slate-900 border border-slate-800 rounded-xl transition-all cursor-pointer">
           Batal
         </button>
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="px-4 py-2 text-xs font-bold text-slate-950 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
-        >
+        <button type="submit" disabled={isSubmitting}
+          className="px-4 py-2 text-xs font-bold text-slate-950 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 rounded-xl transition-all cursor-pointer flex items-center gap-1.5">
           {isSubmitting ? 'Menyimpan...' : 'Simpan'}
         </button>
       </div>
@@ -205,22 +158,18 @@ function StudentForm({ editingStudent, onSaved, onCancel }) {
   )
 }
 
-// ─────────────────────────────────────────────
-// Main Siswa page
-// ─────────────────────────────────────────────
 export default function Siswa() {
   const [students, setStudents] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [filterStatus, setFilterStatus] = useState('semua')
   const [showModal, setShowModal] = useState(false)
   const [editingStudent, setEditingStudent] = useState(null)
-  const [modalKey, setModalKey] = useState(0)   // incremented on each open → forces remount
+  const [modalKey, setModalKey] = useState(0)
   const [success, setSuccess] = useState('')
   const [pageError, setPageError] = useState('')
 
-  useEffect(() => {
-    fetchStudents()
-  }, [])
+  useEffect(() => { fetchStudents() }, [])
 
   const fetchStudents = async () => {
     setLoading(true)
@@ -232,25 +181,14 @@ export default function Siswa() {
       if (error) throw error
       setStudents(data || [])
     } catch (err) {
-      console.error('Error fetching students:', err)
       setPageError('Gagal mengambil data siswa.')
     } finally {
       setLoading(false)
     }
   }
 
-  const openAddModal = () => {
-    setEditingStudent(null)
-    setModalKey(k => k + 1)   // ensure fresh form every open
-    setShowModal(true)
-  }
-
-  const openEditModal = (student) => {
-    setEditingStudent(student)
-    setModalKey(k => k + 1)
-    setShowModal(true)
-  }
-
+  const openAddModal = () => { setEditingStudent(null); setModalKey(k => k + 1); setShowModal(true) }
+  const openEditModal = (student) => { setEditingStudent(student); setModalKey(k => k + 1); setShowModal(true) }
   const closeModal = () => setShowModal(false)
 
   const handleSaved = (message) => {
@@ -271,17 +209,18 @@ export default function Siswa() {
       fetchStudents()
       setTimeout(() => setSuccess(''), 3000)
     } catch (err) {
-      console.error('Delete student failed:', err)
       setPageError('Gagal menghapus data siswa.')
     }
   }
 
-  const filteredStudents = students.filter(
-    (s) =>
+  const filteredStudents = students.filter(s => {
+    const matchSearch =
       s.name.toLowerCase().includes(search.toLowerCase()) ||
       s.nisn.includes(search) ||
       s.class_name.toLowerCase().includes(search.toLowerCase())
-  )
+    const matchStatus = filterStatus === 'semua' || s.status === filterStatus
+    return matchSearch && matchStatus
+  })
 
   if (loading && students.length === 0) {
     return (
@@ -294,7 +233,6 @@ export default function Siswa() {
 
   return (
     <div className="space-y-6">
-      {/* Header Panel */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-slate-100 m-0">Data Siswa</h2>
@@ -302,43 +240,42 @@ export default function Siswa() {
             Kelola data murid SMP IT Al Anshar untuk setiap angkatan dan kelas.
           </p>
         </div>
-
-        <button
-          onClick={openAddModal}
-          className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-4 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 shadow-md transition-all duration-200 cursor-pointer self-start md:self-auto"
-        >
-          <Plus size={16} />
-          Tambah Siswa
+        <button onClick={openAddModal}
+          className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-4 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 shadow-md transition-all duration-200 cursor-pointer self-start md:self-auto">
+          <Plus size={16} /> Tambah Siswa
         </button>
       </div>
 
       {pageError && (
         <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-xl flex items-center gap-2 text-sm">
-          <AlertCircle size={18} className="shrink-0" />
-          <span>{pageError}</span>
+          <AlertCircle size={18} className="shrink-0" /><span>{pageError}</span>
         </div>
       )}
-
       {success && (
         <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl flex items-center gap-2 text-sm">
-          <Check size={18} className="shrink-0" />
-          <span>{success}</span>
+          <Check size={18} className="shrink-0" /><span>{success}</span>
         </div>
       )}
 
       {/* Control Panel */}
-      <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 flex flex-col md:flex-row gap-4 items-center justify-between">
+      <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 flex flex-col md:flex-row gap-4 items-center justify-between flex-wrap">
         <div className="relative w-full md:w-80">
           <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-500">
             <Search size={16} />
           </span>
-          <input
-            type="text"
-            placeholder="Cari berdasarkan NISN, Nama, atau Kelas..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 pl-9 pr-4 text-sm text-slate-150 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
-          />
+          <input type="text" placeholder="Cari berdasarkan NISN, Nama, atau Kelas..."
+            value={search} onChange={e => setSearch(e.target.value)}
+            className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 pl-9 pr-4 text-sm text-slate-150 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors" />
+        </div>
+
+        {/* Filter status */}
+        <div className="flex gap-1.5 flex-wrap">
+          {[{ val: 'semua', label: 'Semua' }, ...Object.entries(STATUS_LABELS).map(([val, label]) => ({ val, label }))].map(opt => (
+            <button key={opt.val} onClick={() => setFilterStatus(opt.val)}
+              className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${filterStatus === opt.val ? 'bg-emerald-500 text-slate-950' : 'bg-slate-950 border border-slate-800 text-slate-400 hover:text-slate-200'}`}>
+              {opt.label}
+            </button>
+          ))}
         </div>
 
         <span className="text-xs text-slate-400 font-medium">
@@ -358,22 +295,28 @@ export default function Siswa() {
                 <th className="py-4 px-6">Tahun Ajaran</th>
                 <th className="py-4 px-6">Fase</th>
                 <th className="py-4 px-6">Orang Tua / Wali</th>
+                <th className="py-4 px-6">Status</th>
                 <th className="py-4 px-6 text-center">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 text-sm text-slate-200">
               {filteredStudents.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="py-8 text-center text-slate-500">
+                  <td colSpan="8" className="py-8 text-center text-slate-500">
                     <Users size={32} className="mx-auto mb-2 text-slate-650" />
-                    Belum ada data siswa terdaftar.
+                    Belum ada data siswa ditemukan.
                   </td>
                 </tr>
               ) : (
                 filteredStudents.map((s) => (
                   <tr key={s.id} className="hover:bg-slate-900/30 transition-all duration-150">
                     <td className="py-3.5 px-6 font-mono font-medium text-slate-400">{s.nisn}</td>
-                    <td className="py-3.5 px-6 font-semibold text-slate-200">{s.name}</td>
+                    <td className="py-3.5 px-6">
+                      <p className="font-semibold text-slate-200">{s.name}</p>
+                      {s.previous_class && (
+                        <p className="text-[10px] text-slate-500 mt-0.5">Sebelumnya: {s.previous_class}</p>
+                      )}
+                    </td>
                     <td className="py-3.5 px-6">
                       <span className="px-2 py-0.5 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 rounded text-xs font-semibold">
                         {s.class_name}
@@ -382,20 +325,19 @@ export default function Siswa() {
                     <td className="py-3.5 px-6 text-slate-400">{s.academic_year}</td>
                     <td className="py-3.5 px-6 text-center text-slate-400 font-bold">{s.phase}</td>
                     <td className="py-3.5 px-6 text-slate-350">{s.parent_name || '-'}</td>
+                    <td className="py-3.5 px-6">
+                      <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider border ${STATUS_COLORS[s.status] || STATUS_COLORS.aktif}`}>
+                        {STATUS_LABELS[s.status] || s.status}
+                      </span>
+                    </td>
                     <td className="py-3.5 px-6 text-center">
                       <div className="flex justify-center items-center gap-2">
-                        <button
-                          onClick={() => openEditModal(s)}
-                          className="p-1.5 bg-indigo-500/10 hover:bg-indigo-500/25 border border-indigo-500/20 text-indigo-400 hover:text-indigo-300 rounded-lg transition-all duration-200 cursor-pointer"
-                          title="Edit"
-                        >
+                        <button onClick={() => openEditModal(s)}
+                          className="p-1.5 bg-indigo-500/10 hover:bg-indigo-500/25 border border-indigo-500/20 text-indigo-400 hover:text-indigo-300 rounded-lg transition-all duration-200 cursor-pointer" title="Edit">
                           <Edit2 size={14} />
                         </button>
-                        <button
-                          onClick={() => handleDelete(s.id)}
-                          className="p-1.5 bg-rose-500/10 hover:bg-rose-500/25 border border-rose-500/20 text-rose-400 hover:text-rose-300 rounded-lg transition-all duration-200 cursor-pointer"
-                          title="Hapus"
-                        >
+                        <button onClick={() => handleDelete(s.id)}
+                          className="p-1.5 bg-rose-500/10 hover:bg-rose-500/25 border border-rose-500/20 text-rose-400 hover:text-rose-300 rounded-lg transition-all duration-200 cursor-pointer" title="Hapus">
                           <Trash2 size={14} />
                         </button>
                       </div>
@@ -416,21 +358,11 @@ export default function Siswa() {
               <h3 className="text-lg font-bold text-slate-100">
                 {editingStudent ? 'Edit Data Siswa' : 'Tambah Siswa Baru'}
               </h3>
-              <button
-                onClick={closeModal}
-                className="text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
-              >
+              <button onClick={closeModal} className="text-slate-500 hover:text-slate-300 transition-colors cursor-pointer">
                 <X size={18} />
               </button>
             </div>
-
-            {/* key=modalKey forces a full remount of StudentForm on every open */}
-            <StudentForm
-              key={modalKey}
-              editingStudent={editingStudent}
-              onSaved={handleSaved}
-              onCancel={closeModal}
-            />
+            <StudentForm key={modalKey} editingStudent={editingStudent} onSaved={handleSaved} onCancel={closeModal} />
           </div>
         </div>
       )}

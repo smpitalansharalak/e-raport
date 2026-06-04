@@ -7,6 +7,7 @@ import {
   Eye,
   AlertCircle,
   School,
+  Users,
 } from 'lucide-react'
 
 export default function CetakRapor() {
@@ -17,6 +18,9 @@ export default function CetakRapor() {
   const [loadingSheet, setLoadingSheet] = useState(false)
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
+
+  // Apakah sedang mencari rapor alumni (tanpa filter is_active)
+  const [alumniMode, setAlumniMode] = useState(false)
 
   const [allSubjects, setAllSubjects] = useState([])
   const [allScores, setAllScores] = useState([])
@@ -40,10 +44,7 @@ export default function CetakRapor() {
   const handlePrintStudent = (student) => {
     if (previewStudent?.id !== student.id) {
       setPreviewStudent(student)
-      // Tunggu state update sebelum print
-      setTimeout(() => {
-        handlePrint()
-      }, 300)
+      setTimeout(() => handlePrint(), 300)
     } else {
       handlePrint()
     }
@@ -51,23 +52,27 @@ export default function CetakRapor() {
 
   useEffect(() => {
     fetchPeriods()
-  }, [])
+  }, [alumniMode])
 
   const fetchPeriods = async () => {
     setLoading(true)
     setError('')
+    setStudents([])
+    setSelectedPeriodId('')
+    setPreviewStudent(null)
     try {
-      const { data, error } = await supabase
+      let q = supabase
         .from('report_periods')
-        .select(`
-          *,
-          wali_kelas:profiles(id, name)
-        `)
+        .select(`*, wali_kelas:profiles(id, name)`)
         .order('created_at', { ascending: false })
+
+      // Mode normal: hanya rapor aktif. Mode alumni: semua rapor
+      if (!alumniMode) q = q.eq('is_active', true)
+
+      const { data, error } = await q
       if (error) throw error
       setPeriods(data || [])
     } catch (err) {
-      console.error('Error fetching periods:', err)
       setError('Gagal mengambil data periode rapor.')
     } finally {
       setLoading(false)
@@ -88,12 +93,25 @@ export default function CetakRapor() {
       const period = periods.find((p) => p.id === periodId)
       if (!period) throw new Error('Periode tidak ditemukan')
 
-      const { data: sData, error: sErr } = await supabase
+      // Ambil siswa berdasarkan kelas & tahun ajaran, termasuk alumni
+      let q = supabase
         .from('students')
         .select('*')
         .eq('class_name', period.class_name)
         .eq('academic_year', period.academic_year)
         .order('name', { ascending: true })
+
+      // Dalam mode alumni: juga ambil siswa yang pernah di kelas ini (berdasarkan previous_class)
+      // Supabase OR filter
+      if (alumniMode) {
+        q = supabase
+          .from('students')
+          .select('*')
+          .or(`and(class_name.eq.${period.class_name},academic_year.eq.${period.academic_year}),and(previous_class.eq.${period.class_name},academic_year.eq.${period.academic_year})`)
+          .order('name', { ascending: true })
+      }
+
+      const { data: sData, error: sErr } = await q
       if (sErr) throw sErr
       setStudents(sData || [])
 
@@ -118,7 +136,6 @@ export default function CetakRapor() {
       if (attErr) throw attErr
       setAllAttendance(attData || [])
     } catch (err) {
-      console.error('Error loading report period details:', err)
       setError('Gagal memuat detail kelas: ' + err.message)
     } finally {
       setLoadingSheet(false)
@@ -129,11 +146,7 @@ export default function CetakRapor() {
     allScores.filter((sc) => sc.student_id === studentId)
 
   const getStudentAttendance = (studentId) =>
-    allAttendance.find((att) => att.student_id === studentId) || {
-      sakit: 0,
-      izin: 0,
-      alpha: 0,
-    }
+    allAttendance.find((att) => att.student_id === studentId) || { sakit: 0, izin: 0, alpha: 0 }
 
   const filteredStudents = students.filter(
     (s) =>
@@ -154,17 +167,40 @@ export default function CetakRapor() {
 
   return (
     <div className="space-y-6">
-
-      {/* ===================== */}
-      {/* UI KONTROL — hidden saat print */}
-      {/* ===================== */}
       <div className="print:hidden space-y-6">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-100 m-0">Cetak Rapor Murid</h2>
-          <p className="text-sm text-slate-400 mt-1">
-            Unduh atau cetak laporan hasil belajar murid per semester.
-          </p>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-bold text-slate-100 m-0">Cetak Rapor Murid</h2>
+            <p className="text-sm text-slate-400 mt-1">
+              Unduh atau cetak laporan hasil belajar murid per semester.
+            </p>
+          </div>
+
+          {/* Toggle Mode Alumni */}
+          <div className="flex items-center bg-slate-900 border border-slate-800 p-1 rounded-xl">
+            <button
+              onClick={() => { setAlumniMode(false) }}
+              className={`px-4 py-2 text-xs font-bold rounded-lg flex items-center gap-1.5 transition-all cursor-pointer ${!alumniMode ? 'bg-emerald-500 text-slate-950 shadow' : 'text-slate-400 hover:text-slate-200'}`}
+            >
+              <School size={13} />
+              Siswa Aktif
+            </button>
+            <button
+              onClick={() => { setAlumniMode(true) }}
+              className={`px-4 py-2 text-xs font-bold rounded-lg flex items-center gap-1.5 transition-all cursor-pointer ${alumniMode ? 'bg-emerald-500 text-slate-950 shadow' : 'text-slate-400 hover:text-slate-200'}`}
+            >
+              <Users size={13} />
+              Alumni / Arsip
+            </button>
+          </div>
         </div>
+
+        {alumniMode && (
+          <div className="p-4 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-xl text-xs flex items-center gap-2">
+            <Users size={15} className="shrink-0" />
+            <span>Mode Alumni — Menampilkan seluruh periode rapor (aktif maupun non-aktif). Rapor alumni tetap dapat dicetak kapan saja.</span>
+          </div>
+        )}
 
         {error && (
           <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-xl flex items-center gap-2 text-sm">
@@ -188,6 +224,7 @@ export default function CetakRapor() {
               {periods.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name} (Kelas {p.class_name})
+                  {!p.is_active ? ' [Arsip]' : ''}
                 </option>
               ))}
             </select>
@@ -216,6 +253,7 @@ export default function CetakRapor() {
             <div className="lg:col-span-1 bg-slate-900/65 border border-slate-800 rounded-2xl overflow-hidden flex flex-col max-h-[600px]">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider p-4 border-b border-slate-800 bg-slate-950/20 block">
                 Daftar Murid Kelas {activePeriod?.class_name}
+                {alumniMode && <span className="ml-2 text-amber-400">(Arsip)</span>}
               </span>
 
               <div className="divide-y divide-slate-800/50 overflow-y-auto flex-1">
@@ -233,19 +271,30 @@ export default function CetakRapor() {
                     return (
                       <div
                         key={student.id}
-                        className={`p-3.5 flex items-center justify-between gap-3 transition-colors ${
-                          isSelected
+                        className={`p-3.5 flex items-center justify-between gap-3 transition-colors ${isSelected
                             ? 'bg-emerald-500/10 border-r-2 border-emerald-500'
                             : 'hover:bg-slate-850/40'
-                        }`}
+                          }`}
                       >
                         <div className="truncate">
                           <p className="text-sm font-semibold text-slate-200 truncate">
                             {student.name}
                           </p>
-                          <p className="text-[10px] text-slate-500 font-mono mt-0.5">
-                            NISN: {student.nisn}
-                          </p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <p className="text-[10px] text-slate-500 font-mono">
+                              NISN: {student.nisn}
+                            </p>
+                            {student.status === 'alumni' && (
+                              <span className="text-[9px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded uppercase">
+                                Alumni
+                              </span>
+                            )}
+                            {student.status === 'lulus' && (
+                              <span className="text-[9px] font-bold text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-1.5 py-0.5 rounded uppercase">
+                                Lulus
+                              </span>
+                            )}
+                          </div>
                         </div>
 
                         <div className="flex gap-1 shrink-0">
@@ -277,10 +326,17 @@ export default function CetakRapor() {
                 <div className="space-y-4">
                   {/* Action bar */}
                   <div className="flex justify-between items-center bg-slate-900 border border-slate-800 p-4 rounded-2xl">
-                    <span className="text-xs text-slate-400 font-medium">
-                      Pratinjau Rapor:{' '}
-                      <span className="text-slate-200 font-bold">{previewStudent.name}</span>
-                    </span>
+                    <div>
+                      <span className="text-xs text-slate-400 font-medium">
+                        Pratinjau Rapor:{' '}
+                        <span className="text-slate-200 font-bold">{previewStudent.name}</span>
+                      </span>
+                      {(previewStudent.status === 'alumni' || previewStudent.status === 'lulus') && (
+                        <span className="ml-3 text-[10px] text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded">
+                          {previewStudent.graduation_year ? `Lulus ${previewStudent.graduation_year}` : 'Alumni'}
+                        </span>
+                      )}
+                    </div>
                     <button
                       onClick={() => handlePrint()}
                       className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 shadow transition-colors cursor-pointer"
@@ -317,10 +373,7 @@ export default function CetakRapor() {
         )}
       </div>
 
-      {/* ===================== */}
-      {/* RAPOR SHEET — selalu ada di DOM tapi hanya muncul saat print */}
-      {/* Dirender di luar div print:hidden agar tidak ikut tersembunyi */}
-      {/* ===================== */}
+      {/* RAPOR SHEET — hanya muncul saat print */}
       {previewStudent && (
         <div className="hidden print:block">
           <RaporSheet
@@ -338,7 +391,7 @@ export default function CetakRapor() {
 }
 
 // =====================
-// Komponen Lembar Rapor (dipisah agar bisa di-ref)
+// Komponen Lembar Rapor
 // =====================
 const RaporSheet = React.forwardRef(function RaporSheet(
   { previewStudent, activePeriod, allSubjects, getStudentScores, getStudentAttendance },
@@ -422,43 +475,17 @@ const RaporSheet = React.forwardRef(function RaporSheet(
       >
         <thead>
           <tr className="bg-white text-black font-bold">
-            <th
-              className="py-2 px-3 text-center"
-              style={{ border: '1px solid black', width: '40px' }}
-            >
-              No
-            </th>
-            <th className="py-2 px-3 text-left" style={{ border: '1px solid black' }}>
-              Mata Pelajaran
-            </th>
-            <th
-              className="py-2 px-3 text-center"
-              style={{ border: '1px solid black', width: '80px' }}
-            >
-              Nilai Akhir
-            </th>
-            <th
-              className="py-2 px-3 text-left"
-              style={{ border: '1px solid black', width: '220px' }}
-            >
-              Capaian Tertinggi
-            </th>
-            <th
-              className="py-2 px-3 text-left"
-              style={{ border: '1px solid black', width: '220px' }}
-            >
-              Capaian Terendah
-            </th>
+            <th className="py-2 px-3 text-center" style={{ border: '1px solid black', width: '40px' }}>No</th>
+            <th className="py-2 px-3 text-left" style={{ border: '1px solid black' }}>Mata Pelajaran</th>
+            <th className="py-2 px-3 text-center" style={{ border: '1px solid black', width: '80px' }}>Nilai Akhir</th>
+            <th className="py-2 px-3 text-left" style={{ border: '1px solid black', width: '220px' }}>Capaian Tertinggi</th>
+            <th className="py-2 px-3 text-left" style={{ border: '1px solid black', width: '220px' }}>Capaian Terendah</th>
           </tr>
         </thead>
         <tbody>
           {allSubjects.length === 0 ? (
             <tr>
-              <td
-                colSpan="5"
-                className="py-6 text-center text-gray-500 italic"
-                style={{ border: '1px solid black' }}
-              >
+              <td colSpan="5" className="py-6 text-center text-gray-500 italic" style={{ border: '1px solid black' }}>
                 Belum ada mata pelajaran rapor dikonfigurasi.
               </td>
             </tr>
@@ -467,34 +494,15 @@ const RaporSheet = React.forwardRef(function RaporSheet(
               const score = scores.find((sc) => sc.subject_id === sub.id)
               return (
                 <tr key={sub.id}>
-                  <td
-                    className="py-2.5 px-3 text-center font-mono"
-                    style={{ border: '1px solid black' }}
-                  >
-                    {index + 1}
-                  </td>
-                  <td
-                    className="py-2.5 px-3 font-semibold"
-                    style={{ border: '1px solid black' }}
-                  >
-                    {sub.name}
-                  </td>
-                  <td
-                    className="py-2.5 px-3 text-center font-bold"
-                    style={{ border: '1px solid black' }}
-                  >
+                  <td className="py-2.5 px-3 text-center font-mono" style={{ border: '1px solid black' }}>{index + 1}</td>
+                  <td className="py-2.5 px-3 font-semibold" style={{ border: '1px solid black' }}>{sub.name}</td>
+                  <td className="py-2.5 px-3 text-center font-bold" style={{ border: '1px solid black' }}>
                     {score ? score.final_score : '-'}
                   </td>
-                  <td
-                    className="py-2 px-3 text-[10px] leading-snug"
-                    style={{ border: '1px solid black' }}
-                  >
+                  <td className="py-2 px-3 text-[10px] leading-snug" style={{ border: '1px solid black' }}>
                     {score?.highest_achievement || '-'}
                   </td>
-                  <td
-                    className="py-2 px-3 text-[10px] leading-snug"
-                    style={{ border: '1px solid black' }}
-                  >
+                  <td className="py-2 px-3 text-[10px] leading-snug" style={{ border: '1px solid black' }}>
                     {score?.lowest_achievement || '-'}
                   </td>
                 </tr>
@@ -505,22 +513,13 @@ const RaporSheet = React.forwardRef(function RaporSheet(
       </table>
 
       {/* Kehadiran */}
-      <div
-        className="text-xs p-3 space-y-1 mb-8"
-        style={{ border: '1px solid black', width: '256px' }}
-      >
+      <div className="text-xs p-3 space-y-1 mb-8" style={{ border: '1px solid black', width: '256px' }}>
         <p className="font-bold uppercase pb-1 mb-1.5" style={{ borderBottom: '1px solid black' }}>
           Ketidakhadiran
         </p>
-        <p className="flex justify-between">
-          <span>Sakit</span> <span>: {att.sakit} hari</span>
-        </p>
-        <p className="flex justify-between">
-          <span>Izin</span> <span>: {att.izin} hari</span>
-        </p>
-        <p className="flex justify-between">
-          <span>Tanpa Keterangan (Alpha)</span> <span>: {att.alpha} hari</span>
-        </p>
+        <p className="flex justify-between"><span>Sakit</span> <span>: {att.sakit} hari</span></p>
+        <p className="flex justify-between"><span>Izin</span> <span>: {att.izin} hari</span></p>
+        <p className="flex justify-between"><span>Tanpa Keterangan (Alpha)</span> <span>: {att.alpha} hari</span></p>
       </div>
 
       {/* Tanda Tangan */}

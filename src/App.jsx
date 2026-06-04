@@ -13,6 +13,7 @@ import Kepatuhan from './pages/Kepatuhan'
 import CetakRapor from './pages/CetakRapor'
 import KelolaUser from './pages/KelolaUser'
 import GantiPassword from './pages/GantiPassword'
+import ManajemenStatus from './pages/ManajemenStatus'
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { refetchOnWindowFocus: false, retry: 1 } },
@@ -22,7 +23,6 @@ function RoleGuard({ allowedRoles, children }) {
   const { role, loading, user, initialized } = useAuth()
   const location = useLocation()
 
-  // While auth state is resolving, show a loader
   if (!initialized || loading) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
@@ -31,10 +31,8 @@ function RoleGuard({ allowedRoles, children }) {
     )
   }
 
-  // If there's no authenticated user, send them to login
   if (!user) return <Navigate to="/login" replace />
 
-  // If user exists but role hasn't been loaded yet, show loader instead of redirecting
   if (!role) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
@@ -43,7 +41,6 @@ function RoleGuard({ allowedRoles, children }) {
     )
   }
 
-  // If role is loaded but not allowed, navigate away (avoid redirecting to same path)
   if (!allowedRoles.includes(role)) {
     if (location.pathname === '/') {
       return (
@@ -75,6 +72,7 @@ export default function App() {
               <Route path="buat-rapor" element={<RoleGuard allowedRoles={['admin']}><BuatRapor /></RoleGuard>} />
               <Route path="cetak-rapor" element={<RoleGuard allowedRoles={['admin']}><CetakRapor /></RoleGuard>} />
               <Route path="kelola-user" element={<RoleGuard allowedRoles={['admin']}><KelolaUser /></RoleGuard>} />
+              <Route path="manajemen-status" element={<RoleGuard allowedRoles={['admin']}><ManajemenStatus /></RoleGuard>} />
 
               {/* Teachers + Admin */}
               <Route path="input-rapor" element={<RoleGuard allowedRoles={['admin', 'guru_mapel', 'wali_kelas']}><InputRapor /></RoleGuard>} />

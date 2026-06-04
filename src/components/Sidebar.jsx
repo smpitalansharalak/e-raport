@@ -10,22 +10,23 @@ import {
   FileEdit,
   ClipboardCheck,
   KeyRound,
+  ArrowUpCircle,
 } from 'lucide-react'
 
 export default function Sidebar() {
   const { role, sidebarOpen, setSidebarOpen } = useAuth()
 
   const navLinkClass = ({ isActive }) =>
-    `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-      isActive
-        ? 'bg-emerald-500/10 text-emerald-400 border-l-4 border-emerald-500 shadow-[inset_1px_0_0_rgba(16,185,129,0.2)]'
-        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 border-l-4 border-transparent'
+    `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${isActive
+      ? 'bg-emerald-500/10 text-emerald-400 border-l-4 border-emerald-500 shadow-[inset_1px_0_0_rgba(16,185,129,0.2)]'
+      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 border-l-4 border-transparent'
     }`
 
   const adminLinks = [
     { to: '/', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/siswa', label: 'Input Siswa', icon: Users },
     { to: '/buat-rapor', label: 'Buat Rapor', icon: FilePlus },
+    { to: '/manajemen-status', label: 'Naik Kelas & Alumni', icon: ArrowUpCircle },
     { to: '/cetak-rapor', label: 'Cetak Rapor', icon: Printer },
     { to: '/kelola-user', label: 'Kelola User', icon: UserCog },
     { to: '/ganti-password', label: 'Ganti Password', icon: KeyRound },
@@ -82,7 +83,7 @@ export default function Sidebar() {
 
       <div className="p-4 border-t border-slate-800/60 bg-slate-950/20">
         <p className="text-[10px] text-slate-500 text-center">© {new Date().getFullYear()} SMP IT Al Anshar</p>
-        <p className="text-[9px] text-emerald-500/60 text-center font-mono mt-0.5">v1.0.0 Stable</p>
+        <p className="text-[9px] text-emerald-500/60 text-center font-mono mt-0.5">v1.1.0 Stable</p>
       </div>
     </aside>
   )
