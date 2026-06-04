@@ -220,7 +220,7 @@ export default function KelolaUser() {
                       handlePasswordReset(p.id, p.name)
                     }
                   }}
-                  className="text-[11px] rounded-full bg-gradient-to-r from-rose-600 to-red-600 px-3 py-1.5 font-medium text-white shadow-md hover:from-rose-700 hover:to-red-700 transition-all disabled:opacity-50"
+                  className="text-[11px] rounded-full bg-linear-to-r from-rose-600 to-red-600 px-3 py-1.5 font-medium text-white shadow-md hover:from-rose-700 hover:to-red-700 transition-all disabled:opacity-50"
                 >
                   {resettingId === p.id ? 'Reset...' : 'Reset Password'}
                 </button>
