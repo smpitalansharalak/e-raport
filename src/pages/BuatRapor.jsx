@@ -81,7 +81,7 @@ export default function BuatRapor() {
       // 4. Fetch period subjects
       const { data: psData, error: psErr } = await supabase
         .from('report_subjects')
-        .select('*')
+        .select('report_period_id, subject_id')
       if (psErr) throw psErr
 
       const psMap = {}

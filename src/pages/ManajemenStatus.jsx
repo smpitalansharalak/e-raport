@@ -79,7 +79,7 @@ export default function ManajemenStatus() {
         try {
             let q = supabase
                 .from('students')
-                .select('*')
+                .select('id, name, nisn, class_name, academic_year, status, previous_class, graduation_year')
                 .order('class_name', { ascending: true })
                 .order('name', { ascending: true })
 
@@ -195,7 +195,7 @@ export default function ManajemenStatus() {
         try {
             const { data, error } = await supabase
                 .from('student_status_history')
-                .select('*')
+                .select('id, created_at, to_status, from_class, to_class, note')
                 .eq('student_id', student.id)
                 .order('created_at', { ascending: false })
             if (error) throw error

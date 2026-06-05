@@ -34,7 +34,7 @@ export default function Kepatuhan() {
       // Wali kelas can only view report periods assigned to them
       let query = supabase
         .from('report_periods')
-        .select('*')
+        .select('id, name, class_name')
         .eq('is_active', true)
 
       if (profile.role !== 'admin') {
@@ -69,7 +69,7 @@ export default function Kepatuhan() {
       // 1. Fetch students in this class
       const { data: sData, error: sErr } = await supabase
         .from('students')
-        .select('*')
+        .select('id, name, nisn')
         .eq('class_name', selectedPeriod.class_name)
         .order('name', { ascending: true })
       if (sErr) throw sErr
@@ -78,7 +78,7 @@ export default function Kepatuhan() {
       // 2. Fetch existing attendance
       const { data: aData, error: aErr } = await supabase
         .from('student_attendance')
-        .select('*')
+        .select('student_id, sakit, izin, alpha')
         .eq('report_period_id', selectedPeriodId)
       if (aErr) throw aErr
 

@@ -447,7 +447,7 @@ export default function Siswa() {
     try {
       const { data, error } = await supabase
         .from('students')
-        .select('*')
+        .select('id, name, nisn, class_name, academic_year, phase, parent_name, status, previous_class')
         .order('class_name', { ascending: true })
         .order('name', { ascending: true })
       if (error) throw error

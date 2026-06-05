@@ -54,7 +54,7 @@ export default function InputRapor() {
     try {
       const { data: pData, error: pErr } = await supabase
         .from('report_periods')
-        .select('*')
+        .select('id, name, class_name, semester, academic_year')
         .eq('is_active', true)
         .order('created_at', { ascending: false })
       if (pErr) throw pErr
@@ -115,7 +115,7 @@ export default function InputRapor() {
 
       const { data: sData, error: sErr } = await supabase
         .from('students')
-        .select('*')
+        .select('id, name, nisn')
         .eq('class_name', selectedPeriod.class_name)
         .order('name', { ascending: true })
       if (sErr) throw sErr
@@ -129,7 +129,7 @@ export default function InputRapor() {
 
       const { data: scoreData, error: scoreErr } = await supabase
         .from('student_scores')
-        .select('*')
+        .select('student_id, scores_formative, scores_summative, sts_practice, sts_written, sas_practice, sas_written, highest_achievement, lowest_achievement')
         .eq('report_period_id', selectedPeriodId)
         .eq('subject_id', selectedSubjectId)
       if (scoreErr) throw scoreErr
@@ -179,7 +179,7 @@ export default function InputRapor() {
   const fetchMaterialsAndTpsInternal = async () => {
     const { data: mData, error: mErr } = await supabase
       .from('materials')
-      .select('*')
+      .select('id, name')
       .eq('report_period_id', selectedPeriodId)
       .eq('subject_id', selectedSubjectId)
       .order('created_at', { ascending: true })
@@ -189,7 +189,7 @@ export default function InputRapor() {
     if (mData && mData.length > 0) {
       const { data: tpData, error: tpErr } = await supabase
         .from('learning_targets')
-        .select('*')
+        .select('id, code, material_id, description')
         .in('material_id', mData.map((m) => m.id))
         .order('code', { ascending: true })
       if (tpErr) throw tpErr
@@ -204,7 +204,7 @@ export default function InputRapor() {
   const fetchSummativesInternal = async () => {
     const { data: sumData, error: sumErr } = await supabase
       .from('summatives')
-      .select('*')
+      .select('id, name')
       .eq('report_period_id', selectedPeriodId)
       .eq('subject_id', selectedSubjectId)
       .order('created_at', { ascending: true })
@@ -217,7 +217,7 @@ export default function InputRapor() {
   const fetchMaterialsAndTps = async () => {
     const { data: mData, error: mErr } = await supabase
       .from('materials')
-      .select('*')
+      .select('id, name')
       .eq('report_period_id', selectedPeriodId)
       .eq('subject_id', selectedSubjectId)
       .order('created_at', { ascending: true })
@@ -227,7 +227,7 @@ export default function InputRapor() {
     if (mData && mData.length > 0) {
       const { data: tpData, error: tpErr } = await supabase
         .from('learning_targets')
-        .select('*')
+        .select('id, code, material_id, description')
         .in('material_id', mData.map((m) => m.id))
         .order('code', { ascending: true })
       if (tpErr) throw tpErr
@@ -240,7 +240,7 @@ export default function InputRapor() {
   const fetchSummatives = async () => {
     const { data: sumData, error: sumErr } = await supabase
       .from('summatives')
-      .select('*')
+      .select('id, name')
       .eq('report_period_id', selectedPeriodId)
       .eq('subject_id', selectedSubjectId)
       .order('created_at', { ascending: true })
