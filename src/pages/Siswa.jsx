@@ -638,8 +638,10 @@ export default function Siswa() {
                           <p className="font-semibold text-slate-200">{s.name}</p>
                           {s.previous_class && <p className="text-[10px] text-slate-500 mt-0.5">Sebelumnya: {s.previous_class}</p>}
                         </td>
-                        <td className="py-3.5 px-6">
-                          <span className="px-2 py-0.5 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 rounded text-xs font-semibold">{s.class_name}</span>
+                        <td className="py-3.5 px-6 whitespace-nowrap">
+                          <span className="px-2 py-0.5 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 rounded text-xs font-semibold whitespace-nowrap">
+                            {s.class_name}
+                          </span>
                         </td>
                         <td className="py-3.5 px-6 text-slate-400">{s.academic_year}</td>
                         <td className="py-3.5 px-6 text-center text-slate-400 font-bold">{s.phase}</td>
