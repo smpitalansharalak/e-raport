@@ -1,8 +1,19 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import {
-  Users, Shield, BookOpen, Check, Search,
-  CheckSquare, Square, AlertCircle, GraduationCap,
+  Users,
+  Shield,
+  BookOpen,
+  Search,
+  CheckSquare,
+  Square,
+  AlertCircle,
+  CheckCircle,
+  ChevronRight,
+  KeyRound,
+  User,
+  X,
+  Loader2,
 } from 'lucide-react'
 
 const ROLE_OPTIONS = [
@@ -11,14 +22,22 @@ const ROLE_OPTIONS = [
   { value: 'wali_kelas', label: 'Wali Kelas', color: 'amber' },
 ]
 
+const ROLE_BADGE = {
+  admin: 'bg-rose-500/15 text-rose-400 border-rose-500/30',
+  guru_mapel: 'bg-indigo-500/15 text-indigo-400 border-indigo-500/30',
+  wali_kelas: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
+}
+const ROLE_LABEL = { admin: 'Admin', guru_mapel: 'Guru Mapel', wali_kelas: 'Wali Kelas' }
+
 export default function KelolaUser() {
   const [profiles, setProfiles] = useState([])
   const [subjects, setSubjects] = useState([])
-  const [teacherSubjects, setTeacherSubjects] = useState({}) // { teacher_id: [subject_id, ...] }
+  const [teacherSubjects, setTeacherSubjects] = useState({})
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [savingId, setSavingId] = useState(null)
-  const [resettingId, setResettingId] = useState(null)
+  const [selected, setSelected] = useState(null) // selected profile object
+  const [saving, setSaving] = useState(false)
+  const [resetting, setResetting] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
@@ -35,7 +54,6 @@ export default function KelolaUser() {
         supabase.from('subjects').select('id, name, class_name').order('name'),
         supabase.from('teacher_subjects').select('teacher_id, subject_id'),
       ])
-
       if (pErr) throw pErr
       if (sErr) throw sErr
       if (tsErr) throw tsErr
@@ -49,7 +67,13 @@ export default function KelolaUser() {
         tsMap[teacher_id].push(subject_id)
       })
       setTeacherSubjects(tsMap)
-    } catch (err) {
+
+      // Sync selected if still open
+      if (selected) {
+        const updated = profilesData?.find(p => p.id === selected.id)
+        if (updated) setSelected(updated)
+      }
+    } catch {
       setError('Gagal memuat data pengguna.')
     } finally {
       setLoading(false)
@@ -58,88 +82,73 @@ export default function KelolaUser() {
 
   useEffect(() => { fetchData() }, [fetchData])
 
-  const handleRoleChange = async (profileId, field, value) => {
-    // field: 'role' or 'secondary_role' or 'assigned_class'
-    setError('')
-    setSavingId(profileId)
+  const flash = (msg, isErr = false) => {
+    if (isErr) setError(msg)
+    else setSuccess(msg)
+    setTimeout(() => { setError(''); setSuccess('') }, 3000)
+  }
+
+  const handleRoleChange = async (field, value) => {
+    if (!selected) return
+    setSaving(true)
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ [field]: value })
-        .eq('id', profileId)
+      const { error } = await supabase.from('profiles').update({ [field]: value }).eq('id', selected.id)
       if (error) throw error
-
-      setProfiles(prev => prev.map(p => p.id === profileId ? { ...p, [field]: value } : p))
-      setSuccess('Profil pengguna berhasil diperbarui!')
-      setTimeout(() => setSuccess(''), 2500)
-    } catch (err) {
-      setError('Gagal memperbarui profil pengguna.')
+      const updated = { ...selected, [field]: value }
+      setSelected(updated)
+      setProfiles(prev => prev.map(p => p.id === selected.id ? updated : p))
+      flash('Peran berhasil diperbarui!')
+    } catch {
+      flash('Gagal memperbarui peran.', true)
     } finally {
-      setSavingId(null)
+      setSaving(false)
     }
   }
 
-  const handlePasswordReset = async (profileId, profileName) => {
-    setError('')
-    setSuccess('')
-    setResettingId(profileId)
-    try {
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-      if (sessionError || !session?.access_token) {
-        throw new Error('Sesi tidak valid. Silakan login ulang dan coba lagi.')
-      }
-
-      const res = await fetch('/api/reset-password', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({ userId: profileId }),
-      })
-
-      const body = await res.json()
-      if (!res.ok) {
-        throw new Error(body?.error || 'Gagal mereset password pengguna.')
-      }
-
-      setSuccess(`Password ${profileName} berhasil direset menjadi 12345678.`)
-      setTimeout(() => setSuccess(''), 2500)
-    } catch (err) {
-      setError(err.message || 'Gagal mereset password pengguna.')
-    } finally {
-      setResettingId(null)
-    }
-  }
-
-  const toggleSubject = async (teacherId, subjectId) => {
-    setError('')
-    setSavingId(teacherId)
-    const current = teacherSubjects[teacherId] || []
+  const toggleSubject = async (subjectId) => {
+    if (!selected) return
+    setSaving(true)
+    const current = teacherSubjects[selected.id] || []
     const isAssigned = current.includes(subjectId)
-
     try {
       if (isAssigned) {
-        const { error } = await supabase
-          .from('teacher_subjects')
-          .delete()
-          .eq('teacher_id', teacherId)
-          .eq('subject_id', subjectId)
+        const { error } = await supabase.from('teacher_subjects').delete().eq('teacher_id', selected.id).eq('subject_id', subjectId)
         if (error) throw error
-        setTeacherSubjects(prev => ({ ...prev, [teacherId]: current.filter(id => id !== subjectId) }))
+        const updated = { ...teacherSubjects, [selected.id]: current.filter(id => id !== subjectId) }
+        setTeacherSubjects(updated)
       } else {
-        const { error } = await supabase
-          .from('teacher_subjects')
-          .insert({ teacher_id: teacherId, subject_id: subjectId })
+        const { error } = await supabase.from('teacher_subjects').insert({ teacher_id: selected.id, subject_id: subjectId })
         if (error) throw error
-        setTeacherSubjects(prev => ({ ...prev, [teacherId]: [...current, subjectId] }))
+        const updated = { ...teacherSubjects, [selected.id]: [...current, subjectId] }
+        setTeacherSubjects(updated)
       }
-      setSuccess('Mata pelajaran guru disinkronisasi!')
-      setTimeout(() => setSuccess(''), 2000)
-    } catch (err) {
-      setError('Gagal sinkronisasi mata pelajaran.')
+      flash('Mata pelajaran disinkronisasi!')
+    } catch {
+      flash('Gagal sinkronisasi mata pelajaran.', true)
     } finally {
-      setSavingId(null)
+      setSaving(false)
+    }
+  }
+
+  const handleResetPassword = async () => {
+    if (!selected) return
+    if (!window.confirm(`Reset password ${selected.name} menjadi 12345678?`)) return
+    setResetting(true)
+    try {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      if (sessionError || !session?.access_token) throw new Error('Sesi tidak valid.')
+      const res = await fetch('/api/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ userId: selected.id }),
+      })
+      const body = await res.json()
+      if (!res.ok) throw new Error(body?.error || 'Gagal mereset password.')
+      flash(`Password ${selected.name} direset ke 12345678!`)
+    } catch (err) {
+      flash(err.message, true)
+    } finally {
+      setResetting(false)
     }
   }
 
@@ -148,6 +157,8 @@ export default function KelolaUser() {
     p.username?.toLowerCase().includes(search.toLowerCase()) ||
     p.email.toLowerCase().includes(search.toLowerCase())
   )
+
+  const assignedCount = selected ? (teacherSubjects[selected.id] || []).length : 0
 
   if (loading) {
     return (
@@ -159,165 +170,241 @@ export default function KelolaUser() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-100 m-0">Kelola Pengguna</h2>
-          <p className="text-sm text-slate-400 mt-1">Tentukan peran, kelas perwalian, dan mata pelajaran yang diampu.</p>
-        </div>
-        <div className="relative w-full md:w-72">
-          <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-500 pointer-events-none">
-            <Search size={16} />
-          </span>
-          <input
-            type="text"
-            placeholder="Cari nama atau email..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="w-full bg-slate-900 border border-slate-800 rounded-xl py-2 pl-9 pr-4 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
-          />
-        </div>
+    <div className="space-y-5">
+      {/* Header */}
+      <div>
+        <h2 className="text-2xl font-bold text-slate-100 m-0">Kelola Pengguna</h2>
+        <p className="text-sm text-slate-400 mt-1">Pilih pengguna untuk mengatur peran dan mata pelajaran.</p>
       </div>
 
       {error && (
-        <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-xl flex items-center gap-2 text-sm">
-          <AlertCircle size={18} className="shrink-0" /><span>{error}</span>
+        <div className="p-3.5 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-xl flex items-center gap-2 text-sm">
+          <AlertCircle size={16} className="shrink-0" /><span>{error}</span>
         </div>
       )}
       {success && (
-        <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl flex items-center gap-2 text-sm">
-          <Check size={18} className="shrink-0" /><span>{success}</span>
+        <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl flex items-center gap-2 text-sm">
+          <CheckCircle size={16} className="shrink-0" /><span>{success}</span>
         </div>
       )}
 
-      <div className="space-y-4">
-        {filteredProfiles.length === 0 ? (
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-12 text-center text-slate-400">
-            <Users size={40} className="mx-auto text-slate-600 mb-3" />
-            <p className="font-semibold">Tidak Ada Pengguna</p>
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
+
+        {/* ── PANEL KIRI: Daftar Pengguna ── */}
+        <div className="lg:col-span-2 bg-slate-900/60 border border-slate-800 rounded-2xl flex flex-col overflow-hidden">
+          {/* Search */}
+          <div className="p-4 border-b border-slate-800">
+            <div className="relative">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Cari nama atau email..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 pl-9 pr-4 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
+              />
+            </div>
           </div>
-        ) : (
-          filteredProfiles.map(p => (
-            <div key={p.id} className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-6 space-y-5 hover:border-slate-700/60 transition-all">
-              {/* Header row */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-base font-bold text-slate-200">{p.name}</h3>
-                  {p.username && <p className="text-xs text-slate-500 mt-0.5">@{p.username}</p>}
-                  <p className="text-xs text-slate-500 mt-0.5">{p.email}</p>
+
+          {/* User list */}
+          <div className="flex-1 overflow-y-auto divide-y divide-slate-800/50 max-h-[520px]">
+            {filteredProfiles.length === 0 ? (
+              <div className="p-8 text-center text-slate-500 text-sm">
+                <Users size={28} className="mx-auto mb-2 text-slate-700" />
+                Tidak ada pengguna.
+              </div>
+            ) : (
+              filteredProfiles.map(p => {
+                const isActive = selected?.id === p.id
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => setSelected(p)}
+                    className={`w-full flex items-center justify-between px-4 py-3.5 text-left transition-all cursor-pointer ${isActive
+                        ? 'bg-emerald-500/10 border-r-2 border-emerald-500'
+                        : 'hover:bg-slate-800/30 border-r-2 border-transparent'
+                      }`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 ${isActive ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800 text-slate-400'
+                        }`}>
+                        {p.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-slate-200 truncate">{p.name}</p>
+                        <p className="text-[10px] text-slate-500 truncate">{p.email}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 ml-2">
+                      <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border ${ROLE_BADGE[p.role] || ''}`}>
+                        {ROLE_LABEL[p.role] || p.role}
+                      </span>
+                      <ChevronRight size={13} className={isActive ? 'text-emerald-400' : 'text-slate-600'} />
+                    </div>
+                  </button>
+                )
+              })
+            )}
+          </div>
+
+          <div className="px-4 py-3 border-t border-slate-800/60 bg-slate-950/20">
+            <span className="text-[11px] text-slate-500">{profiles.length} pengguna terdaftar</span>
+          </div>
+        </div>
+
+        {/* ── PANEL KANAN: Detail Editor ── */}
+        <div className="lg:col-span-3">
+          {!selected ? (
+            <div className="h-full min-h-[300px] bg-slate-900/40 border border-slate-800 rounded-2xl flex flex-col items-center justify-center gap-4 text-center p-8">
+              <div className="p-4 bg-slate-800/40 rounded-2xl">
+                <User size={36} className="text-slate-600" />
+              </div>
+              <div>
+                <p className="font-semibold text-slate-400 text-sm">Pilih Pengguna</p>
+                <p className="text-xs text-slate-500 mt-1 max-w-xs">Klik salah satu pengguna di daftar kiri untuk mengatur peran dan mata pelajarannya.</p>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+
+              {/* User card header */}
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex items-start justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-500/25 text-emerald-400 flex items-center justify-center text-lg font-bold shrink-0">
+                    {selected.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-slate-100">{selected.name}</h3>
+                    {selected.username && <p className="text-xs text-slate-500">@{selected.username}</p>}
+                    <p className="text-xs text-slate-500">{selected.email}</p>
+                  </div>
                 </div>
-                {(savingId === p.id || resettingId === p.id) && (
-                  <span className="text-[10px] text-emerald-400 animate-pulse font-medium">Menyimpan...</span>
+                <div className="flex items-center gap-2 shrink-0">
+                  {saving && <Loader2 size={14} className="text-emerald-400 animate-spin" />}
+                  <button
+                    onClick={() => setSelected(null)}
+                    className="p-1.5 text-slate-500 hover:text-slate-300 hover:bg-slate-800 rounded-lg transition-all cursor-pointer"
+                  >
+                    <X size={15} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Peran Utama */}
+              <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 space-y-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <Shield size={14} className="text-slate-500" />
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Peran Utama</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {ROLE_OPTIONS.map(r => {
+                    const isActive = selected.role === r.value
+                    return (
+                      <button
+                        key={r.value}
+                        disabled={saving}
+                        onClick={() => handleRoleChange('role', r.value)}
+                        className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer disabled:opacity-60 ${isActive
+                            ? 'bg-emerald-500 border-emerald-500 text-slate-950 shadow-sm'
+                            : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                          }`}
+                      >
+                        {r.label}
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {/* Rangkap jabatan untuk wali_kelas */}
+                {selected.role === 'wali_kelas' && (
+                  <div className="pt-3 border-t border-slate-800/60">
+                    <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Rangkap Jabatan</p>
+                    <button
+                      disabled={saving}
+                      onClick={() => handleRoleChange('secondary_role', selected.secondary_role === 'guru_mapel' ? null : 'guru_mapel')}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold border transition-all cursor-pointer disabled:opacity-60 ${selected.secondary_role === 'guru_mapel'
+                          ? 'bg-indigo-500/15 border-indigo-500/40 text-indigo-300'
+                          : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+                        }`}
+                    >
+                      {selected.secondary_role === 'guru_mapel'
+                        ? <CheckSquare size={13} className="text-indigo-400 shrink-0" />
+                        : <Square size={13} className="text-slate-600 shrink-0" />}
+                      Juga Guru Mapel
+                    </button>
+                  </div>
                 )}
               </div>
 
-              <div className="flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  disabled={resettingId === p.id || savingId === p.id}
-                  onClick={() => {
-                    if (window.confirm(`Reset password ${p.name} menjadi 12345678?`)) {
-                      handlePasswordReset(p.id, p.name)
-                    }
-                  }}
-                  className="text-[11px] rounded-full bg-linear-to-r from-rose-600 to-red-600 px-3 py-1.5 font-medium text-white shadow-md hover:from-rose-700 hover:to-red-700 transition-all disabled:opacity-50"
-                >
-                  {resettingId === p.id ? 'Reset...' : 'Reset Password'}
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 pt-2 border-t border-slate-800/60">
-                {/* Col 1: Peran Utama */}
-                <div className="space-y-2">
-                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                    <Shield size={12} className="text-slate-500" /> Peran Utama
+              {/* Mata Pelajaran */}
+              <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <BookOpen size={14} className="text-slate-500" />
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Mata Pelajaran Diampu</span>
+                  </div>
+                  <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                    {assignedCount} dipilih
                   </span>
-                  <div className="flex flex-col gap-1.5">
-                    {ROLE_OPTIONS.map(r => {
-                      const isSelected = p.role === r.value
+                </div>
+
+                {subjects.length === 0 ? (
+                  <p className="text-xs text-slate-500 italic py-2">
+                    Belum ada mata pelajaran. Tambahkan di menu "Buat Rapor".
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-52 overflow-y-auto pr-0.5">
+                    {subjects.map(sub => {
+                      const isAssigned = (teacherSubjects[selected.id] || []).includes(sub.id)
                       return (
                         <button
-                          key={r.value}
-                          onClick={() => handleRoleChange(p.id, 'role', r.value)}
-                          disabled={savingId === p.id}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer text-left ${isSelected
-                              ? 'bg-emerald-500 border-emerald-500 text-slate-950 shadow-sm'
-                              : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                          key={sub.id}
+                          disabled={saving}
+                          onClick={() => toggleSubject(sub.id)}
+                          className={`flex items-start gap-2 p-2.5 rounded-xl border text-left text-xs transition-all cursor-pointer disabled:opacity-60 ${isAssigned
+                              ? 'bg-slate-950 border-emerald-500/40 text-emerald-400 font-semibold'
+                              : 'bg-slate-950/40 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-300'
                             }`}
                         >
-                          {r.label}
+                          {isAssigned
+                            ? <CheckSquare size={12} className="text-emerald-400 shrink-0 mt-0.5" />
+                            : <Square size={12} className="text-slate-600 shrink-0 mt-0.5" />}
+                          <span className="leading-tight">
+                            {sub.name}
+                            {sub.class_name && (
+                              <span className="block text-[9px] text-slate-500 font-normal mt-0.5">Kelas {sub.class_name}</span>
+                            )}
+                          </span>
                         </button>
                       )
                     })}
                   </div>
+                )}
+              </div>
 
-                  {/* Secondary role: wali kelas bisa rangkap guru mapel */}
-                  {p.role === 'wali_kelas' && (
-                    <div className="pt-2 border-t border-slate-800/60">
-                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
-                        Rangkap Jabatan
-                      </span>
-                      <button
-                        onClick={() => handleRoleChange(p.id, 'secondary_role', p.secondary_role === 'guru_mapel' ? null : 'guru_mapel')}
-                        disabled={savingId === p.id}
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer w-full text-left ${p.secondary_role === 'guru_mapel'
-                            ? 'bg-indigo-500/15 border-indigo-500/40 text-indigo-300'
-                            : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
-                          }`}
-                      >
-                        {p.secondary_role === 'guru_mapel'
-                          ? <CheckSquare size={13} className="text-indigo-400 shrink-0" />
-                          : <Square size={13} className="text-slate-600 shrink-0" />}
-                        Juga Guru Mapel
-                      </button>
+              {/* Reset Password */}
+              <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <KeyRound size={14} className="text-slate-500" />
+                      <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Reset Password</span>
                     </div>
-                  )}
-                </div>
-
-                {/* Col 2-3: Mata Pelajaran */}
-                <div className="lg:col-span-2 space-y-2">
-                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                    <BookOpen size={12} className="text-slate-500" /> Mata Pelajaran yang Diampu
-                    <span className="ml-auto text-emerald-400 font-mono text-[10px]">
-                      {(teacherSubjects[p.id] || []).length} dipilih
-                    </span>
-                  </span>
-
-                  {subjects.length === 0 ? (
-                    <p className="text-xs text-slate-500 italic">Belum ada mata pelajaran. Tambahkan di menu "Buat Rapor".</p>
-                  ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-48 overflow-y-auto pr-1">
-                      {subjects.map(sub => {
-                        const isAssigned = (teacherSubjects[p.id] || []).includes(sub.id)
-                        return (
-                          <button
-                            key={sub.id}
-                            disabled={savingId === p.id}
-                            onClick={() => toggleSubject(p.id, sub.id)}
-                            className={`flex items-start gap-1.5 p-2 rounded-xl border text-left text-xs transition-all cursor-pointer ${isAssigned
-                                ? 'bg-slate-950 border-emerald-500/40 text-emerald-400 font-semibold'
-                                : 'bg-slate-950/40 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-300'
-                              }`}
-                          >
-                            {isAssigned
-                              ? <CheckSquare size={13} className="shrink-0 text-emerald-400 mt-0.5" />
-                              : <Square size={13} className="shrink-0 text-slate-600 mt-0.5" />}
-                            <span className="leading-tight">
-                              {sub.name}
-                              {sub.class_name && (
-                                <span className="block text-[9px] text-slate-500 font-normal mt-0.5">Kelas {sub.class_name}</span>
-                              )}
-                            </span>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  )}
+                    <p className="text-[11px] text-slate-500">Password akan diubah menjadi <span className="font-mono text-slate-400">12345678</span></p>
+                  </div>
+                  <button
+                    disabled={resetting || saving}
+                    onClick={handleResetPassword}
+                    className="px-4 py-2 text-xs font-bold rounded-xl bg-rose-500/10 border border-rose-500/25 text-rose-400 hover:bg-rose-500/20 transition-all cursor-pointer disabled:opacity-50 flex items-center gap-1.5 shrink-0"
+                  >
+                    {resetting ? <><Loader2 size={12} className="animate-spin" /> Mereset...</> : 'Reset Password'}
+                  </button>
                 </div>
               </div>
+
             </div>
-          ))
-        )}
+          )}
+        </div>
       </div>
     </div>
   )

@@ -113,9 +113,13 @@ CREATE TABLE public.student_attendance (
     sakit INTEGER DEFAULT 0,
     izin INTEGER DEFAULT 0,
     alpha INTEGER DEFAULT 0,
+    catatan_khusus TEXT DEFAULT '',  -- Catatan khusus wali kelas per siswa per periode
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
     UNIQUE (student_id, report_period_id)
 );
+
+-- Migrasi: tambah kolom catatan_khusus jika tabel sudah ada
+-- ALTER TABLE public.student_attendance ADD COLUMN IF NOT EXISTS catatan_khusus TEXT DEFAULT '';
 
 -- RLS (Row Level Security) Configuration
 -- For simplicity in development, we enable RLS but allow open public access for authenticated users,

@@ -385,6 +385,10 @@ export default function CetakRapor() {
     documentTitle: previewStudent ? `Rapor - ${previewStudent.name}` : 'Rapor',
     pageStyle: `
       @page { size: A4 portrait; margin: 15mm; }
+      .print-avoid-break {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
     `,
   })
 
@@ -469,7 +473,7 @@ export default function CetakRapor() {
 
       const { data: attData, error: attErr } = await supabase
         .from('student_attendance')
-        .select('student_id, sakit, izin, alpha')
+        .select('student_id, sakit, izin, alpha, catatan_khusus')
         .eq('report_period_id', periodId)
       if (attErr) throw attErr
       setAllAttendance(attData || [])
@@ -528,7 +532,7 @@ export default function CetakRapor() {
 
   const getStudentScores = (studentId) => allScores.filter(sc => sc.student_id === studentId)
   const getStudentAttendance = (studentId) =>
-    allAttendance.find(att => att.student_id === studentId) || { sakit: 0, izin: 0, alpha: 0 }
+    allAttendance.find(att => att.student_id === studentId) || { sakit: 0, izin: 0, alpha: 0, catatan_khusus: '' }
 
   const filteredStudents = students.filter(s =>
     s.name.toLowerCase().includes(search.toLowerCase()) || s.nisn.includes(search)
@@ -837,7 +841,7 @@ export default function CetakRapor() {
 }
 
 // ─────────────────────────────────────────
-// Komponen Lembar Rapor (tidak berubah)
+// Komponen Lembar Rapor
 // ─────────────────────────────────────────
 const RaporSheet = React.forwardRef(function RaporSheet(
   { previewStudent, activePeriod, allSubjects, getStudentScores, getStudentAttendance },
@@ -845,6 +849,7 @@ const RaporSheet = React.forwardRef(function RaporSheet(
 ) {
   const att = getStudentAttendance(previewStudent.id)
   const scores = getStudentScores(previewStudent.id)
+  const catatanKhusus = att.catatan_khusus || ''
 
   return (
     <div
@@ -852,6 +857,7 @@ const RaporSheet = React.forwardRef(function RaporSheet(
       className="bg-white text-black p-8 select-none"
       style={{ fontFamily: 'Arial, sans-serif', minWidth: '600px' }}
     >
+      {/* ── Header ── */}
       <div className="flex items-center justify-center border-b-2 border-black pb-4">
         <img src="/logo.webp" alt="Logo" className="h-20 w-auto mr-4 object-contain" />
         <div className="text-center">
@@ -868,10 +874,12 @@ const RaporSheet = React.forwardRef(function RaporSheet(
         </div>
       </div>
 
+      {/* ── Judul ── */}
       <div className="text-center my-6">
         <p className="font-bold text-base tracking-widest underline">LAPORAN HASIL BELAJAR</p>
       </div>
 
+      {/* ── Info Siswa ── */}
       <div className="grid grid-cols-2 text-xs gap-x-8 mb-6 leading-relaxed">
         <div className="space-y-1">
           <p className="flex"><span className="w-24">Nama</span>: <span className="font-bold ml-1">{previewStudent.name}</span></p>
@@ -885,7 +893,8 @@ const RaporSheet = React.forwardRef(function RaporSheet(
         </div>
       </div>
 
-      <table className="w-full border-collapse text-[11px] mb-6" style={{ borderCollapse: 'collapse' }}>
+      {/* ── Tabel Nilai — boleh overflow ke halaman berikutnya ── */}
+      <table className="w-full border-collapse text-[11px] mb-0" style={{ borderCollapse: 'collapse' }}>
         <thead>
           <tr className="bg-white text-black font-bold">
             <th className="py-2 px-3 text-center" style={{ border: '1px solid black', width: '40px' }}>No</th>
@@ -919,27 +928,64 @@ const RaporSheet = React.forwardRef(function RaporSheet(
         </tbody>
       </table>
 
-      <div className="text-xs p-3 space-y-1 mb-8" style={{ border: '1px solid black', width: '256px' }}>
-        <p className="font-bold uppercase pb-1 mb-1.5" style={{ borderBottom: '1px solid black' }}>Ketidakhadiran</p>
-        <p className="flex justify-between"><span>Sakit</span> <span>: {att.sakit} hari</span></p>
-        <p className="flex justify-between"><span>Izin</span> <span>: {att.izin} hari</span></p>
-        <p className="flex justify-between"><span>Tanpa Keterangan (Alpha)</span> <span>: {att.alpha} hari</span></p>
-      </div>
+      {/*
+        ── Blok bawah: Catatan Khusus + Kepatuhan + TTD ──
+        Dibungkus dalam satu div dengan break-inside:avoid agar
+        ketiga elemen ini tidak pernah dipisah di tengah oleh page break.
+        Jika nilai overflow ke hal.2, blok ini mengalir setelah nilai selesai
+        dan tetap menyatu (tidak paksa halaman baru, tapi tidak terpotong).
+      */}
+      <div
+        className="print-avoid-break"
+        style={{
+          breakInside: 'avoid',
+          pageBreakInside: 'avoid',
+          marginTop: '16px',
+        }}
+      >
+        {/* ── Catatan Khusus Wali Kelas ── */}
+        <div
+          className="text-xs mb-4"
+          style={{ border: '1px solid black', padding: '10px 12px' }}
+        >
+          <p className="font-bold uppercase pb-1 mb-2" style={{ borderBottom: '1px solid black' }}>
+            Catatan Wali Kelas
+          </p>
+          <p
+            className="leading-relaxed text-[11px] min-h-[32px]"
+            style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
+          >
+            {catatanKhusus || <span className="text-gray-400 italic">—</span>}
+          </p>
+        </div>
 
-      <div className="grid grid-cols-2 text-xs gap-y-12 mt-12">
-        <div className="text-center">
-          <p className="mb-16">Orang Tua / Wali Murid,</p>
-          <p className="font-bold underline uppercase">{previewStudent.parent_name || '............................'}</p>
+        {/* ── Ketidakhadiran / Kepatuhan Siswa ── */}
+        <div
+          className="text-xs mb-6"
+          style={{ border: '1px solid black', width: '256px', padding: '10px 12px' }}
+        >
+          <p className="font-bold uppercase pb-1 mb-1.5" style={{ borderBottom: '1px solid black' }}>Ketidakhadiran</p>
+          <p className="flex justify-between"><span>Sakit</span> <span>: {att.sakit} hari</span></p>
+          <p className="flex justify-between"><span>Izin</span> <span>: {att.izin} hari</span></p>
+          <p className="flex justify-between"><span>Tanpa Keterangan (Alpha)</span> <span>: {att.alpha} hari</span></p>
         </div>
-        <div className="text-center">
-          <p className="mb-0">Kota Kupang, Desember 2025</p>
-          <p className="mb-16">Wali Kelas,</p>
-          <p className="font-bold underline uppercase">{activePeriod?.wali_kelas?.name || '............................'}</p>
-        </div>
-        <div className="col-span-2 text-center mt-6">
-          <p className="mb-0">Mengetahui,</p>
-          <p className="mb-16">Kepala Sekolah SMP IT Al Anshar</p>
-          <p className="font-bold underline uppercase">{activePeriod?.kepala_sekolah_name || '............................'}</p>
+
+        {/* ── Tanda Tangan ── */}
+        <div className="grid grid-cols-2 text-xs gap-y-12 mt-10">
+          <div className="text-center">
+            <p className="mb-16">Orang Tua / Wali Murid,</p>
+            <p className="font-bold underline uppercase">{previewStudent.parent_name || '............................'}</p>
+          </div>
+          <div className="text-center">
+            <p className="mb-0">Kota Kupang, Desember 2025</p>
+            <p className="mb-16">Wali Kelas,</p>
+            <p className="font-bold underline uppercase">{activePeriod?.wali_kelas?.name || '............................'}</p>
+          </div>
+          <div className="col-span-2 text-center mt-6">
+            <p className="mb-0">Mengetahui,</p>
+            <p className="mb-16">Kepala Sekolah SMP IT Al Anshar</p>
+            <p className="font-bold underline uppercase">{activePeriod?.kepala_sekolah_name || '............................'}</p>
+          </div>
         </div>
       </div>
     </div>
