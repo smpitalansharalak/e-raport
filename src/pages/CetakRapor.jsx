@@ -114,10 +114,21 @@ export default function CetakRapor() {
 
       const { data: subData, error: subErr } = await supabase
         .from('report_subjects')
-        .select('subject:subjects(id, name)')
+        .select('subject:subjects(id, name), sort_order')
         .eq('report_period_id', periodId)
+        .order('sort_order', { ascending: true })
       if (subErr) throw subErr
-      setAllSubjects(subData.map(r => r.subject).filter(Boolean))
+      // Urutkan berdasarkan sort_order, fallback ke nama jika sort_order null
+      setAllSubjects(
+        (subData || [])
+          .sort((a, b) => {
+            const ao = a.sort_order ?? 9999
+            const bo = b.sort_order ?? 9999
+            return ao !== bo ? ao - bo : (a.subject?.name || '').localeCompare(b.subject?.name || '')
+          })
+          .map((r) => r.subject)
+          .filter(Boolean)
+      )
 
       const { data: scoreData, error: scoreErr } = await supabase
         .from('student_scores')

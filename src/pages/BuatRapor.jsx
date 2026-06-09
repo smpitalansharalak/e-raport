@@ -10,11 +10,10 @@ import {
   X,
   AlertCircle,
   Check,
-  CheckSquare,
-  Square,
   ChevronRight,
   Settings,
 } from 'lucide-react'
+import SubjectOrderModal from '../components/rapor/SubjectOrderModal'
 
 export default function BuatRapor() {
   const [activeTab, setActiveTab] = useState('periode') // 'periode' or 'mapel'
@@ -281,7 +280,6 @@ export default function BuatRapor() {
 
     try {
       if (isAssigned) {
-        // Remove relation
         const { error } = await supabase
           .from('report_subjects')
           .delete()
@@ -294,7 +292,6 @@ export default function BuatRapor() {
           [periodId]: currentMap.filter((id) => id !== subjectId),
         })
       } else {
-        // Add relation
         const { error } = await supabase
           .from('report_subjects')
           .insert({ report_period_id: periodId, subject_id: subjectId })
@@ -309,6 +306,13 @@ export default function BuatRapor() {
       console.error('Toggle period subject failed:', err)
       setError('Gagal menyinkronkan mata pelajaran ke periode rapor.')
     }
+  }
+
+  // Called by SubjectOrderModal after saving
+  const handleConfigSaved = () => {
+    fetchData()
+    setSuccess('Urutan mata pelajaran berhasil disimpan!')
+    setTimeout(() => setSuccess(''), 3000)
   }
 
   if (loading && periods.length === 0) {
@@ -749,97 +753,14 @@ export default function BuatRapor() {
         </div>
       )}
 
-      {/* CONFIGURE SUBJECTS FOR A SPECIFIC REPORT PERIOD */}
+      {/* CONFIGURE SUBJECTS FOR A SPECIFIC REPORT PERIOD — pakai SubjectOrderModal */}
       {showConfigModal && configPeriod && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-2xl shadow-xl overflow-hidden p-6 space-y-6">
-            <div className="flex justify-between items-center pb-3 border-b border-slate-800">
-              <div>
-                <h3 className="text-lg font-bold text-slate-100">
-                  Konfigurasi Mata Pelajaran Rapor
-                </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Periode: <span className="text-slate-200 font-semibold">{configPeriod.name}</span>
-                </p>
-              </div>
-              <button
-                onClick={() => setShowConfigModal(false)}
-                className="text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-                Centang mata pelajaran yang akan dimasukkan ke rapor ini:
-              </span>
-
-              {subjects.length === 0 ? (
-                <p className="text-xs text-slate-500 italic">
-                  Belum ada mata pelajaran terdaftar. Silakan buat mata pelajaran terlebih dahulu di tab "Mata Pelajaran".
-                </p>
-              ) : (
-                <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto pr-1">
-                  {(() => {
-                    const filtered = subjects.filter(sub => {
-                      if (!sub.class_name) return true
-                      const pClass = configPeriod.class_name || ''
-                      return pClass.toLowerCase().startsWith(sub.class_name.toLowerCase()) ||
-                             pClass.toLowerCase().includes(sub.class_name.toLowerCase())
-                    })
-                    if (filtered.length === 0) {
-                      return (
-                        <p className="col-span-2 text-xs text-slate-500 italic py-2">
-                          Tidak ada mata pelajaran yang cocok dengan kelas {configPeriod.class_name}. Tambahkan mapel untuk kelas ini di tab "Mata Pelajaran".
-                        </p>
-                      )
-                    }
-                    return filtered.map((sub) => {
-                      const isAssigned = (periodSubjects[configPeriod.id] || []).includes(
-                        sub.id
-                      )
-                      return (
-                        <button
-                          key={sub.id}
-                          onClick={() => togglePeriodSubject(configPeriod.id, sub.id)}
-                          className={`flex items-center gap-2 p-2.5 rounded-xl border text-left text-xs transition-all cursor-pointer ${isAssigned
-                              ? 'bg-slate-950 border-emerald-500/40 text-emerald-400 font-semibold'
-                              : 'bg-slate-950/40 border-slate-850 text-slate-400 hover:border-slate-800 hover:text-slate-350'
-                            }`}
-                        >
-                          {isAssigned ? (
-                            <CheckSquare size={14} className="shrink-0 text-emerald-400" />
-                          ) : (
-                            <Square size={14} className="shrink-0 text-slate-650" />
-                          )}
-                          <span className="truncate leading-tight">
-                            {sub.name}
-                            {sub.class_name && (
-                              <span className="block text-[9px] text-slate-500 font-normal mt-0.5">Kelas {sub.class_name}</span>
-                            )}
-                          </span>
-                        </button>
-                      )
-                    })
-                  })()}
-                </div>
-              )}
-            </div>
-
-            <div className="flex justify-end pt-4 border-t border-slate-800">
-              <button
-                onClick={() => {
-                  setShowConfigModal(false)
-                  fetchData() // refresh counts
-                }}
-                className="px-4 py-2 text-xs font-bold text-slate-950 bg-emerald-500 hover:bg-emerald-400 rounded-xl transition-all cursor-pointer"
-              >
-                Selesai
-              </button>
-            </div>
-          </div>
-        </div>
+        <SubjectOrderModal
+          period={configPeriod}
+          allSubjects={subjects}
+          onClose={() => setShowConfigModal(false)}
+          onSaved={handleConfigSaved}
+        />
       )}
     </div>
   )
