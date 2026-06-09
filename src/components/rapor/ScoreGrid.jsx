@@ -163,7 +163,7 @@ export default function ScoreGrid({
               {/* Sumatif Lingkup Materi */}
               {summatives.length > 0 && (
                 <th
-                  className="py-2 px-2 border-l border-slate-800 bg-violet-500/8 text-violet-300"
+                  className="py-2 px-2 border-l border-slate-800 text-black"
                   colSpan={summatives.length + 1}
                 >
                   Sumatif Lingkup Materi
@@ -171,12 +171,12 @@ export default function ScoreGrid({
               )}
 
               {/* STS */}
-              <th className="py-2 px-1 border-l border-slate-800 text-amber-300/80" colSpan={3}>
+              <th className="py-2 px-1 border-l border-slate-800 text-black" colSpan={3}>
                 Sumatif Tengah Semester
               </th>
 
               {/* SAS */}
-              <th className="py-2 px-1 border-l border-slate-800 text-orange-300/80" colSpan={3}>
+              <th className="py-2 px-1 border-l border-slate-800 text-black" colSpan={3}>
                 Sumatif Akhir Semester
               </th>
 
@@ -238,14 +238,14 @@ export default function ScoreGrid({
               )}
 
               {/* STS sub-cols */}
-              <th className="py-2.5 px-1 text-center border-l border-slate-800 text-amber-300/70">Prak</th>
-              <th className="py-2.5 px-1 text-center text-amber-300/70">Tulis</th>
-              <th className="py-2.5 px-1 text-center text-amber-500/80 font-bold">Rrt</th>
+              <th className="py-2.5 px-1 text-center border-l border-slate-800 text-black">Prak</th>
+              <th className="py-2.5 px-1 text-center text-black">Tulis</th>
+              <th className="py-2.5 px-1 text-center text-black font-bold">Rrt</th>
 
               {/* SAS sub-cols */}
-              <th className="py-2.5 px-1 text-center border-l border-slate-800 text-orange-300/70">Prak</th>
-              <th className="py-2.5 px-1 text-center text-orange-300/70">Tulis</th>
-              <th className="py-2.5 px-1 text-center text-orange-500/80 font-bold">Rrt</th>
+              <th className="py-2.5 px-1 text-center border-l border-slate-800 text-black">Prak</th>
+              <th className="py-2.5 px-1 text-center text-black">Tulis</th>
+              <th className="py-2.5 px-1 text-center text-black font-bold">Rrt</th>
             </tr>
           </thead>
 
