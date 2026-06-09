@@ -88,7 +88,7 @@ export default function ScoreGrid({
         </span>
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="overflow-auto max-h-[65vh] custom-scrollbar">
         <table
           className="text-left border-collapse"
           style={{ width: `${totalWidth}px`, minWidth: `${totalWidth}px` }}
@@ -123,12 +123,12 @@ export default function ScoreGrid({
             <col style={{ width: `${COL_WIDTHS.action}px` }} />
           </colgroup>
 
-          <thead>
+          <thead className="sticky top-0 z-30 shadow-md">
             {/* Row 1: Group headers */}
             <tr className="bg-slate-950 text-slate-450 text-[10px] uppercase font-bold tracking-widest text-center border-b border-slate-800/80">
               {/* Nama siswa — sticky */}
               <th
-                className="py-2.5 px-3 text-left font-medium text-slate-500 sticky left-0 z-20 bg-slate-950 border-r border-slate-800"
+                className="py-2.5 px-3 text-left font-medium text-slate-500 sticky left-0 z-40 bg-slate-950 border-r border-slate-800"
                 rowSpan={2}
               >
                 Informasi Siswa
@@ -198,7 +198,7 @@ export default function ScoreGrid({
 
               {/* Aksi */}
               <th
-                className="py-2 px-1 border-l border-slate-800 text-center font-medium text-slate-500 sticky right-0 z-20 bg-slate-950"
+                className="py-2 px-1 border-l border-slate-800 text-center font-medium text-slate-500 sticky right-0 z-40 bg-slate-950"
                 rowSpan={2}
               >
                 Aksi
