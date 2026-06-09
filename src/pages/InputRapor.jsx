@@ -22,6 +22,7 @@ export default function InputRapor() {
     setIsGridLoaded,
     loadingGrid,
     loadingSave,
+    savingRows,
     error,
     success,
     showMaterialModal,
@@ -37,6 +38,7 @@ export default function InputRapor() {
     handleLoadGrid,
     handleScoreChange,
     handleSaveScores,
+    handleSaveSingleRow,
     handleAddMaterial,
     handleDeleteMaterial,
     handleAddTp,
@@ -178,6 +180,8 @@ export default function InputRapor() {
             summatives={summatives}
             scores={scores}
             handleScoreChange={handleScoreChange}
+            handleSaveSingleRow={handleSaveSingleRow}
+            savingRows={savingRows}
           />
         </div>
       )}

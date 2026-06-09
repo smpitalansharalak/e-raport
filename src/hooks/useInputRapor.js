@@ -32,6 +32,7 @@ export default function useInputRapor() {
   const [loadingDropdowns, setLoadingDropdowns] = useState(false)
   const [loadingGrid, setLoadingGrid] = useState(false)
   const [loadingSave, setLoadingSave] = useState(false)
+  const [savingRows, setSavingRows] = useState({})
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
@@ -335,6 +336,75 @@ export default function useInputRapor() {
     }
   }
 
+  const handleSaveSingleRow = async (studentId) => {
+    setSavingRows((prev) => ({ ...prev, [studentId]: true }))
+    try {
+      const studentScore = scores[studentId]
+      
+      const scoresFormativeNumeric = {}
+      Object.entries(studentScore.scores_formative || {}).forEach(([key, val]) => {
+        const n = toNullableNumber(val)
+        if (n !== null) scoresFormativeNumeric[key] = n
+      })
+
+      const scoresSummativeNumeric = {}
+      Object.entries(studentScore.scores_summative || {}).forEach(([key, val]) => {
+        const n = toNullableNumber(val)
+        if (n !== null) scoresSummativeNumeric[key] = n
+      })
+
+      const finalScore = calculateFinalRaporScore(studentScore, learningTargets, summatives)
+
+      const payload = {
+        student_id: studentId,
+        report_period_id: selectedPeriodId,
+        subject_id: selectedSubjectId,
+        scores_formative: scoresFormativeNumeric,
+        scores_summative: scoresSummativeNumeric,
+        sts_practice: toNullableNumber(studentScore.sts_practice),
+        sts_written: toNullableNumber(studentScore.sts_written),
+        sas_practice: toNullableNumber(studentScore.sas_practice),
+        sas_written: toNullableNumber(studentScore.sas_written),
+        highest_achievement: studentScore.highest_achievement || null,
+        lowest_achievement: studentScore.lowest_achievement || null,
+        final_score: finalScore,
+      }
+
+      const { error: saveErr } = await supabase
+        .from('student_scores')
+        .upsert(payload, {
+          onConflict: 'student_id,report_period_id,subject_id',
+        })
+
+      if (saveErr) throw saveErr
+
+      Swal.fire({
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 3000,
+        icon: 'success',
+        title: 'Tersimpan',
+        background: '#0f172a',
+        color: '#f8fafc',
+      })
+    } catch (err) {
+      console.error('Error saving single row:', err)
+      Swal.fire({
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 3000,
+        icon: 'error',
+        title: 'Gagal: ' + err.message,
+        background: '#0f172a',
+        color: '#f8fafc',
+      })
+    } finally {
+      setSavingRows((prev) => ({ ...prev, [studentId]: false }))
+    }
+  }
+
   const handleAddMaterial = async () => {
     if (!newMaterialName.trim()) return
     setModalError('')
@@ -514,6 +584,7 @@ export default function useInputRapor() {
     loadingDropdowns,
     loadingGrid,
     loadingSave,
+    savingRows,
     error,
     success,
     showMaterialModal,
@@ -533,6 +604,7 @@ export default function useInputRapor() {
     handleLoadGrid,
     handleScoreChange,
     handleSaveScores,
+    handleSaveSingleRow,
     handleAddMaterial,
     handleDeleteMaterial,
     handleAddTp,

@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react'
+import { Check, Loader2 } from 'lucide-react'
 import {
   calculateFormativeAvg,
   calculateSummativeAvg,
@@ -17,6 +18,7 @@ const COL_WIDTHS = {
   stsOrSasAvg: 46,   // Rrt STS / SAS
   rapor: 68,         // Nilai akhir rapor
   description: 340,  // Deskripsi capaian
+  action: 50,        // Aksi per baris
 }
 
 /**
@@ -30,6 +32,8 @@ export default function ScoreGrid({
   summatives,
   scores,
   handleScoreChange,
+  handleSaveSingleRow,
+  savingRows,
 }) {
   // Hitung total lebar tabel secara dinamis
   const totalWidth = useMemo(() => {
@@ -46,8 +50,8 @@ export default function ScoreGrid({
     w += COL_WIDTHS.stsOrSas * 2 + COL_WIDTHS.stsOrSasAvg
     // SAS: Prak + Tulis + Rrt
     w += COL_WIDTHS.stsOrSas * 2 + COL_WIDTHS.stsOrSasAvg
-    // Rapor + Deskripsi
-    w += COL_WIDTHS.rapor + COL_WIDTHS.description
+    // Rapor + Deskripsi + Aksi
+    w += COL_WIDTHS.rapor + COL_WIDTHS.description + COL_WIDTHS.action
     return w
   }, [learningTargets.length, summatives.length])
 
@@ -59,7 +63,8 @@ export default function ScoreGrid({
     (summatives.length > 0 ? 1 : 0) + // avg sumatif LM
     6 + // STS (prak, tulis, rrt) + SAS (prak, tulis, rrt)
     1 + // Rapor
-    1   // Deskripsi
+    1 + // Deskripsi
+    1   // Aksi
 
   return (
     <div className="bg-slate-900/40 border border-slate-800 rounded-2xl overflow-hidden shadow-lg">
@@ -112,6 +117,8 @@ export default function ScoreGrid({
             <col style={{ width: `${COL_WIDTHS.rapor}px` }} />
             {/* Deskripsi */}
             <col style={{ width: `${COL_WIDTHS.description}px`, minWidth: `${COL_WIDTHS.description}px` }} />
+            {/* Aksi */}
+            <col style={{ width: `${COL_WIDTHS.action}px` }} />
           </colgroup>
 
           <thead>
@@ -185,6 +192,14 @@ export default function ScoreGrid({
                 rowSpan={2}
               >
                 Deskripsi Capaian
+              </th>
+
+              {/* Aksi */}
+              <th
+                className="py-2 px-1 border-l border-slate-800 text-center font-medium text-slate-500 sticky right-0 z-20 bg-slate-950"
+                rowSpan={2}
+              >
+                Aksi
               </th>
             </tr>
 
@@ -410,6 +425,18 @@ export default function ScoreGrid({
                         className="w-full bg-slate-950 border border-slate-800 rounded-lg p-1 text-[11px] text-slate-200 placeholder-slate-600 focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 resize-y"
                       />
                     </div>
+                  </td>
+
+                  {/* Aksi Simpan Per Baris */}
+                  <td className="py-2 px-2 border-l border-slate-800 text-center sticky right-0 z-10 bg-slate-900 group-hover:bg-slate-800/50">
+                    <button
+                      onClick={() => handleSaveSingleRow(student.id)}
+                      disabled={savingRows?.[student.id]}
+                      className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 transition-colors disabled:opacity-50 cursor-pointer"
+                      title="Simpan Nilai Siswa"
+                    >
+                      {savingRows?.[student.id] ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                    </button>
                   </td>
                 </tr>
               )
