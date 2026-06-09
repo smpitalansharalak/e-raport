@@ -31,8 +31,8 @@ export default function useInputRapor() {
   // FIX: Pisahkan loading state untuk dropdown fetch dan save
   const [loadingDropdowns, setLoadingDropdowns] = useState(false)
   const [loadingGrid, setLoadingGrid] = useState(false)
-  const [loadingSave, setLoadingSave] = useState(false)
   const [savingRows, setSavingRows] = useState({})
+  const [editingRows, setEditingRows] = useState({})
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
@@ -277,64 +277,7 @@ export default function useInputRapor() {
     })
   }
 
-  // FIX: Konversi tipe data yang benar saat save
-  const handleSaveScores = async () => {
-    setError('')
-    setSuccess('')
-    setLoadingSave(true)  // FIX: Pakai loadingSave, bukan loading
-
-    try {
-      const payload = Object.values(scores).map((studentScore) => {
-        // FIX: Konversi semua nilai formative dan summative ke Number dengan benar
-        const scoresFormativeNumeric = {}
-        Object.entries(studentScore.scores_formative || {}).forEach(([key, val]) => {
-          const n = toNullableNumber(val)
-          if (n !== null) scoresFormativeNumeric[key] = n
-        })
-
-        const scoresSummativeNumeric = {}
-        Object.entries(studentScore.scores_summative || {}).forEach(([key, val]) => {
-          const n = toNullableNumber(val)
-          if (n !== null) scoresSummativeNumeric[key] = n
-        })
-
-        const finalScore = calculateFinalRaporScore(studentScore, learningTargets, summatives)
-
-        return {
-          student_id: studentScore.student_id,
-          report_period_id: selectedPeriodId,
-          subject_id: selectedSubjectId,
-          scores_formative: scoresFormativeNumeric,
-          scores_summative: scoresSummativeNumeric,
-          sts_practice: toNullableNumber(studentScore.sts_practice),
-          sts_written: toNullableNumber(studentScore.sts_written),
-          sas_practice: toNullableNumber(studentScore.sas_practice),
-          sas_written: toNullableNumber(studentScore.sas_written),
-          highest_achievement: studentScore.highest_achievement || null,
-          lowest_achievement: studentScore.lowest_achievement || null,
-          final_score: finalScore,
-        }
-      })
-
-      console.log('Saving payload:', JSON.stringify(payload, null, 2)) // debug log
-
-      const { data, error: saveErr } = await supabase
-        .from('student_scores')
-        .upsert(payload, {
-          onConflict: 'student_id,report_period_id,subject_id',
-        })
-
-      if (saveErr) throw saveErr
-
-      setSuccess('Seluruh nilai siswa berhasil disimpan!')
-      setTimeout(() => setSuccess(''), 4000)
-    } catch (err) {
-      console.error('Error saving scores:', err)
-      setError('Gagal menyimpan nilai: ' + err.message)
-    } finally {
-      setLoadingSave(false)
-    }
-  }
+  // handleSaveScores removed as per user request
 
   const handleSaveSingleRow = async (studentId) => {
     setSavingRows((prev) => ({ ...prev, [studentId]: true }))
@@ -377,6 +320,8 @@ export default function useInputRapor() {
         })
 
       if (saveErr) throw saveErr
+
+      setEditingRows((prev) => ({ ...prev, [studentId]: false }))
 
       Swal.fire({
         toast: true,
@@ -583,8 +528,9 @@ export default function useInputRapor() {
     setIsGridLoaded,
     loadingDropdowns,
     loadingGrid,
-    loadingSave,
     savingRows,
+    editingRows,
+    setEditingRows,
     error,
     success,
     showMaterialModal,
@@ -603,7 +549,6 @@ export default function useInputRapor() {
     // Handlers
     handleLoadGrid,
     handleScoreChange,
-    handleSaveScores,
     handleSaveSingleRow,
     handleAddMaterial,
     handleDeleteMaterial,

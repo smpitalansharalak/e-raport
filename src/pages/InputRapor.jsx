@@ -21,8 +21,9 @@ export default function InputRapor() {
     isGridLoaded,
     setIsGridLoaded,
     loadingGrid,
-    loadingSave,
     savingRows,
+    editingRows,
+    setEditingRows,
     error,
     success,
     showMaterialModal,
@@ -37,7 +38,6 @@ export default function InputRapor() {
     setNewSummativeName,
     handleLoadGrid,
     handleScoreChange,
-    handleSaveScores,
     handleSaveSingleRow,
     handleAddMaterial,
     handleDeleteMaterial,
@@ -161,15 +161,6 @@ export default function InputRapor() {
                 Atur Sumatif ({summatives.length})
               </button>
             </div>
-
-            <button
-              onClick={handleSaveScores}
-              disabled={loadingSave}
-              className="bg-emerald-500 hover:bg-emerald-400 disabled:bg-emerald-600 disabled:opacity-50 text-slate-950 px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 shadow transition-colors cursor-pointer"
-            >
-              <Save size={14} />
-              {loadingSave ? 'Menyimpan...' : 'Simpan Semua Nilai'}
-            </button>
           </div>
 
           {/* Spreadsheet Grid */}
@@ -182,6 +173,8 @@ export default function InputRapor() {
             handleScoreChange={handleScoreChange}
             handleSaveSingleRow={handleSaveSingleRow}
             savingRows={savingRows}
+            editingRows={editingRows}
+            setEditingRows={setEditingRows}
           />
         </div>
       )}

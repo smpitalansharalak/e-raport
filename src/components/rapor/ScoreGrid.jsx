@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react'
-import { Check, Loader2 } from 'lucide-react'
+import { Check, Loader2, Edit2 } from 'lucide-react'
 import {
   calculateFormativeAvg,
   calculateSummativeAvg,
@@ -34,6 +34,8 @@ export default function ScoreGrid({
   handleScoreChange,
   handleSaveSingleRow,
   savingRows,
+  editingRows,
+  setEditingRows,
 }) {
   // Hitung total lebar tabel secara dinamis
   const totalWidth = useMemo(() => {
@@ -266,6 +268,7 @@ export default function ScoreGrid({
               const finalRapor = calculateFinalRaporScore(studentScore, learningTargets, summatives)
 
               const rowBg = rowIdx % 2 === 0 ? '' : 'bg-slate-900/20'
+              const isEditing = editingRows?.[student.id]
 
               return (
                 <tr key={student.id} className={`hover:bg-slate-800/30 transition-colors ${rowBg}`}>
@@ -289,11 +292,12 @@ export default function ScoreGrid({
                           type="number"
                           min="0"
                           max="100"
+                          disabled={!isEditing}
                           value={studentScore.scores_formative?.[tp.id] ?? ''}
                           onChange={(e) =>
                             handleScoreChange(student.id, 'formative', tp.id, e.target.value)
                           }
-                          className="w-full bg-slate-950 border border-slate-800 rounded text-center text-xs py-1 px-0.5 text-slate-200 focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400/50 transition-colors"
+                          className="w-full bg-slate-950 border border-slate-800 rounded text-center text-xs py-1 px-0.5 text-slate-200 focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400/50 transition-colors disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
                           title={`${tp.code} — ${tp.description}`}
                         />
                       </td>
@@ -317,11 +321,12 @@ export default function ScoreGrid({
                         type="number"
                         min="0"
                         max="100"
+                        disabled={!isEditing}
                         value={studentScore.scores_summative?.[sum.id] ?? ''}
                         onChange={(e) =>
                           handleScoreChange(student.id, 'summative', sum.id, e.target.value)
                         }
-                        className="w-full bg-slate-950 border border-slate-800 rounded text-center text-xs py-1 px-0.5 text-slate-200 focus:outline-none focus:border-violet-400 focus:ring-1 focus:ring-violet-400/50 transition-colors"
+                        className="w-full bg-slate-950 border border-slate-800 rounded text-center text-xs py-1 px-0.5 text-slate-200 focus:outline-none focus:border-violet-400 focus:ring-1 focus:ring-violet-400/50 transition-colors disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
                         title={sum.name}
                       />
                     </td>
@@ -338,11 +343,12 @@ export default function ScoreGrid({
                       type="number"
                       min="0"
                       max="100"
+                      disabled={!isEditing}
                       value={studentScore.sts_practice ?? ''}
                       onChange={(e) =>
                         handleScoreChange(student.id, 'other', 'sts_practice', e.target.value)
                       }
-                      className="w-full bg-slate-950 border border-slate-800 rounded text-center text-xs py-1 px-0.5 text-slate-200 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400/50 transition-colors"
+                      className="w-full bg-slate-950 border border-slate-800 rounded text-center text-xs py-1 px-0.5 text-slate-200 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400/50 transition-colors disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
                     />
                   </td>
                   {/* STS Tulis */}
@@ -351,11 +357,12 @@ export default function ScoreGrid({
                       type="number"
                       min="0"
                       max="100"
+                      disabled={!isEditing}
                       value={studentScore.sts_written ?? ''}
                       onChange={(e) =>
                         handleScoreChange(student.id, 'other', 'sts_written', e.target.value)
                       }
-                      className="w-full bg-slate-950 border border-slate-800 rounded text-center text-xs py-1 px-0.5 text-slate-200 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400/50 transition-colors"
+                      className="w-full bg-slate-950 border border-slate-800 rounded text-center text-xs py-1 px-0.5 text-slate-200 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400/50 transition-colors disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
                     />
                   </td>
                   {/* STS Rrt */}
@@ -369,11 +376,12 @@ export default function ScoreGrid({
                       type="number"
                       min="0"
                       max="100"
+                      disabled={!isEditing}
                       value={studentScore.sas_practice ?? ''}
                       onChange={(e) =>
                         handleScoreChange(student.id, 'other', 'sas_practice', e.target.value)
                       }
-                      className="w-full bg-slate-950 border border-slate-800 rounded text-center text-xs py-1 px-0.5 text-slate-200 focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400/50 transition-colors"
+                      className="w-full bg-slate-950 border border-slate-800 rounded text-center text-xs py-1 px-0.5 text-slate-200 focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400/50 transition-colors disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
                     />
                   </td>
                   {/* SAS Tulis */}
@@ -382,11 +390,12 @@ export default function ScoreGrid({
                       type="number"
                       min="0"
                       max="100"
+                      disabled={!isEditing}
                       value={studentScore.sas_written ?? ''}
                       onChange={(e) =>
                         handleScoreChange(student.id, 'other', 'sas_written', e.target.value)
                       }
-                      className="w-full bg-slate-950 border border-slate-800 rounded text-center text-xs py-1 px-0.5 text-slate-200 focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400/50 transition-colors"
+                      className="w-full bg-slate-950 border border-slate-800 rounded text-center text-xs py-1 px-0.5 text-slate-200 focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400/50 transition-colors disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
                     />
                   </td>
                   {/* SAS Rrt */}
@@ -405,38 +414,50 @@ export default function ScoreGrid({
                       <span className="text-[9px] font-bold text-emerald-500/80 uppercase tracking-wide shrink-0 w-10">Tinggi</span>
                       <textarea
                         rows={1}
-                        placeholder="Capaian kompetensi tertinggi..."
+                        placeholder={isEditing ? "Capaian kompetensi tertinggi..." : "-"}
+                        disabled={!isEditing}
                         value={studentScore.highest_achievement ?? ''}
                         onChange={(e) =>
                           handleScoreChange(student.id, 'other', 'highest_achievement', e.target.value)
                         }
-                        className="w-full bg-slate-950 border border-slate-800 rounded-lg p-1 text-[11px] text-slate-200 placeholder-slate-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 resize-y"
+                        className="w-full bg-slate-950 border border-slate-800 rounded-lg p-1 text-[11px] text-slate-200 placeholder-slate-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 resize-y disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
                       />
                     </div>
                     <div className="flex items-center gap-1.5">
                       <span className="text-[9px] font-bold text-rose-500/80 uppercase tracking-wide shrink-0 w-10">Rendah</span>
                       <textarea
                         rows={1}
-                        placeholder="Capaian kompetensi terendah..."
+                        placeholder={isEditing ? "Capaian kompetensi terendah..." : "-"}
+                        disabled={!isEditing}
                         value={studentScore.lowest_achievement ?? ''}
                         onChange={(e) =>
                           handleScoreChange(student.id, 'other', 'lowest_achievement', e.target.value)
                         }
-                        className="w-full bg-slate-950 border border-slate-800 rounded-lg p-1 text-[11px] text-slate-200 placeholder-slate-600 focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 resize-y"
+                        className="w-full bg-slate-950 border border-slate-800 rounded-lg p-1 text-[11px] text-slate-200 placeholder-slate-600 focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 resize-y disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
                       />
                     </div>
                   </td>
 
-                  {/* Aksi Simpan Per Baris */}
+                  {/* Aksi Simpan / Edit Per Baris */}
                   <td className="py-2 px-2 border-l border-slate-800 text-center sticky right-0 z-10 bg-slate-900 group-hover:bg-slate-800/50">
-                    <button
-                      onClick={() => handleSaveSingleRow(student.id)}
-                      disabled={savingRows?.[student.id]}
-                      className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 transition-colors disabled:opacity-50 cursor-pointer"
-                      title="Simpan Nilai Siswa"
-                    >
-                      {savingRows?.[student.id] ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
-                    </button>
+                    {isEditing ? (
+                      <button
+                        onClick={() => handleSaveSingleRow(student.id)}
+                        disabled={savingRows?.[student.id]}
+                        className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 transition-colors disabled:opacity-50 cursor-pointer"
+                        title="Simpan Nilai"
+                      >
+                        {savingRows?.[student.id] ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => setEditingRows((prev) => ({ ...prev, [student.id]: true }))}
+                        className="p-1.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 transition-colors cursor-pointer"
+                        title="Edit Nilai"
+                      >
+                        <Edit2 size={16} />
+                      </button>
+                    )}
                   </td>
                 </tr>
               )
