@@ -244,11 +244,11 @@ export default function ScoreGrid({
                 highest_achievement: '',
                 lowest_achievement: '',
               }
-              const formativeAvg = calculateFormativeAvg(studentScore)
-              const summativeAvg = calculateSummativeAvg(studentScore)
+              const formativeAvg = calculateFormativeAvg(studentScore, learningTargets)
+              const summativeAvg = calculateSummativeAvg(studentScore, summatives)
               const stsAvg = calculateAvgOfTwo(studentScore.sts_practice, studentScore.sts_written)
               const sasAvg = calculateAvgOfTwo(studentScore.sas_practice, studentScore.sas_written)
-              const finalRapor = calculateFinalRaporScore(studentScore)
+              const finalRapor = calculateFinalRaporScore(studentScore, learningTargets, summatives)
 
               const rowBg = rowIdx % 2 === 0 ? '' : 'bg-slate-900/20'
 

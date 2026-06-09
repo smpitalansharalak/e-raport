@@ -297,7 +297,7 @@ export default function useInputRapor() {
           if (n !== null) scoresSummativeNumeric[key] = n
         })
 
-        const finalScore = calculateFinalRaporScore(studentScore)
+        const finalScore = calculateFinalRaporScore(studentScore, learningTargets, summatives)
 
         return {
           student_id: studentScore.student_id,

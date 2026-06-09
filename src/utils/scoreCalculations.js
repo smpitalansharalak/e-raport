@@ -3,19 +3,33 @@
  * Murni JavaScript — tidak ada dependency React.
  */
 
-export const calculateFormativeAvg = (studentScoreObj) => {
-  const vals = Object.values(studentScoreObj.scores_formative || {}).filter(
-    (v) => v !== '' && v !== null && v !== undefined && !isNaN(Number(v))
-  )
+export const calculateFormativeAvg = (studentScoreObj, learningTargets = null) => {
+  let vals = []
+  if (learningTargets) {
+    vals = learningTargets
+      .map((tp) => studentScoreObj.scores_formative?.[tp.id])
+      .filter((v) => v !== '' && v !== null && v !== undefined && !isNaN(Number(v)))
+  } else {
+    vals = Object.values(studentScoreObj.scores_formative || {}).filter(
+      (v) => v !== '' && v !== null && v !== undefined && !isNaN(Number(v))
+    )
+  }
   if (vals.length === 0) return 0
   const sum = vals.reduce((a, b) => a + Number(b), 0)
   return Number((sum / vals.length).toFixed(1))
 }
 
-export const calculateSummativeAvg = (studentScoreObj) => {
-  const vals = Object.values(studentScoreObj.scores_summative || {}).filter(
-    (v) => v !== '' && v !== null && v !== undefined && !isNaN(Number(v))
-  )
+export const calculateSummativeAvg = (studentScoreObj, summatives = null) => {
+  let vals = []
+  if (summatives) {
+    vals = summatives
+      .map((sum) => studentScoreObj.scores_summative?.[sum.id])
+      .filter((v) => v !== '' && v !== null && v !== undefined && !isNaN(Number(v)))
+  } else {
+    vals = Object.values(studentScoreObj.scores_summative || {}).filter(
+      (v) => v !== '' && v !== null && v !== undefined && !isNaN(Number(v))
+    )
+  }
   if (vals.length === 0) return 0
   const sum = vals.reduce((a, b) => a + Number(b), 0)
   return Number((sum / vals.length).toFixed(1))
@@ -31,9 +45,9 @@ export const calculateAvgOfTwo = (v1, v2) => {
   return 0
 }
 
-export const calculateFinalRaporScore = (studentScoreObj) => {
-  const fAvg = calculateFormativeAvg(studentScoreObj)
-  const sAvg = calculateSummativeAvg(studentScoreObj)
+export const calculateFinalRaporScore = (studentScoreObj, learningTargets = null, summatives = null) => {
+  const fAvg = calculateFormativeAvg(studentScoreObj, learningTargets)
+  const sAvg = calculateSummativeAvg(studentScoreObj, summatives)
   const stsAvg = calculateAvgOfTwo(studentScoreObj.sts_practice, studentScoreObj.sts_written)
   const sasAvg = calculateAvgOfTwo(studentScoreObj.sas_practice, studentScoreObj.sas_written)
   const final = (fAvg + sAvg + stsAvg + sasAvg) / 4
