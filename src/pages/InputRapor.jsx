@@ -39,6 +39,7 @@ export default function InputRapor() {
     handleLoadGrid,
     handleScoreChange,
     handleSaveSingleRow,
+    handleEditRow,
     handleAddMaterial,
     handleDeleteMaterial,
     handleAddTp,
@@ -172,6 +173,7 @@ export default function InputRapor() {
             scores={scores}
             handleScoreChange={handleScoreChange}
             handleSaveSingleRow={handleSaveSingleRow}
+            handleEditRow={handleEditRow}
             savingRows={savingRows}
             editingRows={editingRows}
             setEditingRows={setEditingRows}

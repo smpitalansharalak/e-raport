@@ -33,6 +33,7 @@ export default function ScoreGrid({
   scores,
   handleScoreChange,
   handleSaveSingleRow,
+  handleEditRow,
   savingRows,
   editingRows,
   setEditingRows,
@@ -459,9 +460,9 @@ export default function ScoreGrid({
                       </button>
                     ) : (
                       <button
-                        onClick={() => setEditingRows((prev) => ({ ...prev, [student.id]: true }))}
+                        onClick={() => handleEditRow(student.id)}
                         className="p-1.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 transition-colors cursor-pointer"
-                        title="Edit Nilai"
+                        title="Edit Nilai (memuat data terbaru)"
                       >
                         <Edit2 size={16} />
                       </button>

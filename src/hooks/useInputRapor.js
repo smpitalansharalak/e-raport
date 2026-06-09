@@ -349,6 +349,67 @@ export default function useInputRapor() {
     }
   }
 
+  const handleEditRow = async (studentId) => {
+    try {
+      const { data, error: fetchErr } = await supabase
+        .from('student_scores')
+        .select(
+          'student_id, scores_formative, scores_summative, sts_practice, sts_written, sas_practice, sas_written, highest_achievement, lowest_achievement'
+        )
+        .eq('student_id', studentId)
+        .eq('report_period_id', selectedPeriodId)
+        .eq('subject_id', selectedSubjectId)
+        .maybeSingle()
+
+      if (fetchErr) throw fetchErr
+
+      if (data) {
+        // Update scores state dengan data terbaru dari DB
+        setScores((prev) => ({
+          ...prev,
+          [studentId]: {
+            ...prev[studentId],
+            scores_formative: data.scores_formative || {},
+            scores_summative: data.scores_summative || {},
+            sts_practice:
+              data.sts_practice !== null && data.sts_practice !== undefined
+                ? String(data.sts_practice)
+                : '',
+            sts_written:
+              data.sts_written !== null && data.sts_written !== undefined
+                ? String(data.sts_written)
+                : '',
+            sas_practice:
+              data.sas_practice !== null && data.sas_practice !== undefined
+                ? String(data.sas_practice)
+                : '',
+            sas_written:
+              data.sas_written !== null && data.sas_written !== undefined
+                ? String(data.sas_written)
+                : '',
+            highest_achievement: data.highest_achievement || '',
+            lowest_achievement: data.lowest_achievement || '',
+          },
+        }))
+      }
+
+      // Aktifkan mode edit setelah data di-load
+      setEditingRows((prev) => ({ ...prev, [studentId]: true }))
+    } catch (err) {
+      console.error('Error fetching row data for edit:', err)
+      Swal.fire({
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 3000,
+        icon: 'error',
+        title: 'Gagal memuat data: ' + err.message,
+        background: '#0f172a',
+        color: '#f8fafc',
+      })
+    }
+  }
+
   const handleAddMaterial = async () => {
     if (!newMaterialName.trim()) return
     setModalError('')
@@ -548,6 +609,7 @@ export default function useInputRapor() {
     handleLoadGrid,
     handleScoreChange,
     handleSaveSingleRow,
+    handleEditRow,
     handleAddMaterial,
     handleDeleteMaterial,
     handleAddTp,
