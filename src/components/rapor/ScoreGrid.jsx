@@ -325,6 +325,23 @@ const ScoreRow = React.memo(function ScoreRow({
     e.target.style.height = e.target.scrollHeight + 'px';
   };
 
+  // Sanitasi teks dari clipboard (Word, Notepad) sebelum masuk ke state
+  const sanitizePaste = (e, field) => {
+    e.preventDefault()
+    const raw = e.clipboardData.getData('text/plain')
+    const cleaned = raw
+      .replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '')
+      .replace(/[\u00AD\u200B\u200C\u200D\u200E\u200F\uFEFF\uFFFC\u2028\u2029]/g, '')
+      .replace(/[ \t]+/g, ' ')
+      .replace(/\r\n|\r/g, '\n')
+    const ta = e.target
+    const start = ta.selectionStart
+    const end = ta.selectionEnd
+    const current = ta.value
+    const next = current.substring(0, start) + cleaned + current.substring(end)
+    handleScoreChange(student.id, 'other', field, next)
+  }
+
   return (
     <tr className={`hover:bg-slate-800/30 transition-colors ${rowBg}`}>
       {/* Nama — sticky */}
@@ -475,6 +492,7 @@ const ScoreRow = React.memo(function ScoreRow({
             onChange={(e) =>
               handleScoreChange(student.id, 'other', 'highest_achievement', e.target.value)
             }
+            onPaste={(e) => sanitizePaste(e, 'highest_achievement')}
             onInput={autoResize}
             className="w-full bg-slate-950 border border-slate-800 rounded-lg p-1 text-[11px] text-slate-200 placeholder-slate-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 resize-y disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
           />
@@ -489,6 +507,7 @@ const ScoreRow = React.memo(function ScoreRow({
             onChange={(e) =>
               handleScoreChange(student.id, 'other', 'lowest_achievement', e.target.value)
             }
+            onPaste={(e) => sanitizePaste(e, 'lowest_achievement')}
             onInput={autoResize}
             className="w-full bg-slate-950 border border-slate-800 rounded-lg p-1 text-[11px] text-slate-200 placeholder-slate-600 focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 resize-y disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
           />

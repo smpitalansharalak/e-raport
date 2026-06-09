@@ -11,6 +11,26 @@ import {
 import Swal from 'sweetalert2'
 
 /**
+ * Sanitasi teks dari karakter tidak terlihat yang sering terbawa saat copy-paste
+ * dari Microsoft Word, Notepad, atau aplikasi lain.
+ * Menghapus: null bytes, control chars, zero-width spaces, soft hyphens, BOM, dll.
+ */
+function sanitizeText(str) {
+  if (typeof str !== 'string') return str
+  return str
+    // Hapus null bytes dan ASCII control characters (kecuali tab \x09 dan newline \x0A \x0D)
+    .replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '')
+    // Hapus karakter invisible Unicode dari Word: soft hyphen, zero-width space,
+    // zero-width non-joiner, zero-width joiner, BOM, object replacement char, dll
+    .replace(/[\u00AD\u200B\u200C\u200D\u200E\u200F\uFEFF\uFFFC\u2028\u2029]/g, '')
+    // Normalkan multiple spaces/tabs menjadi satu spasi, tapi pertahankan newlines
+    .replace(/[ \t]+/g, ' ')
+    // Normalkan Windows line endings (\r\n) dan Mac (\r) menjadi Unix (\n)
+    .replace(/\r\n|\r/g, '\n')
+    .trim()
+}
+
+/**
  * Custom hook yang mengandung semua state & business logic
  * untuk halaman Input Nilai Rapor.
  */
@@ -277,9 +297,9 @@ export default function useInputRapor() {
           [field]: value,
         }
       } else {
-        // Hapus karakter null (\x00) dan control characters yang sering terbawa dari MS Word
+        // Gunakan sanitizeText untuk field teks agar invisible chars dari Word tidak lolos
         if (typeof value === 'string' && (field === 'highest_achievement' || field === 'lowest_achievement')) {
-          updated[field] = value.replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F-\x9F]/g, '')
+          updated[field] = sanitizeText(value)
         } else {
           updated[field] = value
         }
@@ -428,10 +448,13 @@ export default function useInputRapor() {
   }, [selectedPeriodId, selectedSubjectId])
 
   const handleAddMaterial = async () => {
-    if (!newMaterialName.trim()) return
     setModalError('')
+    const cleanName = sanitizeText(newMaterialName)
+    if (!cleanName) {
+      setModalError('Gagal: Nama lingkup materi tidak boleh kosong.')
+      return
+    }
     try {
-      const cleanName = newMaterialName.trim().replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F-\x9F]/g, '')
       const { error } = await supabase.from('materials').insert({
         report_period_id: selectedPeriodId,
         subject_id: selectedSubjectId,
@@ -441,6 +464,7 @@ export default function useInputRapor() {
       setNewMaterialName('')
       await fetchMaterialsAndTps()
     } catch (err) {
+      console.error('Error in handleAddMaterial:', err)
       setModalError('Gagal menambah lingkup materi: ' + err.message)
     }
   }
@@ -477,22 +501,43 @@ export default function useInputRapor() {
   }
 
   const handleAddTp = async () => {
-    if (!tpInputs.materialId || !tpInputs.code || !tpInputs.description) return
     setModalError('')
-    try {
-      const cleanCode = tpInputs.code.trim().replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F-\x9F]/g, '')
-      const cleanDescription = tpInputs.description.trim().replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F-\x9F]/g, '')
+    
+    // Sanitasi dulu sebelum validasi agar invisible chars tidak lolos
+    const cleanCode = sanitizeText(tpInputs.code)
+    const cleanDescription = sanitizeText(tpInputs.description)
 
+    // Validasi setelah sanitasi
+    if (!tpInputs.materialId) {
+      setModalError('Gagal: Pilih Lingkup Materi (Bab) terlebih dahulu.')
+      return
+    }
+    if (!cleanCode) {
+      setModalError('Gagal: Kolom Kode TP harus diisi (contoh: TP1).')
+      return
+    }
+    if (!cleanDescription) {
+      setModalError('Gagal: Deskripsi TP kosong atau hanya berisi karakter tidak valid. Ketik ulang teks ini.')
+      return
+    }
+
+    try {
       const { error } = await supabase.from('learning_targets').insert({
         material_id: tpInputs.materialId,
         code: cleanCode,
         description: cleanDescription,
       })
-      if (error) throw error
+      
+      if (error) {
+        console.error('Supabase insert error:', error)
+        throw error
+      }
+      
       setTpInputs({ ...tpInputs, code: '', description: '' })
       await fetchMaterialsAndTps()
     } catch (err) {
-      setModalError('Gagal menambah tujuan pembelajaran: ' + err.message)
+      console.error('Error in handleAddTp:', err)
+      setModalError('Gagal menambah TP: ' + err.message)
     }
   }
 

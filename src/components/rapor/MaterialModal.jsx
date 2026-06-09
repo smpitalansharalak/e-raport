@@ -107,6 +107,24 @@ export default function MaterialModal({
                   placeholder="Deskripsi TP..."
                   value={tpInputs.description}
                   onChange={(e) => setTpInputs({ ...tpInputs, description: e.target.value })}
+                  onPaste={(e) => {
+                    // Intercept paste, sanitize before setting state
+                    e.preventDefault()
+                    const rawText = e.clipboardData.getData('text/plain')
+                    // Strip invisible chars: control chars, zero-width spaces, soft hyphens, BOM
+                    const cleaned = rawText
+                      .replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '')
+                      .replace(/[\u00AD\u200B\u200C\u200D\u200E\u200F\uFEFF\uFFFC\u2028\u2029]/g, '')
+                      .replace(/[ \t]+/g, ' ')
+                      .replace(/\r\n|\r/g, '\n')
+                    // Insert at cursor position
+                    const textarea = e.target
+                    const start = textarea.selectionStart
+                    const end = textarea.selectionEnd
+                    const currentVal = tpInputs.description
+                    const newVal = currentVal.substring(0, start) + cleaned + currentVal.substring(end)
+                    setTpInputs({ ...tpInputs, description: newVal })
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault();
