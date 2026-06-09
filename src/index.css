@@ -98,7 +98,7 @@ body {
   }
 
   table {
-    page-break-inside: avoid;
+    page-break-inside: auto;
   }
 
   tr {
