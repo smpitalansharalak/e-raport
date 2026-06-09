@@ -265,7 +265,12 @@ export default function useInputRapor() {
           [field]: value,
         }
       } else {
-        updated[field] = value
+        // Hapus karakter null (\x00) dan control characters yang sering terbawa dari MS Word
+        if (typeof value === 'string' && (field === 'highest_achievement' || field === 'lowest_achievement')) {
+          updated[field] = value.replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F-\x9F]/g, '')
+        } else {
+          updated[field] = value
+        }
       }
 
       return {
