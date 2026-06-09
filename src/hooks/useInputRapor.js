@@ -28,7 +28,6 @@ export default function useInputRapor() {
   const [scores, setScores] = useState({})
 
   const [isGridLoaded, setIsGridLoaded] = useState(false)
-  // FIX: Pisahkan loading state untuk dropdown fetch dan save
   const [loadingDropdowns, setLoadingDropdowns] = useState(false)
   const [loadingGrid, setLoadingGrid] = useState(false)
   const [savingRows, setSavingRows] = useState({})
@@ -124,7 +123,7 @@ export default function useInputRapor() {
       setStudents(sData || [])
 
       // Fetch materials, TPs, summatives secara paralel
-      const [matsResult, sumsResult] = await Promise.all([
+      await Promise.all([
         fetchMaterialsAndTpsInternal(),
         fetchSummativesInternal(),
       ])
@@ -177,7 +176,7 @@ export default function useInputRapor() {
     }
   }
 
-  // FIX: Internal fetch yang return data tanpa set state (untuk paralel load)
+  // Internal fetch yang return data tanpa set state (untuk paralel load)
   const fetchMaterialsAndTpsInternal = async () => {
     const { data: mData, error: mErr } = await supabase
       .from('materials')
@@ -250,7 +249,7 @@ export default function useInputRapor() {
     setSummatives(sumData || [])
   }
 
-  // FIX: handleScoreChange diperbaiki — konversi Number hanya untuk field numerik
+  // handleScoreChange — konversi Number hanya untuk field numerik
   const handleScoreChange = (studentId, type, field, value) => {
     setScores((prev) => {
       const updated = { ...prev[studentId] }
@@ -258,15 +257,14 @@ export default function useInputRapor() {
       if (type === 'formative') {
         updated.scores_formative = {
           ...updated.scores_formative,
-          [field]: value,  // simpan sebagai string dulu, konversi saat save
+          [field]: value,
         }
       } else if (type === 'summative') {
         updated.scores_summative = {
           ...updated.scores_summative,
-          [field]: value,  // simpan sebagai string dulu, konversi saat save
+          [field]: value,
         }
       } else {
-        // FIX: untuk field 'other' (sts/sas/achievement), simpan nilai apa adanya
         updated[field] = value
       }
 
@@ -277,13 +275,14 @@ export default function useInputRapor() {
     })
   }
 
-  // handleSaveScores removed as per user request
-
   const handleSaveSingleRow = async (studentId) => {
+    // Prevent duplicate saves
+    if (savingRows?.[studentId]) return
     setSavingRows((prev) => ({ ...prev, [studentId]: true }))
+
     try {
       const studentScore = scores[studentId]
-      
+
       const scoresFormativeNumeric = {}
       Object.entries(studentScore.scores_formative || {}).forEach(([key, val]) => {
         const n = toNullableNumber(val)
@@ -380,9 +379,9 @@ export default function useInputRapor() {
       background: '#0f172a',
       color: '#f8fafc',
     })
-    
+
     if (!result.isConfirmed) return
-    
+
     try {
       const { error } = await supabase.from('materials').delete().eq('id', id)
       if (error) throw error
@@ -499,10 +498,9 @@ export default function useInputRapor() {
     }
   }
 
-  // FIX: Tutup modal tanpa memanggil handleLoadGrid() agar scores tidak di-reset
+  // Tutup modal tanpa memanggil handleLoadGrid() agar scores tidak di-reset
   const handleCloseMaterialModal = async () => {
     setShowMaterialModal(false)
-    // Hanya refresh struktur kolom (material & TP headers), BUKAN reload seluruh grid
     await fetchMaterialsAndTps()
   }
 
