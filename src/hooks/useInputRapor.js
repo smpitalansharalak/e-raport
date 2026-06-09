@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import {
@@ -42,6 +42,18 @@ export default function useInputRapor() {
   const [tpInputs, setTpInputs] = useState({ materialId: '', code: '', description: '' })
   const [newSummativeName, setNewSummativeName] = useState('')
   const [modalError, setModalError] = useState('')
+
+  // Keep references to state values to prevent recreation of callback handlers
+  const scoresRef = useRef(scores)
+  const savingRowsRef = useRef(savingRows)
+
+  useEffect(() => {
+    scoresRef.current = scores
+  }, [scores])
+
+  useEffect(() => {
+    savingRowsRef.current = savingRows
+  }, [savingRows])
 
   useEffect(() => {
     if (profile) {
@@ -250,7 +262,7 @@ export default function useInputRapor() {
   }
 
   // handleScoreChange — konversi Number hanya untuk field numerik
-  const handleScoreChange = (studentId, type, field, value) => {
+  const handleScoreChange = useCallback((studentId, type, field, value) => {
     setScores((prev) => {
       const updated = { ...prev[studentId] }
 
@@ -278,15 +290,15 @@ export default function useInputRapor() {
         [studentId]: updated,
       }
     })
-  }
+  }, [])
 
-  const handleSaveSingleRow = async (studentId) => {
+  const handleSaveSingleRow = useCallback(async (studentId) => {
     // Prevent duplicate saves
-    if (savingRows?.[studentId]) return
+    if (savingRowsRef.current?.[studentId]) return
     setSavingRows((prev) => ({ ...prev, [studentId]: true }))
 
     try {
-      const studentScore = scores[studentId]
+      const studentScore = scoresRef.current[studentId]
 
       const scoresFormativeNumeric = {}
       Object.entries(studentScore.scores_formative || {}).forEach(([key, val]) => {
@@ -352,9 +364,9 @@ export default function useInputRapor() {
     } finally {
       setSavingRows((prev) => ({ ...prev, [studentId]: false }))
     }
-  }
+  }, [selectedPeriodId, selectedSubjectId, learningTargets, summatives])
 
-  const handleEditRow = async (studentId) => {
+  const handleEditRow = useCallback(async (studentId) => {
     try {
       const { data, error: fetchErr } = await supabase
         .from('student_scores')
@@ -413,7 +425,7 @@ export default function useInputRapor() {
         color: '#f8fafc',
       })
     }
-  }
+  }, [selectedPeriodId, selectedSubjectId])
 
   const handleAddMaterial = async () => {
     if (!newMaterialName.trim()) return

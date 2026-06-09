@@ -262,213 +262,22 @@ export default function ScoreGrid({
                 highest_achievement: '',
                 lowest_achievement: '',
               }
-              const formativeAvg = calculateFormativeAvg(studentScore, learningTargets)
-              const summativeAvg = calculateSummativeAvg(studentScore, summatives)
-              const stsAvg = calculateAvgOfTwo(studentScore.sts_practice, studentScore.sts_written)
-              const sasAvg = calculateAvgOfTwo(studentScore.sas_practice, studentScore.sas_written)
-              const finalRapor = calculateFinalRaporScore(studentScore, learningTargets, summatives)
-
-              const rowBg = rowIdx % 2 === 0 ? '' : 'bg-slate-900/20'
-              
-              const autoResize = (e) => {
-                e.target.style.height = 'auto';
-                e.target.style.height = e.target.scrollHeight + 'px';
-              };
-
-              const isEditing = editingRows?.[student.id]
 
               return (
-                <tr key={student.id} className={`hover:bg-slate-800/30 transition-colors ${rowBg}`}>
-                  {/* Nama — sticky */}
-                  <td className="py-3 px-3 sticky left-0 z-10 bg-slate-900 border-r border-slate-800 group-hover:bg-slate-800/50">
-                    <p className="font-semibold text-slate-200 leading-tight text-xs truncate max-w-[180px]" title={student.name}>
-                      {student.name}
-                    </p>
-                    <p className="text-[10px] text-slate-500 font-mono mt-0.5">{student.nisn}</p>
-                  </td>
-
-                  {/* Formatif per TP */}
-                  {materials.map((mat) => {
-                    const tpsInMat = learningTargets.filter((tp) => tp.material_id === mat.id)
-                    return tpsInMat.map((tp, idx) => (
-                      <td
-                        key={tp.id}
-                        className={`py-2 px-0.5 text-center bg-indigo-500/3 ${idx === 0 ? 'border-l border-slate-800' : ''}`}
-                      >
-                        <input
-                          type="number"
-                          min="0"
-                          max="100"
-                          disabled={!isEditing}
-                          value={studentScore.scores_formative?.[tp.id] ?? ''}
-                          onChange={(e) =>
-                            handleScoreChange(student.id, 'formative', tp.id, e.target.value)
-                          }
-                          className="w-full bg-slate-950 border border-slate-800 rounded text-center text-xs py-1 px-0.5 text-slate-200 focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400/50 transition-colors disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
-                          title={`${tp.code} — ${tp.description}`}
-                        />
-                      </td>
-                    ))
-                  })}
-
-                  {/* Rata-rata formatif */}
-                  {learningTargets.length > 0 && (
-                    <td className="py-2 px-1 border-l border-slate-800 text-center font-bold text-xs text-indigo-400 bg-indigo-500/5">
-                      {formativeAvg}
-                    </td>
-                  )}
-
-                  {/* Sumatif LM */}
-                  {summatives.map((sum, idx) => (
-                    <td
-                      key={sum.id}
-                      className={`py-2 px-0.5 text-center bg-violet-500/3 ${idx === 0 ? 'border-l border-slate-800' : ''}`}
-                    >
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        disabled={!isEditing}
-                        value={studentScore.scores_summative?.[sum.id] ?? ''}
-                        onChange={(e) =>
-                          handleScoreChange(student.id, 'summative', sum.id, e.target.value)
-                        }
-                        className="w-full bg-slate-950 border border-slate-800 rounded text-center text-xs py-1 px-0.5 text-slate-200 focus:outline-none focus:border-violet-400 focus:ring-1 focus:ring-violet-400/50 transition-colors disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
-                        title={sum.name}
-                      />
-                    </td>
-                  ))}
-                  {summatives.length > 0 && (
-                    <td className="py-2 px-1 border-l border-slate-800 text-center font-bold text-xs text-violet-400 bg-violet-500/5">
-                      {summativeAvg}
-                    </td>
-                  )}
-
-                  {/* STS Praktek */}
-                  <td className="py-2 px-0.5 border-l border-slate-800 text-center">
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      disabled={!isEditing}
-                      value={studentScore.sts_practice ?? ''}
-                      onChange={(e) =>
-                        handleScoreChange(student.id, 'other', 'sts_practice', e.target.value)
-                      }
-                      className="w-full bg-slate-950 border border-slate-800 rounded text-center text-xs py-1 px-0.5 text-slate-200 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400/50 transition-colors disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
-                    />
-                  </td>
-                  {/* STS Tulis */}
-                  <td className="py-2 px-0.5 text-center">
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      disabled={!isEditing}
-                      value={studentScore.sts_written ?? ''}
-                      onChange={(e) =>
-                        handleScoreChange(student.id, 'other', 'sts_written', e.target.value)
-                      }
-                      className="w-full bg-slate-950 border border-slate-800 rounded text-center text-xs py-1 px-0.5 text-slate-200 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400/50 transition-colors disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
-                    />
-                  </td>
-                  {/* STS Rrt */}
-                  <td className="py-2 px-1 text-center font-bold text-xs text-amber-400">
-                    {stsAvg || 0}
-                  </td>
-
-                  {/* SAS Praktek */}
-                  <td className="py-2 px-0.5 border-l border-slate-800 text-center">
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      disabled={!isEditing}
-                      value={studentScore.sas_practice ?? ''}
-                      onChange={(e) =>
-                        handleScoreChange(student.id, 'other', 'sas_practice', e.target.value)
-                      }
-                      className="w-full bg-slate-950 border border-slate-800 rounded text-center text-xs py-1 px-0.5 text-slate-200 focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400/50 transition-colors disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
-                    />
-                  </td>
-                  {/* SAS Tulis */}
-                  <td className="py-2 px-0.5 text-center">
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      disabled={!isEditing}
-                      value={studentScore.sas_written ?? ''}
-                      onChange={(e) =>
-                        handleScoreChange(student.id, 'other', 'sas_written', e.target.value)
-                      }
-                      className="w-full bg-slate-950 border border-slate-800 rounded text-center text-xs py-1 px-0.5 text-slate-200 focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400/50 transition-colors disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
-                    />
-                  </td>
-                  {/* SAS Rrt */}
-                  <td className="py-2 px-1 text-center font-bold text-xs text-orange-400">
-                    {sasAvg || 0}
-                  </td>
-
-                  {/* Nilai Rapor */}
-                  <td className="py-2 px-1 border-l border-slate-800 text-center font-extrabold text-sm text-emerald-400 bg-emerald-500/5">
-                    {finalRapor}
-                  </td>
-
-                  {/* Deskripsi Capaian */}
-                  <td className="py-2 px-3 border-l border-slate-800 space-y-1.5">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[9px] font-bold text-emerald-500/80 uppercase tracking-wide shrink-0 w-10">Tinggi</span>
-                      <textarea
-                        rows={3}
-                        placeholder={isEditing ? "Capaian kompetensi tertinggi..." : "-"}
-                        disabled={!isEditing}
-                        value={studentScore.highest_achievement ?? ''}
-                        onChange={(e) =>
-                          handleScoreChange(student.id, 'other', 'highest_achievement', e.target.value)
-                        }
-                        onInput={autoResize}
-                        className="w-full bg-slate-950 border border-slate-800 rounded-lg p-1 text-[11px] text-slate-200 placeholder-slate-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 resize-y disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
-                      />
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[9px] font-bold text-rose-500/80 uppercase tracking-wide shrink-0 w-10">Rendah</span>
-                      <textarea
-                        rows={3}
-                        placeholder={isEditing ? "Capaian kompetensi terendah..." : "-"}
-                        disabled={!isEditing}
-                        value={studentScore.lowest_achievement ?? ''}
-                        onChange={(e) =>
-                          handleScoreChange(student.id, 'other', 'lowest_achievement', e.target.value)
-                        }
-                        onInput={autoResize}
-                        className="w-full bg-slate-950 border border-slate-800 rounded-lg p-1 text-[11px] text-slate-200 placeholder-slate-600 focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 resize-y disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
-                      />
-                    </div>
-                  </td>
-
-                  {/* Aksi Simpan / Edit Per Baris */}
-                  <td className="py-2 px-2 border-l border-slate-800 text-center sticky right-0 z-10 bg-slate-900 group-hover:bg-slate-800/50">
-                    {isEditing ? (
-                      <button
-                        onClick={() => handleSaveSingleRow(student.id)}
-                        disabled={savingRows?.[student.id]}
-                        className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 transition-colors disabled:opacity-50 cursor-pointer"
-                        title="Simpan Nilai"
-                      >
-                        {savingRows?.[student.id] ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => handleEditRow(student.id)}
-                        className="p-1.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 transition-colors cursor-pointer"
-                        title="Edit Nilai (memuat data terbaru)"
-                      >
-                        <Edit2 size={16} />
-                      </button>
-                    )}
-                  </td>
-                </tr>
+                <ScoreRow
+                  key={student.id}
+                  student={student}
+                  studentScore={studentScore}
+                  materials={materials}
+                  learningTargets={learningTargets}
+                  summatives={summatives}
+                  isEditing={!!editingRows?.[student.id]}
+                  isSaving={!!savingRows?.[student.id]}
+                  handleScoreChange={handleScoreChange}
+                  handleSaveSingleRow={handleSaveSingleRow}
+                  handleEditRow={handleEditRow}
+                  rowIdx={rowIdx}
+                />
               )
             })}
           </tbody>
@@ -489,3 +298,225 @@ export default function ScoreGrid({
     </div>
   )
 }
+
+const ScoreRow = React.memo(function ScoreRow({
+  student,
+  studentScore,
+  materials,
+  learningTargets,
+  summatives,
+  isEditing,
+  isSaving,
+  handleScoreChange,
+  handleSaveSingleRow,
+  handleEditRow,
+  rowIdx,
+}) {
+  const formativeAvg = calculateFormativeAvg(studentScore, learningTargets)
+  const summativeAvg = calculateSummativeAvg(studentScore, summatives)
+  const stsAvg = calculateAvgOfTwo(studentScore.sts_practice, studentScore.sts_written)
+  const sasAvg = calculateAvgOfTwo(studentScore.sas_practice, studentScore.sas_written)
+  const finalRapor = calculateFinalRaporScore(studentScore, learningTargets, summatives)
+
+  const rowBg = rowIdx % 2 === 0 ? '' : 'bg-slate-900/20'
+
+  const autoResize = (e) => {
+    e.target.style.height = 'auto';
+    e.target.style.height = e.target.scrollHeight + 'px';
+  };
+
+  return (
+    <tr className={`hover:bg-slate-800/30 transition-colors ${rowBg}`}>
+      {/* Nama — sticky */}
+      <td className="py-3 px-3 sticky left-0 z-10 bg-slate-900 border-r border-slate-800 group-hover:bg-slate-800/50">
+        <p className="font-semibold text-slate-200 leading-tight text-xs truncate max-w-[180px]" title={student.name}>
+          {student.name}
+        </p>
+        <p className="text-[10px] text-slate-500 font-mono mt-0.5">{student.nisn}</p>
+      </td>
+
+      {/* Formatif per TP */}
+      {materials.map((mat) => {
+        const tpsInMat = learningTargets.filter((tp) => tp.material_id === mat.id)
+        return tpsInMat.map((tp, idx) => (
+          <td
+            key={tp.id}
+            className={`py-2 px-0.5 text-center bg-indigo-500/3 ${idx === 0 ? 'border-l border-slate-800' : ''}`}
+          >
+            <input
+              type="number"
+              min="0"
+              max="100"
+              disabled={!isEditing}
+              value={studentScore.scores_formative?.[tp.id] ?? ''}
+              onChange={(e) =>
+                handleScoreChange(student.id, 'formative', tp.id, e.target.value)
+              }
+              className="w-full bg-slate-950 border border-slate-800 rounded text-center text-xs py-1 px-0.5 text-slate-200 focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400/50 transition-colors disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
+              title={`${tp.code} — ${tp.description}`}
+            />
+          </td>
+        ))
+      })}
+
+      {/* Rata-rata formatif */}
+      {learningTargets.length > 0 && (
+        <td className="py-2 px-1 border-l border-slate-800 text-center font-bold text-xs text-indigo-400 bg-indigo-500/5">
+          {formativeAvg}
+        </td>
+      )}
+
+      {/* Sumatif LM */}
+      {summatives.map((sum, idx) => (
+        <td
+          key={sum.id}
+          className={`py-2 px-0.5 text-center bg-violet-500/3 ${idx === 0 ? 'border-l border-slate-800' : ''}`}
+        >
+          <input
+            type="number"
+            min="0"
+            max="100"
+            disabled={!isEditing}
+            value={studentScore.scores_summative?.[sum.id] ?? ''}
+            onChange={(e) =>
+              handleScoreChange(student.id, 'summative', sum.id, e.target.value)
+            }
+            className="w-full bg-slate-950 border border-slate-800 rounded text-center text-xs py-1 px-0.5 text-slate-200 focus:outline-none focus:border-violet-400 focus:ring-1 focus:ring-violet-400/50 transition-colors disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
+            title={sum.name}
+          />
+        </td>
+      ))}
+      {summatives.length > 0 && (
+        <td className="py-2 px-1 border-l border-slate-800 text-center font-bold text-xs text-violet-400 bg-violet-500/5">
+          {summativeAvg}
+        </td>
+      )}
+
+      {/* STS Praktek */}
+      <td className="py-2 px-0.5 border-l border-slate-800 text-center">
+        <input
+          type="number"
+          min="0"
+          max="100"
+          disabled={!isEditing}
+          value={studentScore.sts_practice ?? ''}
+          onChange={(e) =>
+            handleScoreChange(student.id, 'other', 'sts_practice', e.target.value)
+          }
+          className="w-full bg-slate-950 border border-slate-800 rounded text-center text-xs py-1 px-0.5 text-slate-200 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400/50 transition-colors disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
+        />
+      </td>
+      {/* STS Tulis */}
+      <td className="py-2 px-0.5 text-center">
+        <input
+          type="number"
+          min="0"
+          max="100"
+          disabled={!isEditing}
+          value={studentScore.sts_written ?? ''}
+          onChange={(e) =>
+            handleScoreChange(student.id, 'other', 'sts_written', e.target.value)
+          }
+          className="w-full bg-slate-950 border border-slate-800 rounded text-center text-xs py-1 px-0.5 text-slate-200 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400/50 transition-colors disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
+        />
+      </td>
+      {/* STS Rrt */}
+      <td className="py-2 px-1 text-center font-bold text-xs text-amber-400">
+        {stsAvg || 0}
+      </td>
+
+      {/* SAS Praktek */}
+      <td className="py-2 px-0.5 border-l border-slate-800 text-center">
+        <input
+          type="number"
+          min="0"
+          max="100"
+          disabled={!isEditing}
+          value={studentScore.sas_practice ?? ''}
+          onChange={(e) =>
+            handleScoreChange(student.id, 'other', 'sas_practice', e.target.value)
+          }
+          className="w-full bg-slate-950 border border-slate-800 rounded text-center text-xs py-1 px-0.5 text-slate-200 focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400/50 transition-colors disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
+        />
+      </td>
+      {/* SAS Tulis */}
+      <td className="py-2 px-0.5 text-center">
+        <input
+          type="number"
+          min="0"
+          max="100"
+          disabled={!isEditing}
+          value={studentScore.sas_written ?? ''}
+          onChange={(e) =>
+            handleScoreChange(student.id, 'other', 'sas_written', e.target.value)
+          }
+          className="w-full bg-slate-950 border border-slate-800 rounded text-center text-xs py-1 px-0.5 text-slate-200 focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400/50 transition-colors disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
+        />
+      </td>
+      {/* SAS Rrt */}
+      <td className="py-2 px-1 text-center font-bold text-xs text-orange-400">
+        {sasAvg || 0}
+      </td>
+
+      {/* Nilai Rapor */}
+      <td className="py-2 px-1 border-l border-slate-800 text-center font-extrabold text-sm text-emerald-400 bg-emerald-500/5">
+        {finalRapor}
+      </td>
+
+      {/* Deskripsi Capaian */}
+      <td className="py-2 px-3 border-l border-slate-800 space-y-1.5">
+        <div className="flex items-center gap-1.5">
+          <span className="text-[9px] font-bold text-emerald-500/80 uppercase tracking-wide shrink-0 w-10">Tinggi</span>
+          <textarea
+            rows={3}
+            placeholder={isEditing ? "Capaian kompetensi tertinggi..." : "-"}
+            disabled={!isEditing}
+            value={studentScore.highest_achievement ?? ''}
+            onChange={(e) =>
+              handleScoreChange(student.id, 'other', 'highest_achievement', e.target.value)
+            }
+            onInput={autoResize}
+            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-1 text-[11px] text-slate-200 placeholder-slate-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 resize-y disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
+          />
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="text-[9px] font-bold text-rose-500/80 uppercase tracking-wide shrink-0 w-10">Rendah</span>
+          <textarea
+            rows={3}
+            placeholder={isEditing ? "Capaian kompetensi terendah..." : "-"}
+            disabled={!isEditing}
+            value={studentScore.lowest_achievement ?? ''}
+            onChange={(e) =>
+              handleScoreChange(student.id, 'other', 'lowest_achievement', e.target.value)
+            }
+            onInput={autoResize}
+            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-1 text-[11px] text-slate-200 placeholder-slate-600 focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 resize-y disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
+          />
+        </div>
+      </td>
+
+      {/* Aksi Simpan / Edit Per Baris */}
+      <td className="py-2 px-2 border-l border-slate-800 text-center sticky right-0 z-10 bg-slate-900 group-hover:bg-slate-800/50">
+        {isEditing ? (
+          <button
+            onClick={() => handleSaveSingleRow(student.id)}
+            disabled={isSaving}
+            className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 transition-colors disabled:opacity-50 cursor-pointer"
+            title="Simpan Nilai"
+          >
+            {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+          </button>
+        ) : (
+          <button
+            onClick={() => handleEditRow(student.id)}
+            className="p-1.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 transition-colors cursor-pointer"
+            title="Edit Nilai (memuat data terbaru)"
+          >
+            <Edit2 size={16} />
+          </button>
+        )}
+      </td>
+    </tr>
+  )
+})
+
