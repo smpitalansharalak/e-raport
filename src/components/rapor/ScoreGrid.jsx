@@ -268,6 +268,12 @@ export default function ScoreGrid({
               const finalRapor = calculateFinalRaporScore(studentScore, learningTargets, summatives)
 
               const rowBg = rowIdx % 2 === 0 ? '' : 'bg-slate-900/20'
+              
+              const autoResize = (e) => {
+                e.target.style.height = 'auto';
+                e.target.style.height = e.target.scrollHeight + 'px';
+              };
+
               const isEditing = editingRows?.[student.id]
 
               return (
@@ -413,26 +419,28 @@ export default function ScoreGrid({
                     <div className="flex items-center gap-1.5">
                       <span className="text-[9px] font-bold text-emerald-500/80 uppercase tracking-wide shrink-0 w-10">Tinggi</span>
                       <textarea
-                        rows={1}
+                        rows={3}
                         placeholder={isEditing ? "Capaian kompetensi tertinggi..." : "-"}
                         disabled={!isEditing}
                         value={studentScore.highest_achievement ?? ''}
                         onChange={(e) =>
                           handleScoreChange(student.id, 'other', 'highest_achievement', e.target.value)
                         }
+                        onInput={autoResize}
                         className="w-full bg-slate-950 border border-slate-800 rounded-lg p-1 text-[11px] text-slate-200 placeholder-slate-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 resize-y disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
                       />
                     </div>
                     <div className="flex items-center gap-1.5">
                       <span className="text-[9px] font-bold text-rose-500/80 uppercase tracking-wide shrink-0 w-10">Rendah</span>
                       <textarea
-                        rows={1}
+                        rows={3}
                         placeholder={isEditing ? "Capaian kompetensi terendah..." : "-"}
                         disabled={!isEditing}
                         value={studentScore.lowest_achievement ?? ''}
                         onChange={(e) =>
                           handleScoreChange(student.id, 'other', 'lowest_achievement', e.target.value)
                         }
+                        onInput={autoResize}
                         className="w-full bg-slate-950 border border-slate-800 rounded-lg p-1 text-[11px] text-slate-200 placeholder-slate-600 focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 resize-y disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
                       />
                     </div>
