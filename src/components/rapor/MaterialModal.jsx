@@ -17,6 +17,7 @@ export default function MaterialModal({
   handleAddTp,
   handleDeleteTp,
   onClose,
+  modalError,
 }) {
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
@@ -34,6 +35,12 @@ export default function MaterialModal({
             <X size={18} />
           </button>
         </div>
+        
+        {modalError && (
+          <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-xl flex items-center gap-2 text-xs">
+            <span className="font-semibold">Perhatian:</span> {modalError}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-4">
@@ -95,12 +102,19 @@ export default function MaterialModal({
                   onChange={(e) => setTpInputs({ ...tpInputs, code: e.target.value })}
                   className="w-20 bg-slate-950 border border-slate-850 rounded-lg p-2 text-xs text-slate-200 focus:outline-none"
                 />
-                <input
-                  type="text"
+                <textarea
+                  rows={1}
                   placeholder="Deskripsi TP..."
                   value={tpInputs.description}
                   onChange={(e) => setTpInputs({ ...tpInputs, description: e.target.value })}
-                  className="flex-1 bg-slate-950 border border-slate-850 rounded-lg p-2 text-xs text-slate-200 focus:outline-none"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleAddTp();
+                    }
+                  }}
+                  className="flex-1 bg-slate-950 border border-slate-850 rounded-lg p-2 text-xs text-slate-200 focus:outline-none resize-none overflow-hidden"
+                  style={{ minHeight: '34px' }}
                 />
               </div>
               <button

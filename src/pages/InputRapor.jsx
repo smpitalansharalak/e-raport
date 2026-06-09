@@ -45,6 +45,8 @@ export default function InputRapor() {
     handleDeleteSummative,
     handleCloseMaterialModal,
     handleCloseSummativeModal,
+    modalError,
+    setModalError,
   } = useInputRapor()
 
   return (
@@ -194,6 +196,7 @@ export default function InputRapor() {
           handleAddTp={handleAddTp}
           handleDeleteTp={handleDeleteTp}
           onClose={handleCloseMaterialModal}
+          modalError={modalError}
         />
       )}
 

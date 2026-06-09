@@ -8,6 +8,7 @@ import {
   calculateFinalRaporScore,
   toNullableNumber,
 } from '../utils/scoreCalculations'
+import Swal from 'sweetalert2'
 
 /**
  * Custom hook yang mengandung semua state & business logic
@@ -40,6 +41,7 @@ export default function useInputRapor() {
   const [newMaterialName, setNewMaterialName] = useState('')
   const [tpInputs, setTpInputs] = useState({ materialId: '', code: '', description: '' })
   const [newSummativeName, setNewSummativeName] = useState('')
+  const [modalError, setModalError] = useState('')
 
   useEffect(() => {
     if (profile) {
@@ -335,6 +337,7 @@ export default function useInputRapor() {
 
   const handleAddMaterial = async () => {
     if (!newMaterialName.trim()) return
+    setModalError('')
     try {
       const { error } = await supabase.from('materials').insert({
         report_period_id: selectedPeriodId,
@@ -345,23 +348,44 @@ export default function useInputRapor() {
       setNewMaterialName('')
       await fetchMaterialsAndTps()
     } catch (err) {
-      alert('Gagal menambah lingkup materi: ' + err.message)
+      setModalError('Gagal menambah lingkup materi: ' + err.message)
     }
   }
 
   const handleDeleteMaterial = async (id) => {
-    if (!window.confirm('Hapus lingkup materi ini? TP di dalamnya akan ikut terhapus.')) return
+    const result = await Swal.fire({
+      title: 'Hapus Lingkup Materi?',
+      text: 'TP di dalamnya akan ikut terhapus.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#10b981',
+      cancelButtonColor: '#f43f5e',
+      confirmButtonText: 'Ya, hapus!',
+      cancelButtonText: 'Batal',
+      background: '#0f172a',
+      color: '#f8fafc',
+    })
+    
+    if (!result.isConfirmed) return
+    
     try {
       const { error } = await supabase.from('materials').delete().eq('id', id)
       if (error) throw error
       await fetchMaterialsAndTps()
     } catch (err) {
-      alert('Gagal menghapus lingkup materi: ' + err.message)
+      Swal.fire({
+        title: 'Gagal',
+        text: 'Gagal menghapus lingkup materi: ' + err.message,
+        icon: 'error',
+        background: '#0f172a',
+        color: '#f8fafc',
+      })
     }
   }
 
   const handleAddTp = async () => {
     if (!tpInputs.materialId || !tpInputs.code || !tpInputs.description) return
+    setModalError('')
     try {
       const { error } = await supabase.from('learning_targets').insert({
         material_id: tpInputs.materialId,
@@ -372,18 +396,38 @@ export default function useInputRapor() {
       setTpInputs({ ...tpInputs, code: '', description: '' })
       await fetchMaterialsAndTps()
     } catch (err) {
-      alert('Gagal menambah tujuan pembelajaran: ' + err.message)
+      setModalError('Gagal menambah tujuan pembelajaran: ' + err.message)
     }
   }
 
   const handleDeleteTp = async (id) => {
-    if (!window.confirm('Hapus TP ini?')) return
+    const result = await Swal.fire({
+      title: 'Hapus TP?',
+      text: 'Anda yakin ingin menghapus Tujuan Pembelajaran ini?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#10b981',
+      cancelButtonColor: '#f43f5e',
+      confirmButtonText: 'Ya, hapus!',
+      cancelButtonText: 'Batal',
+      background: '#0f172a',
+      color: '#f8fafc',
+    })
+
+    if (!result.isConfirmed) return
+
     try {
       const { error } = await supabase.from('learning_targets').delete().eq('id', id)
       if (error) throw error
       await fetchMaterialsAndTps()
     } catch (err) {
-      alert('Gagal menghapus TP: ' + err.message)
+      Swal.fire({
+        title: 'Gagal',
+        text: 'Gagal menghapus TP: ' + err.message,
+        icon: 'error',
+        background: '#0f172a',
+        color: '#f8fafc',
+      })
     }
   }
 
@@ -399,18 +443,44 @@ export default function useInputRapor() {
       setNewSummativeName('')
       await fetchSummatives()
     } catch (err) {
-      alert('Gagal menambah sumatif: ' + err.message)
+      Swal.fire({
+        title: 'Gagal',
+        text: 'Gagal menambah sumatif: ' + err.message,
+        icon: 'error',
+        background: '#0f172a',
+        color: '#f8fafc',
+      })
     }
   }
 
   const handleDeleteSummative = async (id) => {
-    if (!window.confirm('Hapus sumatif ini?')) return
+    const result = await Swal.fire({
+      title: 'Hapus Sumatif?',
+      text: 'Anda yakin ingin menghapus Sumatif ini?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#10b981',
+      cancelButtonColor: '#f43f5e',
+      confirmButtonText: 'Ya, hapus!',
+      cancelButtonText: 'Batal',
+      background: '#0f172a',
+      color: '#f8fafc',
+    })
+
+    if (!result.isConfirmed) return
+
     try {
       const { error } = await supabase.from('summatives').delete().eq('id', id)
       if (error) throw error
       await fetchSummatives()
     } catch (err) {
-      alert('Gagal menghapus sumatif: ' + err.message)
+      Swal.fire({
+        title: 'Gagal',
+        text: 'Gagal menghapus sumatif: ' + err.message,
+        icon: 'error',
+        background: '#0f172a',
+        color: '#f8fafc',
+      })
     }
   }
 
@@ -456,6 +526,8 @@ export default function useInputRapor() {
     setTpInputs,
     newSummativeName,
     setNewSummativeName,
+    modalError,
+    setModalError,
 
     // Handlers
     handleLoadGrid,
