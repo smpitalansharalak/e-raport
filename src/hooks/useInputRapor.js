@@ -419,10 +419,11 @@ export default function useInputRapor() {
     if (!newMaterialName.trim()) return
     setModalError('')
     try {
+      const cleanName = newMaterialName.trim().replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F-\x9F]/g, '')
       const { error } = await supabase.from('materials').insert({
         report_period_id: selectedPeriodId,
         subject_id: selectedSubjectId,
-        name: newMaterialName.trim(),
+        name: cleanName,
       })
       if (error) throw error
       setNewMaterialName('')
@@ -467,10 +468,13 @@ export default function useInputRapor() {
     if (!tpInputs.materialId || !tpInputs.code || !tpInputs.description) return
     setModalError('')
     try {
+      const cleanCode = tpInputs.code.trim().replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F-\x9F]/g, '')
+      const cleanDescription = tpInputs.description.trim().replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F-\x9F]/g, '')
+
       const { error } = await supabase.from('learning_targets').insert({
         material_id: tpInputs.materialId,
-        code: tpInputs.code.trim(),
-        description: tpInputs.description.trim(),
+        code: cleanCode,
+        description: cleanDescription,
       })
       if (error) throw error
       setTpInputs({ ...tpInputs, code: '', description: '' })
@@ -514,10 +518,11 @@ export default function useInputRapor() {
   const handleAddSummative = async () => {
     if (!newSummativeName.trim()) return
     try {
+      const cleanName = newSummativeName.trim().replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F-\x9F]/g, '')
       const { error } = await supabase.from('summatives').insert({
         report_period_id: selectedPeriodId,
         subject_id: selectedSubjectId,
-        name: newSummativeName.trim(),
+        name: cleanName,
       })
       if (error) throw error
       setNewSummativeName('')
