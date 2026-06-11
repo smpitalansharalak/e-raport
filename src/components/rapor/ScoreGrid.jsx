@@ -9,13 +9,13 @@ import {
 
 const COL_WIDTHS = {
   student: 200,
-  formative: 52,
-  formativeAvg: 52,
-  summative: 58,
-  summativeAvg: 52,
-  stsOrSas: 50,
-  stsOrSasAvg: 46,
-  rapor: 68,
+  formative: 65,
+  formativeAvg: 55,
+  summative: 55,
+  summativeAvg: 55,
+  stsOrSas: 65,
+  stsOrSasAvg: 55,
+  rapor: 70,
   description: 340,
   action: 50,
 }
@@ -111,11 +111,13 @@ export default function ScoreGrid({
                 return (
                   <th
                     key={mat.id}
-                    className="py-2 px-2 border-l border-slate-800 bg-indigo-500/8 text-indigo-300 leading-tight"
+                    className="py-2 px-2 border-l border-slate-800 bg-indigo-500/8 text-indigo-300 leading-tight whitespace-normal break-words align-middle"
                     colSpan={tpsInMat.length}
                     title={mat.name}
                   >
-                    <span className="block truncate max-w-full">{mat.name}</span>
+                    <span className="block whitespace-normal break-words leading-tight">
+                      {mat.name}
+                    </span>
                   </th>
                 )
               })}
@@ -156,7 +158,17 @@ export default function ScoreGrid({
               {summatives.map((sum, idx) => (
                 <th
                   key={sum.id}
-                  className={`py-2.5 px-1 text-center truncate bg-violet-500/5 ${idx === 0 ? 'border-l border-slate-800' : ''}`}
+                  className={`
+                  py-2
+                  px-1
+                  text-center
+                  whitespace-normal
+                  break-words
+                  leading-tight
+                  min-h-[60px]
+                  bg-violet-500/5
+                  ${idx === 0 ? 'border-l border-slate-800' : ''}
+                `}
                   title={sum.name}
                 >
                   {sum.name}
@@ -295,7 +307,7 @@ const ScoreRow = React.memo(function ScoreRow({
               disabled={!isEditing}
               value={studentScore.scores_formative?.[tp.id] ?? ''}
               onChange={(e) => handleScoreChange(student.id, 'formative', tp.id, e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded text-center text-xs py-1 px-0.5 text-slate-200 focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400/50 transition-colors disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
+              className="w-full min-w-0 bg-slate-950 border border-slate-800 rounded text-center text-xs py-1 px-0.5 text-slate-200 focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400/50 transition-colors disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
               title={`${tp.code} — ${tp.description}`}
             />
           </td>
