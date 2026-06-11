@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useCallback, useRef } from 'react'
 import { Check, Loader2, Edit2 } from 'lucide-react'
 import {
   calculateFormativeAvg,
@@ -7,24 +7,19 @@ import {
   calculateFinalRaporScore,
 } from '../../utils/scoreCalculations'
 
-// Lebar kolom yang bisa disesuaikan
 const COL_WIDTHS = {
-  student: 200,      // Informasi Siswa (sticky)
-  formative: 52,     // Setiap kolom TP formatif
-  formativeAvg: 52,  // Rata-rata formatif
-  summative: 58,     // Setiap kolom sumatif
-  summativeAvg: 52,  // Rata-rata sumatif LM
-  stsOrSas: 50,      // Prak/Tulis STS atau SAS
-  stsOrSasAvg: 46,   // Rrt STS / SAS
-  rapor: 68,         // Nilai akhir rapor
-  description: 340,  // Deskripsi capaian
-  action: 50,        // Aksi per baris
+  student: 200,
+  formative: 52,
+  formativeAvg: 52,
+  summative: 58,
+  summativeAvg: 52,
+  stsOrSas: 50,
+  stsOrSasAvg: 46,
+  rapor: 68,
+  description: 340,
+  action: 50,
 }
 
-/**
- * Komponen tabel spreadsheet untuk input nilai siswa.
- * Lebar tabel dihitung secara dinamis berdasarkan jumlah kolom formatif & sumatif.
- */
 export default function ScoreGrid({
   students,
   materials,
@@ -38,7 +33,6 @@ export default function ScoreGrid({
   editingRows,
   setEditingRows,
 }) {
-  // Hitung total lebar tabel secara dinamis
   const totalWidth = useMemo(() => {
     let w = COL_WIDTHS.student
     if (learningTargets.length > 0) {
@@ -49,41 +43,28 @@ export default function ScoreGrid({
       w += summatives.length * COL_WIDTHS.summative
       w += COL_WIDTHS.summativeAvg
     }
-    // STS: Prak + Tulis + Rrt
     w += COL_WIDTHS.stsOrSas * 2 + COL_WIDTHS.stsOrSasAvg
-    // SAS: Prak + Tulis + Rrt
     w += COL_WIDTHS.stsOrSas * 2 + COL_WIDTHS.stsOrSasAvg
-    // Rapor + Deskripsi + Aksi
     w += COL_WIDTHS.rapor + COL_WIDTHS.description + COL_WIDTHS.action
     return w
   }, [learningTargets.length, summatives.length])
 
   const totalCols =
-    1 + // No/Nama
+    1 +
     learningTargets.length +
-    (learningTargets.length > 0 ? 1 : 0) + // avg formatif
+    (learningTargets.length > 0 ? 1 : 0) +
     summatives.length +
-    (summatives.length > 0 ? 1 : 0) + // avg sumatif LM
-    6 + // STS (prak, tulis, rrt) + SAS (prak, tulis, rrt)
-    1 + // Rapor
-    1 + // Deskripsi
-    1   // Aksi
+    (summatives.length > 0 ? 1 : 0) +
+    6 + 1 + 1 + 1
 
   return (
     <div className="bg-slate-900/40 border border-slate-800 rounded-2xl overflow-hidden shadow-lg">
-      {/* Info bar */}
       <div className="flex items-center gap-3 px-4 py-2.5 bg-slate-950/60 border-b border-slate-800 flex-wrap">
-        <span className="text-[11px] text-slate-500 font-medium">
-          {students.length} siswa
-        </span>
+        <span className="text-[11px] text-slate-500 font-medium">{students.length} siswa</span>
         <span className="text-slate-700">•</span>
-        <span className="text-[11px] text-indigo-400 font-medium">
-          {learningTargets.length} kolom formatif (TP)
-        </span>
+        <span className="text-[11px] text-indigo-400 font-medium">{learningTargets.length} kolom formatif (TP)</span>
         <span className="text-slate-700">•</span>
-        <span className="text-[11px] text-violet-400 font-medium">
-          {summatives.length} kolom sumatif LM
-        </span>
+        <span className="text-[11px] text-violet-400 font-medium">{summatives.length} kolom sumatif LM</span>
         <span className="ml-auto text-[10px] text-slate-600 italic hidden sm:inline">
           ← geser horizontal untuk melihat semua kolom
         </span>
@@ -99,35 +80,24 @@ export default function ScoreGrid({
             {learningTargets.map((tp) => (
               <col key={`tp-${tp.id}`} style={{ width: `${COL_WIDTHS.formative}px` }} />
             ))}
-            {learningTargets.length > 0 && (
-              <col style={{ width: `${COL_WIDTHS.formativeAvg}px` }} />
-            )}
+            {learningTargets.length > 0 && <col style={{ width: `${COL_WIDTHS.formativeAvg}px` }} />}
             {summatives.map((sum) => (
               <col key={`sum-${sum.id}`} style={{ width: `${COL_WIDTHS.summative}px` }} />
             ))}
-            {summatives.length > 0 && (
-              <col style={{ width: `${COL_WIDTHS.summativeAvg}px` }} />
-            )}
-            {/* STS: Prak, Tulis, Rrt */}
+            {summatives.length > 0 && <col style={{ width: `${COL_WIDTHS.summativeAvg}px` }} />}
             <col style={{ width: `${COL_WIDTHS.stsOrSas}px` }} />
             <col style={{ width: `${COL_WIDTHS.stsOrSas}px` }} />
             <col style={{ width: `${COL_WIDTHS.stsOrSasAvg}px` }} />
-            {/* SAS: Prak, Tulis, Rrt */}
             <col style={{ width: `${COL_WIDTHS.stsOrSas}px` }} />
             <col style={{ width: `${COL_WIDTHS.stsOrSas}px` }} />
             <col style={{ width: `${COL_WIDTHS.stsOrSasAvg}px` }} />
-            {/* Rapor */}
             <col style={{ width: `${COL_WIDTHS.rapor}px` }} />
-            {/* Deskripsi */}
             <col style={{ width: `${COL_WIDTHS.description}px`, minWidth: `${COL_WIDTHS.description}px` }} />
-            {/* Aksi */}
             <col style={{ width: `${COL_WIDTHS.action}px` }} />
           </colgroup>
 
           <thead className="sticky top-0 z-30 shadow-md">
-            {/* Row 1: Group headers */}
             <tr className="bg-slate-950 text-slate-450 text-[10px] uppercase font-bold tracking-widest text-center border-b border-slate-800/80">
-              {/* Nama siswa — sticky */}
               <th
                 className="py-2.5 px-3 text-left font-medium text-slate-500 sticky left-0 z-40 bg-slate-950 border-r border-slate-800"
                 rowSpan={2}
@@ -135,7 +105,6 @@ export default function ScoreGrid({
                 Informasi Siswa
               </th>
 
-              {/* Group formatif per material */}
               {materials.map((mat) => {
                 const tpsInMat = learningTargets.filter((tp) => tp.material_id === mat.id)
                 if (tpsInMat.length === 0) return null
@@ -151,64 +120,26 @@ export default function ScoreGrid({
                 )
               })}
 
-              {/* Rata-rata formatif */}
               {learningTargets.length > 0 && (
-                <th
-                  className="py-2 px-1 border-l border-slate-800 text-slate-500 bg-indigo-500/5"
-                  rowSpan={2}
-                >
+                <th className="py-2 px-1 border-l border-slate-800 text-slate-500 bg-indigo-500/5" rowSpan={2}>
                   Rrt<br />Form
                 </th>
               )}
 
-              {/* Sumatif Lingkup Materi */}
               {summatives.length > 0 && (
-                <th
-                  className="py-2 px-2 border-l border-slate-800 text-black"
-                  colSpan={summatives.length + 1}
-                >
+                <th className="py-2 px-2 border-l border-slate-800 text-black" colSpan={summatives.length + 1}>
                   Sumatif Lingkup Materi
                 </th>
               )}
 
-              {/* STS */}
-              <th className="py-2 px-1 border-l border-slate-800 text-black" colSpan={3}>
-                Sumatif Tengah Semester
-              </th>
-
-              {/* SAS */}
-              <th className="py-2 px-1 border-l border-slate-800 text-black" colSpan={3}>
-                Sumatif Akhir Semester
-              </th>
-
-              {/* Nilai Rapor */}
-              <th
-                className="py-2 px-1 border-l border-slate-800 bg-emerald-500/8 text-emerald-300"
-                rowSpan={2}
-              >
-                Rapor
-              </th>
-
-              {/* Deskripsi */}
-              <th
-                className="py-2 px-3 border-l border-slate-800 text-left font-medium text-slate-500"
-                rowSpan={2}
-              >
-                Deskripsi Capaian
-              </th>
-
-              {/* Aksi */}
-              <th
-                className="py-2 px-1 border-l border-slate-800 text-center font-medium text-slate-500 sticky right-0 z-40 bg-slate-950"
-                rowSpan={2}
-              >
-                Aksi
-              </th>
+              <th className="py-2 px-1 border-l border-slate-800 text-black" colSpan={3}>Sumatif Tengah Semester</th>
+              <th className="py-2 px-1 border-l border-slate-800 text-black" colSpan={3}>Sumatif Akhir Semester</th>
+              <th className="py-2 px-1 border-l border-slate-800 bg-emerald-500/8 text-emerald-300" rowSpan={2}>Rapor</th>
+              <th className="py-2 px-3 border-l border-slate-800 text-left font-medium text-slate-500" rowSpan={2}>Deskripsi Capaian</th>
+              <th className="py-2 px-1 border-l border-slate-800 text-center font-medium text-slate-500 sticky right-0 z-40 bg-slate-950" rowSpan={2}>Aksi</th>
             </tr>
 
-            {/* Row 2: Sub-headers */}
             <tr className="bg-slate-900 text-slate-400 text-[10px] font-semibold border-b border-slate-800">
-              {/* TP codes */}
               {materials.map((mat) => {
                 const tpsInMat = learningTargets.filter((tp) => tp.material_id === mat.id)
                 return tpsInMat.map((tp, idx) => (
@@ -222,7 +153,6 @@ export default function ScoreGrid({
                 ))
               })}
 
-              {/* Sumatif LM names */}
               {summatives.map((sum, idx) => (
                 <th
                   key={sum.id}
@@ -233,17 +163,12 @@ export default function ScoreGrid({
                 </th>
               ))}
               {summatives.length > 0 && (
-                <th className="py-2.5 px-1 text-center border-l border-slate-800 text-slate-500 font-bold bg-violet-500/5">
-                  Rrt
-                </th>
+                <th className="py-2.5 px-1 text-center border-l border-slate-800 text-slate-500 font-bold bg-violet-500/5">Rrt</th>
               )}
 
-              {/* STS sub-cols */}
               <th className="py-2.5 px-1 text-center border-l border-slate-800 text-black">Prak</th>
               <th className="py-2.5 px-1 text-center text-black">Tulis</th>
               <th className="py-2.5 px-1 text-center text-black font-bold">Rrt</th>
-
-              {/* SAS sub-cols */}
               <th className="py-2.5 px-1 text-center border-l border-slate-800 text-black">Prak</th>
               <th className="py-2.5 px-1 text-center text-black">Tulis</th>
               <th className="py-2.5 px-1 text-center text-black font-bold">Rrt</th>
@@ -284,7 +209,6 @@ export default function ScoreGrid({
         </table>
       </div>
 
-      {/* Footer info */}
       {students.length > 0 && (
         <div className="px-4 py-2 bg-slate-950/40 border-t border-slate-800 flex items-center justify-between">
           <span className="text-[10px] text-slate-600">
@@ -299,6 +223,9 @@ export default function ScoreGrid({
   )
 }
 
+// ─── ScoreRow ─────────────────────────────────────────────────────────────────
+// FIX: Gunakan custom comparison di React.memo agar hanya re-render saat
+// data baris ini benar-benar berubah, bukan saat baris lain berubah.
 const ScoreRow = React.memo(function ScoreRow({
   student,
   studentScore,
@@ -320,13 +247,14 @@ const ScoreRow = React.memo(function ScoreRow({
 
   const rowBg = rowIdx % 2 === 0 ? '' : 'bg-slate-900/20'
 
-  const autoResize = (e) => {
-    e.target.style.height = 'auto';
-    e.target.style.height = e.target.scrollHeight + 'px';
-  };
+  // FIX: autoResize stabil dengan useCallback, tidak dibuat ulang tiap render
+  const autoResize = useCallback((e) => {
+    e.target.style.height = 'auto'
+    e.target.style.height = e.target.scrollHeight + 'px'
+  }, [])
 
-  // Sanitasi teks dari clipboard (Word, Notepad) sebelum masuk ke state
-  const sanitizePaste = (e, field) => {
+  // FIX: sanitizePaste stabil dengan useCallback
+  const sanitizePaste = useCallback((e, field) => {
     e.preventDefault()
     const raw = e.clipboardData.getData('text/plain')
     const cleaned = raw
@@ -340,12 +268,12 @@ const ScoreRow = React.memo(function ScoreRow({
     const current = ta.value
     const next = current.substring(0, start) + cleaned + current.substring(end)
     handleScoreChange(student.id, 'other', field, next)
-  }
+  }, [student.id, handleScoreChange])
 
   return (
     <tr className={`hover:bg-slate-800/30 transition-colors ${rowBg}`}>
       {/* Nama — sticky */}
-      <td className="py-3 px-3 sticky left-0 z-10 bg-slate-900 border-r border-slate-800 group-hover:bg-slate-800/50">
+      <td className="py-3 px-3 sticky left-0 z-10 bg-slate-900 border-r border-slate-800">
         <p className="font-semibold text-slate-200 leading-tight text-xs truncate max-w-[180px]" title={student.name}>
           {student.name}
         </p>
@@ -366,9 +294,7 @@ const ScoreRow = React.memo(function ScoreRow({
               max="100"
               disabled={!isEditing}
               value={studentScore.scores_formative?.[tp.id] ?? ''}
-              onChange={(e) =>
-                handleScoreChange(student.id, 'formative', tp.id, e.target.value)
-              }
+              onChange={(e) => handleScoreChange(student.id, 'formative', tp.id, e.target.value)}
               className="w-full bg-slate-950 border border-slate-800 rounded text-center text-xs py-1 px-0.5 text-slate-200 focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400/50 transition-colors disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
               title={`${tp.code} — ${tp.description}`}
             />
@@ -395,9 +321,7 @@ const ScoreRow = React.memo(function ScoreRow({
             max="100"
             disabled={!isEditing}
             value={studentScore.scores_summative?.[sum.id] ?? ''}
-            onChange={(e) =>
-              handleScoreChange(student.id, 'summative', sum.id, e.target.value)
-            }
+            onChange={(e) => handleScoreChange(student.id, 'summative', sum.id, e.target.value)}
             className="w-full bg-slate-950 border border-slate-800 rounded text-center text-xs py-1 px-0.5 text-slate-200 focus:outline-none focus:border-violet-400 focus:ring-1 focus:ring-violet-400/50 transition-colors disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
             title={sum.name}
           />
@@ -409,71 +333,39 @@ const ScoreRow = React.memo(function ScoreRow({
         </td>
       )}
 
-      {/* STS Praktek */}
+      {/* STS */}
       <td className="py-2 px-0.5 border-l border-slate-800 text-center">
-        <input
-          type="number"
-          min="0"
-          max="100"
-          disabled={!isEditing}
+        <input type="number" min="0" max="100" disabled={!isEditing}
           value={studentScore.sts_practice ?? ''}
-          onChange={(e) =>
-            handleScoreChange(student.id, 'other', 'sts_practice', e.target.value)
-          }
+          onChange={(e) => handleScoreChange(student.id, 'other', 'sts_practice', e.target.value)}
           className="w-full bg-slate-950 border border-slate-800 rounded text-center text-xs py-1 px-0.5 text-slate-200 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400/50 transition-colors disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
         />
       </td>
-      {/* STS Tulis */}
       <td className="py-2 px-0.5 text-center">
-        <input
-          type="number"
-          min="0"
-          max="100"
-          disabled={!isEditing}
+        <input type="number" min="0" max="100" disabled={!isEditing}
           value={studentScore.sts_written ?? ''}
-          onChange={(e) =>
-            handleScoreChange(student.id, 'other', 'sts_written', e.target.value)
-          }
+          onChange={(e) => handleScoreChange(student.id, 'other', 'sts_written', e.target.value)}
           className="w-full bg-slate-950 border border-slate-800 rounded text-center text-xs py-1 px-0.5 text-slate-200 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400/50 transition-colors disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
         />
       </td>
-      {/* STS Rrt */}
-      <td className="py-2 px-1 text-center font-bold text-xs text-amber-400">
-        {stsAvg || 0}
-      </td>
+      <td className="py-2 px-1 text-center font-bold text-xs text-amber-400">{stsAvg || 0}</td>
 
-      {/* SAS Praktek */}
+      {/* SAS */}
       <td className="py-2 px-0.5 border-l border-slate-800 text-center">
-        <input
-          type="number"
-          min="0"
-          max="100"
-          disabled={!isEditing}
+        <input type="number" min="0" max="100" disabled={!isEditing}
           value={studentScore.sas_practice ?? ''}
-          onChange={(e) =>
-            handleScoreChange(student.id, 'other', 'sas_practice', e.target.value)
-          }
+          onChange={(e) => handleScoreChange(student.id, 'other', 'sas_practice', e.target.value)}
           className="w-full bg-slate-950 border border-slate-800 rounded text-center text-xs py-1 px-0.5 text-slate-200 focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400/50 transition-colors disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
         />
       </td>
-      {/* SAS Tulis */}
       <td className="py-2 px-0.5 text-center">
-        <input
-          type="number"
-          min="0"
-          max="100"
-          disabled={!isEditing}
+        <input type="number" min="0" max="100" disabled={!isEditing}
           value={studentScore.sas_written ?? ''}
-          onChange={(e) =>
-            handleScoreChange(student.id, 'other', 'sas_written', e.target.value)
-          }
+          onChange={(e) => handleScoreChange(student.id, 'other', 'sas_written', e.target.value)}
           className="w-full bg-slate-950 border border-slate-800 rounded text-center text-xs py-1 px-0.5 text-slate-200 focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400/50 transition-colors disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
         />
       </td>
-      {/* SAS Rrt */}
-      <td className="py-2 px-1 text-center font-bold text-xs text-orange-400">
-        {sasAvg || 0}
-      </td>
+      <td className="py-2 px-1 text-center font-bold text-xs text-orange-400">{sasAvg || 0}</td>
 
       {/* Nilai Rapor */}
       <td className="py-2 px-1 border-l border-slate-800 text-center font-extrabold text-sm text-emerald-400 bg-emerald-500/5">
@@ -484,38 +376,36 @@ const ScoreRow = React.memo(function ScoreRow({
       <td className="py-2 px-3 border-l border-slate-800 space-y-1.5">
         <div className="flex items-center gap-1.5">
           <span className="text-[9px] font-bold text-emerald-500/80 uppercase tracking-wide shrink-0 w-10">Tinggi</span>
-          <textarea
-            rows={3}
-            placeholder={isEditing ? "Capaian kompetensi tertinggi..." : "-"}
+          <DebouncedTextarea
             disabled={!isEditing}
             value={studentScore.highest_achievement ?? ''}
-            onChange={(e) =>
-              handleScoreChange(student.id, 'other', 'highest_achievement', e.target.value)
-            }
-            onPaste={(e) => sanitizePaste(e, 'highest_achievement')}
-            onInput={autoResize}
-            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-1 text-[11px] text-slate-200 placeholder-slate-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 resize-y disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
+            placeholder={isEditing ? 'Capaian kompetensi tertinggi...' : '-'}
+            field="highest_achievement"
+            studentId={student.id}
+            handleScoreChange={handleScoreChange}
+            autoResize={autoResize}
+            sanitizePaste={sanitizePaste}
+            colorClass="focus:border-emerald-500 focus:ring-emerald-500"
           />
         </div>
         <div className="flex items-center gap-1.5">
           <span className="text-[9px] font-bold text-rose-500/80 uppercase tracking-wide shrink-0 w-10">Rendah</span>
-          <textarea
-            rows={3}
-            placeholder={isEditing ? "Capaian kompetensi terendah..." : "-"}
+          <DebouncedTextarea
             disabled={!isEditing}
             value={studentScore.lowest_achievement ?? ''}
-            onChange={(e) =>
-              handleScoreChange(student.id, 'other', 'lowest_achievement', e.target.value)
-            }
-            onPaste={(e) => sanitizePaste(e, 'lowest_achievement')}
-            onInput={autoResize}
-            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-1 text-[11px] text-slate-200 placeholder-slate-600 focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 resize-y disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
+            placeholder={isEditing ? 'Capaian kompetensi terendah...' : '-'}
+            field="lowest_achievement"
+            studentId={student.id}
+            handleScoreChange={handleScoreChange}
+            autoResize={autoResize}
+            sanitizePaste={sanitizePaste}
+            colorClass="focus:border-rose-500 focus:ring-rose-500"
           />
         </div>
       </td>
 
-      {/* Aksi Simpan / Edit Per Baris */}
-      <td className="py-2 px-2 border-l border-slate-800 text-center sticky right-0 z-10 bg-slate-900 group-hover:bg-slate-800/50">
+      {/* Aksi */}
+      <td className="py-2 px-2 border-l border-slate-800 text-center sticky right-0 z-10 bg-slate-900">
         {isEditing ? (
           <button
             onClick={() => handleSaveSingleRow(student.id)}
@@ -529,7 +419,7 @@ const ScoreRow = React.memo(function ScoreRow({
           <button
             onClick={() => handleEditRow(student.id)}
             className="p-1.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 transition-colors cursor-pointer"
-            title="Edit Nilai (memuat data terbaru)"
+            title="Edit Nilai"
           >
             <Edit2 size={16} />
           </button>
@@ -537,5 +427,106 @@ const ScoreRow = React.memo(function ScoreRow({
       </td>
     </tr>
   )
+}, (prevProps, nextProps) => {
+  // Custom equality: hanya re-render jika data baris ini yang berubah
+  return (
+    prevProps.studentScore === nextProps.studentScore &&
+    prevProps.isEditing === nextProps.isEditing &&
+    prevProps.isSaving === nextProps.isSaving &&
+    prevProps.learningTargets === nextProps.learningTargets &&
+    prevProps.summatives === nextProps.summatives &&
+    prevProps.materials === nextProps.materials
+    // handleScoreChange, handleSaveSingleRow, handleEditRow selalu stabil (zero-dep useCallback)
+    // sehingga tidak perlu dibandingkan
+  )
 })
 
+// ─── DebouncedTextarea ────────────────────────────────────────────────────────
+// FIX: Textarea deskripsi menggunakan local state + debounce ke parent.
+// Ini mencegah setiap keystroke memicu re-render seluruh tabel (30+ baris).
+// Debounce 300ms: perubahan dikirim ke parent hanya setelah user berhenti mengetik,
+// sedangkan tampilan tetap responsif karena local state langsung diupdate.
+const DebouncedTextarea = React.memo(function DebouncedTextarea({
+  disabled,
+  value,
+  placeholder,
+  field,
+  studentId,
+  handleScoreChange,
+  autoResize,
+  sanitizePaste,
+  colorClass,
+}) {
+  const [localValue, setLocalValue] = React.useState(value)
+  const debounceRef = useRef(null)
+  const isMountedRef = useRef(true)
+
+  // Sync dari parent (misal saat handleEditRow menarik data terbaru dari DB)
+  React.useEffect(() => {
+    setLocalValue(value)
+  }, [value])
+
+  React.useEffect(() => {
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
+  }, [])
+
+  const handleChange = useCallback((e) => {
+    const newVal = e.target.value
+    setLocalValue(newVal) // update lokal langsung → tampilan responsif
+
+    // Debounce update ke parent state (mencegah re-render seluruh grid)
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      if (isMountedRef.current) {
+        handleScoreChange(studentId, 'other', field, newVal)
+      }
+    }, 300)
+
+    // autoResize tetap instan
+    autoResize(e)
+  }, [studentId, field, handleScoreChange, autoResize])
+
+  const handlePaste = useCallback((e) => {
+    // Untuk paste, flush debounce dan update langsung setelah sanitasi
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    e.preventDefault()
+    const raw = e.clipboardData.getData('text/plain')
+    const cleaned = raw
+      .replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '')
+      .replace(/[\u00AD\u200B\u200C\u200D\u200E\u200F\uFEFF\uFFFC\u2028\u2029]/g, '')
+      .replace(/[ \t]+/g, ' ')
+      .replace(/\r\n|\r/g, '\n')
+    const ta = e.target
+    const start = ta.selectionStart
+    const end = ta.selectionEnd
+    const next = localValue.substring(0, start) + cleaned + localValue.substring(end)
+    setLocalValue(next)
+    handleScoreChange(studentId, 'other', field, next)
+  }, [localValue, studentId, field, handleScoreChange])
+
+  // Saat blur, pastikan value terbaru tersinkron (flush debounce)
+  const handleBlur = useCallback(() => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current)
+      handleScoreChange(studentId, 'other', field, localValue)
+    }
+  }, [studentId, field, localValue, handleScoreChange])
+
+  return (
+    <textarea
+      rows={3}
+      placeholder={placeholder}
+      disabled={disabled}
+      value={localValue}
+      onChange={handleChange}
+      onPaste={handlePaste}
+      onBlur={handleBlur}
+      onInput={autoResize}
+      className={`w-full bg-slate-950 border border-slate-800 rounded-lg p-1 text-[11px] text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-1 resize-y disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default ${colorClass}`}
+    />
+  )
+})

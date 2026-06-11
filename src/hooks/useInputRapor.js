@@ -13,26 +13,27 @@ import Swal from 'sweetalert2'
 /**
  * Sanitasi teks dari karakter tidak terlihat yang sering terbawa saat copy-paste
  * dari Microsoft Word, Notepad, atau aplikasi lain.
- * Menghapus: null bytes, control chars, zero-width spaces, soft hyphens, BOM, dll.
  */
 function sanitizeText(str) {
   if (typeof str !== 'string') return str
   return str
-    // Hapus null bytes dan ASCII control characters (kecuali tab \x09 dan newline \x0A \x0D)
     .replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '')
-    // Hapus karakter invisible Unicode dari Word: soft hyphen, zero-width space,
-    // zero-width non-joiner, zero-width joiner, BOM, object replacement char, dll
     .replace(/[\u00AD\u200B\u200C\u200D\u200E\u200F\uFEFF\uFFFC\u2028\u2029]/g, '')
-    // Normalkan multiple spaces/tabs menjadi satu spasi, tapi pertahankan newlines
     .replace(/[ \t]+/g, ' ')
-    // Normalkan Windows line endings (\r\n) dan Mac (\r) menjadi Unix (\n)
     .replace(/\r\n|\r/g, '\n')
     .trim()
 }
 
 /**
- * Custom hook yang mengandung semua state & business logic
- * untuk halaman Input Nilai Rapor.
+ * Custom hook untuk Input Nilai Rapor.
+ *
+ * PERBAIKAN PERFORMA (laptop RAM 6GB sering hang):
+ * 1. learningTargetsRef + summativesRef → handleSaveSingleRow tidak perlu
+ *    di-recreate saat array berubah, memutus re-render chain di seluruh ScoreGrid.
+ * 2. selectedPeriodIdRef + selectedSubjectIdRef → sama, untuk save & edit row.
+ * 3. handleScoreChange sudah pakai useCallback tanpa dep → stabil.
+ * 4. Semua handler save/edit stabil → ScoreRow React.memo benar-benar bekerja,
+ *    hanya baris yang berubah yang re-render, bukan seluruh tabel.
  */
 export default function useInputRapor() {
   const { profile } = useAuth()
@@ -63,22 +64,24 @@ export default function useInputRapor() {
   const [newSummativeName, setNewSummativeName] = useState('')
   const [modalError, setModalError] = useState('')
 
-  // Keep references to state values to prevent recreation of callback handlers
+  // ── Refs untuk nilai terbaru tanpa memicu re-render ──────────────────────────
   const scoresRef = useRef(scores)
   const savingRowsRef = useRef(savingRows)
+  // FIX: Tambahkan refs untuk arrays & IDs agar callback tidak perlu di-recreate
+  const learningTargetsRef = useRef(learningTargets)
+  const summativesRef = useRef(summatives)
+  const selectedPeriodIdRef = useRef(selectedPeriodId)
+  const selectedSubjectIdRef = useRef(selectedSubjectId)
+
+  useEffect(() => { scoresRef.current = scores }, [scores])
+  useEffect(() => { savingRowsRef.current = savingRows }, [savingRows])
+  useEffect(() => { learningTargetsRef.current = learningTargets }, [learningTargets])
+  useEffect(() => { summativesRef.current = summatives }, [summatives])
+  useEffect(() => { selectedPeriodIdRef.current = selectedPeriodId }, [selectedPeriodId])
+  useEffect(() => { selectedSubjectIdRef.current = selectedSubjectId }, [selectedSubjectId])
 
   useEffect(() => {
-    scoresRef.current = scores
-  }, [scores])
-
-  useEffect(() => {
-    savingRowsRef.current = savingRows
-  }, [savingRows])
-
-  useEffect(() => {
-    if (profile) {
-      fetchDropdowns()
-    }
+    if (profile) fetchDropdowns()
   }, [profile])
 
   const fetchDropdowns = async () => {
@@ -146,20 +149,54 @@ export default function useInputRapor() {
         }
       }
 
-      const { data: sData, error: sErr } = await supabase
-        .from('students')
-        .select('id, name, nisn')
-        .eq('class_name', selectedPeriod.class_name)
-        .order('name', { ascending: true })
-      if (sErr) throw sErr
-      setStudents(sData || [])
-
-      // Fetch materials, TPs, summatives secara paralel
-      await Promise.all([
-        fetchMaterialsAndTpsInternal(),
-        fetchSummativesInternal(),
+      // Fetch semua data secara paralel untuk mengurangi waktu tunggu
+      const [studentsResult, materialsResult, summativesResult] = await Promise.all([
+        supabase
+          .from('students')
+          .select('id, name, nisn')
+          .eq('class_name', selectedPeriod.class_name)
+          .eq('status', 'aktif')
+          .order('name', { ascending: true }),
+        supabase
+          .from('materials')
+          .select('id, name')
+          .eq('report_period_id', selectedPeriodId)
+          .eq('subject_id', selectedSubjectId)
+          .order('created_at', { ascending: true }),
+        supabase
+          .from('summatives')
+          .select('id, name')
+          .eq('report_period_id', selectedPeriodId)
+          .eq('subject_id', selectedSubjectId)
+          .order('created_at', { ascending: true }),
       ])
 
+      if (studentsResult.error) throw studentsResult.error
+      if (materialsResult.error) throw materialsResult.error
+      if (summativesResult.error) throw summativesResult.error
+
+      const sData = studentsResult.data || []
+      const mData = materialsResult.data || []
+      const sumData = summativesResult.data || []
+
+      setStudents(sData)
+      setMaterials(mData)
+      setSummatives(sumData)
+
+      // Fetch TPs jika ada materials
+      let tpData = []
+      if (mData.length > 0) {
+        const { data: tps, error: tpErr } = await supabase
+          .from('learning_targets')
+          .select('id, code, material_id, description')
+          .in('material_id', mData.map((m) => m.id))
+          .order('code', { ascending: true })
+        if (tpErr) throw tpErr
+        tpData = tps || []
+      }
+      setLearningTargets(tpData)
+
+      // Fetch scores
       const { data: scoreData, error: scoreErr } = await supabase
         .from('student_scores')
         .select('student_id, scores_formative, scores_summative, sts_practice, sts_written, sas_practice, sas_written, highest_achievement, lowest_achievement')
@@ -167,6 +204,7 @@ export default function useInputRapor() {
         .eq('subject_id', selectedSubjectId)
       if (scoreErr) throw scoreErr
 
+      // Build score map
       const sMap = {}
       sData.forEach((s) => {
         sMap[s.id] = {
@@ -188,10 +226,10 @@ export default function useInputRapor() {
             ...sMap[row.student_id],
             scores_formative: row.scores_formative || {},
             scores_summative: row.scores_summative || {},
-            sts_practice: row.sts_practice !== null && row.sts_practice !== undefined ? String(row.sts_practice) : '',
-            sts_written: row.sts_written !== null && row.sts_written !== undefined ? String(row.sts_written) : '',
-            sas_practice: row.sas_practice !== null && row.sas_practice !== undefined ? String(row.sas_practice) : '',
-            sas_written: row.sas_written !== null && row.sas_written !== undefined ? String(row.sas_written) : '',
+            sts_practice: row.sts_practice != null ? String(row.sts_practice) : '',
+            sts_written: row.sts_written != null ? String(row.sts_written) : '',
+            sas_practice: row.sas_practice != null ? String(row.sas_practice) : '',
+            sas_written: row.sas_written != null ? String(row.sas_written) : '',
             highest_achievement: row.highest_achievement || '',
             lowest_achievement: row.lowest_achievement || '',
           }
@@ -208,51 +246,15 @@ export default function useInputRapor() {
     }
   }
 
-  // Internal fetch yang return data tanpa set state (untuk paralel load)
-  const fetchMaterialsAndTpsInternal = async () => {
+  // ── Fetch helper: hanya refresh kolom, TIDAK reset scores ────────────────────
+  const fetchMaterialsAndTps = useCallback(async () => {
+    const periodId = selectedPeriodIdRef.current
+    const subjectId = selectedSubjectIdRef.current
     const { data: mData, error: mErr } = await supabase
       .from('materials')
       .select('id, name')
-      .eq('report_period_id', selectedPeriodId)
-      .eq('subject_id', selectedSubjectId)
-      .order('created_at', { ascending: true })
-    if (mErr) throw mErr
-    setMaterials(mData || [])
-
-    if (mData && mData.length > 0) {
-      const { data: tpData, error: tpErr } = await supabase
-        .from('learning_targets')
-        .select('id, code, material_id, description')
-        .in('material_id', mData.map((m) => m.id))
-        .order('code', { ascending: true })
-      if (tpErr) throw tpErr
-      setLearningTargets(tpData || [])
-      return { materials: mData, learningTargets: tpData }
-    } else {
-      setLearningTargets([])
-      return { materials: [], learningTargets: [] }
-    }
-  }
-
-  const fetchSummativesInternal = async () => {
-    const { data: sumData, error: sumErr } = await supabase
-      .from('summatives')
-      .select('id, name')
-      .eq('report_period_id', selectedPeriodId)
-      .eq('subject_id', selectedSubjectId)
-      .order('created_at', { ascending: true })
-    if (sumErr) throw sumErr
-    setSummatives(sumData || [])
-    return sumData || []
-  }
-
-  // Untuk dipanggil dari modal — hanya refresh struktur kolom, TIDAK reset scores
-  const fetchMaterialsAndTps = async () => {
-    const { data: mData, error: mErr } = await supabase
-      .from('materials')
-      .select('id, name')
-      .eq('report_period_id', selectedPeriodId)
-      .eq('subject_id', selectedSubjectId)
+      .eq('report_period_id', periodId)
+      .eq('subject_id', subjectId)
       .order('created_at', { ascending: true })
     if (mErr) throw mErr
     setMaterials(mData || [])
@@ -268,36 +270,31 @@ export default function useInputRapor() {
     } else {
       setLearningTargets([])
     }
-  }
+  }, []) // ← stable, tidak ada dep yang berubah-ubah
 
-  const fetchSummatives = async () => {
+  const fetchSummatives = useCallback(async () => {
+    const periodId = selectedPeriodIdRef.current
+    const subjectId = selectedSubjectIdRef.current
     const { data: sumData, error: sumErr } = await supabase
       .from('summatives')
       .select('id, name')
-      .eq('report_period_id', selectedPeriodId)
-      .eq('subject_id', selectedSubjectId)
+      .eq('report_period_id', periodId)
+      .eq('subject_id', subjectId)
       .order('created_at', { ascending: true })
     if (sumErr) throw sumErr
     setSummatives(sumData || [])
-  }
+  }, []) // ← stable
 
-  // handleScoreChange — konversi Number hanya untuk field numerik
+  // ── handleScoreChange: STABIL, tidak pernah berubah referensi ────────────────
   const handleScoreChange = useCallback((studentId, type, field, value) => {
     setScores((prev) => {
       const updated = { ...prev[studentId] }
 
       if (type === 'formative') {
-        updated.scores_formative = {
-          ...updated.scores_formative,
-          [field]: value,
-        }
+        updated.scores_formative = { ...updated.scores_formative, [field]: value }
       } else if (type === 'summative') {
-        updated.scores_summative = {
-          ...updated.scores_summative,
-          [field]: value,
-        }
+        updated.scores_summative = { ...updated.scores_summative, [field]: value }
       } else {
-        // Gunakan sanitizeText untuk field teks agar invisible chars dari Word tidak lolos
         if (typeof value === 'string' && (field === 'highest_achievement' || field === 'lowest_achievement')) {
           updated[field] = sanitizeText(value)
         } else {
@@ -305,20 +302,22 @@ export default function useInputRapor() {
         }
       }
 
-      return {
-        ...prev,
-        [studentId]: updated,
-      }
+      return { ...prev, [studentId]: updated }
     })
-  }, [])
+  }, []) // ← ZERO deps → referensi tidak pernah berubah → ScoreRow.memo efektif
 
+  // ── handleSaveSingleRow: STABIL karena pakai refs, bukan closure ─────────────
   const handleSaveSingleRow = useCallback(async (studentId) => {
-    // Prevent duplicate saves
     if (savingRowsRef.current?.[studentId]) return
     setSavingRows((prev) => ({ ...prev, [studentId]: true }))
 
     try {
       const studentScore = scoresRef.current[studentId]
+      // Ambil dari refs, bukan closure → tidak perlu LT/summatives di dep array
+      const currentLearningTargets = learningTargetsRef.current
+      const currentSummatives = summativesRef.current
+      const periodId = selectedPeriodIdRef.current
+      const subjectId = selectedSubjectIdRef.current
 
       const scoresFormativeNumeric = {}
       Object.entries(studentScore.scores_formative || {}).forEach(([key, val]) => {
@@ -332,12 +331,12 @@ export default function useInputRapor() {
         if (n !== null) scoresSummativeNumeric[key] = n
       })
 
-      const finalScore = calculateFinalRaporScore(studentScore, learningTargets, summatives)
+      const finalScore = calculateFinalRaporScore(studentScore, currentLearningTargets, currentSummatives)
 
       const payload = {
         student_id: studentId,
-        report_period_id: selectedPeriodId,
-        subject_id: selectedSubjectId,
+        report_period_id: periodId,
+        subject_id: subjectId,
         scores_formative: scoresFormativeNumeric,
         scores_summative: scoresSummativeNumeric,
         sts_practice: toNullableNumber(studentScore.sts_practice),
@@ -351,9 +350,7 @@ export default function useInputRapor() {
 
       const { error: saveErr } = await supabase
         .from('student_scores')
-        .upsert(payload, {
-          onConflict: 'student_id,report_period_id,subject_id',
-        })
+        .upsert(payload, { onConflict: 'student_id,report_period_id,subject_id' })
 
       if (saveErr) throw saveErr
 
@@ -363,7 +360,8 @@ export default function useInputRapor() {
         toast: true,
         position: 'top-end',
         showConfirmButton: false,
-        timer: 3000,
+        timer: 2000,
+        timerProgressBar: true,
         icon: 'success',
         title: 'Tersimpan',
         background: '#0f172a',
@@ -384,53 +382,43 @@ export default function useInputRapor() {
     } finally {
       setSavingRows((prev) => ({ ...prev, [studentId]: false }))
     }
-  }, [selectedPeriodId, selectedSubjectId, learningTargets, summatives])
+  }, []) // ← ZERO deps → referensi stabil → ScoreRow.memo efektif
 
+  // ── handleEditRow: STABIL karena pakai refs ──────────────────────────────────
   const handleEditRow = useCallback(async (studentId) => {
     try {
+      const periodId = selectedPeriodIdRef.current
+      const subjectId = selectedSubjectIdRef.current
+
       const { data, error: fetchErr } = await supabase
         .from('student_scores')
         .select(
           'student_id, scores_formative, scores_summative, sts_practice, sts_written, sas_practice, sas_written, highest_achievement, lowest_achievement'
         )
         .eq('student_id', studentId)
-        .eq('report_period_id', selectedPeriodId)
-        .eq('subject_id', selectedSubjectId)
+        .eq('report_period_id', periodId)
+        .eq('subject_id', subjectId)
         .maybeSingle()
 
       if (fetchErr) throw fetchErr
 
       if (data) {
-        // Update scores state dengan data terbaru dari DB
         setScores((prev) => ({
           ...prev,
           [studentId]: {
             ...prev[studentId],
             scores_formative: data.scores_formative || {},
             scores_summative: data.scores_summative || {},
-            sts_practice:
-              data.sts_practice !== null && data.sts_practice !== undefined
-                ? String(data.sts_practice)
-                : '',
-            sts_written:
-              data.sts_written !== null && data.sts_written !== undefined
-                ? String(data.sts_written)
-                : '',
-            sas_practice:
-              data.sas_practice !== null && data.sas_practice !== undefined
-                ? String(data.sas_practice)
-                : '',
-            sas_written:
-              data.sas_written !== null && data.sas_written !== undefined
-                ? String(data.sas_written)
-                : '',
+            sts_practice: data.sts_practice != null ? String(data.sts_practice) : '',
+            sts_written: data.sts_written != null ? String(data.sts_written) : '',
+            sas_practice: data.sas_practice != null ? String(data.sas_practice) : '',
+            sas_written: data.sas_written != null ? String(data.sas_written) : '',
             highest_achievement: data.highest_achievement || '',
             lowest_achievement: data.lowest_achievement || '',
           },
         }))
       }
 
-      // Aktifkan mode edit setelah data di-load
       setEditingRows((prev) => ({ ...prev, [studentId]: true }))
     } catch (err) {
       console.error('Error fetching row data for edit:', err)
@@ -445,8 +433,9 @@ export default function useInputRapor() {
         color: '#f8fafc',
       })
     }
-  }, [selectedPeriodId, selectedSubjectId])
+  }, []) // ← ZERO deps → stabil
 
+  // ── Modal handlers ───────────────────────────────────────────────────────────
   const handleAddMaterial = async () => {
     setModalError('')
     const cleanName = sanitizeText(newMaterialName)
@@ -456,15 +445,14 @@ export default function useInputRapor() {
     }
     try {
       const { error } = await supabase.from('materials').insert({
-        report_period_id: selectedPeriodId,
-        subject_id: selectedSubjectId,
+        report_period_id: selectedPeriodIdRef.current,
+        subject_id: selectedSubjectIdRef.current,
         name: cleanName,
       })
       if (error) throw error
       setNewMaterialName('')
       await fetchMaterialsAndTps()
     } catch (err) {
-      console.error('Error in handleAddMaterial:', err)
       setModalError('Gagal menambah lingkup materi: ' + err.message)
     }
   }
@@ -482,44 +470,24 @@ export default function useInputRapor() {
       background: '#0f172a',
       color: '#f8fafc',
     })
-
     if (!result.isConfirmed) return
-
     try {
       const { error } = await supabase.from('materials').delete().eq('id', id)
       if (error) throw error
       await fetchMaterialsAndTps()
     } catch (err) {
-      Swal.fire({
-        title: 'Gagal',
-        text: 'Gagal menghapus lingkup materi: ' + err.message,
-        icon: 'error',
-        background: '#0f172a',
-        color: '#f8fafc',
-      })
+      Swal.fire({ title: 'Gagal', text: err.message, icon: 'error', background: '#0f172a', color: '#f8fafc' })
     }
   }
 
   const handleAddTp = async () => {
     setModalError('')
-    
-    // Sanitasi dulu sebelum validasi agar invisible chars tidak lolos
     const cleanCode = sanitizeText(tpInputs.code)
     const cleanDescription = sanitizeText(tpInputs.description)
 
-    // Validasi setelah sanitasi
-    if (!tpInputs.materialId) {
-      setModalError('Gagal: Pilih Lingkup Materi (Bab) terlebih dahulu.')
-      return
-    }
-    if (!cleanCode) {
-      setModalError('Gagal: Kolom Kode TP harus diisi (contoh: TP1).')
-      return
-    }
-    if (!cleanDescription) {
-      setModalError('Gagal: Deskripsi TP kosong atau hanya berisi karakter tidak valid. Ketik ulang teks ini.')
-      return
-    }
+    if (!tpInputs.materialId) { setModalError('Gagal: Pilih Lingkup Materi (Bab) terlebih dahulu.'); return }
+    if (!cleanCode) { setModalError('Gagal: Kolom Kode TP harus diisi (contoh: TP1).'); return }
+    if (!cleanDescription) { setModalError('Gagal: Deskripsi TP kosong atau hanya berisi karakter tidak valid. Ketik ulang teks ini.'); return }
 
     try {
       const { error } = await supabase.from('learning_targets').insert({
@@ -527,16 +495,10 @@ export default function useInputRapor() {
         code: cleanCode,
         description: cleanDescription,
       })
-      
-      if (error) {
-        console.error('Supabase insert error:', error)
-        throw error
-      }
-      
+      if (error) throw error
       setTpInputs({ ...tpInputs, code: '', description: '' })
       await fetchMaterialsAndTps()
     } catch (err) {
-      console.error('Error in handleAddTp:', err)
       setModalError('Gagal menambah TP: ' + err.message)
     }
   }
@@ -554,51 +516,36 @@ export default function useInputRapor() {
       background: '#0f172a',
       color: '#f8fafc',
     })
-
     if (!result.isConfirmed) return
-
     try {
       const { error } = await supabase.from('learning_targets').delete().eq('id', id)
       if (error) throw error
       await fetchMaterialsAndTps()
     } catch (err) {
-      Swal.fire({
-        title: 'Gagal',
-        text: 'Gagal menghapus TP: ' + err.message,
-        icon: 'error',
-        background: '#0f172a',
-        color: '#f8fafc',
-      })
+      Swal.fire({ title: 'Gagal', text: err.message, icon: 'error', background: '#0f172a', color: '#f8fafc' })
     }
   }
 
   const handleAddSummative = async () => {
     if (!newSummativeName.trim()) return
     try {
-      const cleanName = newSummativeName.trim().replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F-\x9F]/g, '')
+      const cleanName = sanitizeText(newSummativeName)
       const { error } = await supabase.from('summatives').insert({
-        report_period_id: selectedPeriodId,
-        subject_id: selectedSubjectId,
+        report_period_id: selectedPeriodIdRef.current,
+        subject_id: selectedSubjectIdRef.current,
         name: cleanName,
       })
       if (error) throw error
       setNewSummativeName('')
       await fetchSummatives()
     } catch (err) {
-      Swal.fire({
-        title: 'Gagal',
-        text: 'Gagal menambah sumatif: ' + err.message,
-        icon: 'error',
-        background: '#0f172a',
-        color: '#f8fafc',
-      })
+      Swal.fire({ title: 'Gagal', text: err.message, icon: 'error', background: '#0f172a', color: '#f8fafc' })
     }
   }
 
   const handleDeleteSummative = async (id) => {
     const result = await Swal.fire({
       title: 'Hapus Sumatif?',
-      text: 'Anda yakin ingin menghapus Sumatif ini?',
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#10b981',
@@ -608,37 +555,27 @@ export default function useInputRapor() {
       background: '#0f172a',
       color: '#f8fafc',
     })
-
     if (!result.isConfirmed) return
-
     try {
       const { error } = await supabase.from('summatives').delete().eq('id', id)
       if (error) throw error
       await fetchSummatives()
     } catch (err) {
-      Swal.fire({
-        title: 'Gagal',
-        text: 'Gagal menghapus sumatif: ' + err.message,
-        icon: 'error',
-        background: '#0f172a',
-        color: '#f8fafc',
-      })
+      Swal.fire({ title: 'Gagal', text: err.message, icon: 'error', background: '#0f172a', color: '#f8fafc' })
     }
   }
 
-  // Tutup modal tanpa memanggil handleLoadGrid() agar scores tidak di-reset
-  const handleCloseMaterialModal = async () => {
+  const handleCloseMaterialModal = useCallback(async () => {
     setShowMaterialModal(false)
     await fetchMaterialsAndTps()
-  }
+  }, [fetchMaterialsAndTps])
 
-  const handleCloseSummativeModal = async () => {
+  const handleCloseSummativeModal = useCallback(async () => {
     setShowSummativeModal(false)
     await fetchSummatives()
-  }
+  }, [fetchSummatives])
 
   return {
-    // State
     periods,
     teacherSubjects,
     selectedPeriodId,
@@ -672,7 +609,6 @@ export default function useInputRapor() {
     modalError,
     setModalError,
 
-    // Handlers
     handleLoadGrid,
     handleScoreChange,
     handleSaveSingleRow,
@@ -686,7 +622,6 @@ export default function useInputRapor() {
     handleCloseMaterialModal,
     handleCloseSummativeModal,
 
-    // Calculation helpers (re-exported for ScoreGrid)
     calculateFormativeAvg,
     calculateSummativeAvg,
     calculateAvgOfTwo,
