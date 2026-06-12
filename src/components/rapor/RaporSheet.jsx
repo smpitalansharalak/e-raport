@@ -15,7 +15,7 @@ const RaporSheet = React.forwardRef(function RaporSheet(
   return (
     <div
       ref={ref}
-      className="bg-white text-black p-8 select-none"
+      className="bg-white text-black p-4 select-none"
       style={{ fontFamily: 'Arial, sans-serif', minWidth: '600px' }}
     >
       {/* ── Header ── */}
@@ -120,20 +120,48 @@ const RaporSheet = React.forwardRef(function RaporSheet(
         </div>
 
         {/* ── Tanda Tangan ── */}
-        <div className="grid grid-cols-2 text-xs gap-y-12 mt-10">
-          <div className="text-center">
-            <p className="mb-16">Orang Tua / Wali Murid,</p>
-            <p className="font-bold underline uppercase">{previewStudent.parent_name || '............................'}</p>
+        <div className="mt-10">
+          {/* Baris judul */}
+          <div className="grid grid-cols-2 text-xs">
+            <div className="text-center">
+              <div className="h-4"></div>
+              <p>Orang Tua / Wali Murid,</p>
+            </div>
+
+            <div className="text-center">
+              <p>Kota Kupang, Juni 2026</p>
+              <p>Wali Kelas,</p>
+            </div>
           </div>
-          <div className="text-center">
-            <p className="mb-0">Kota Kupang, Desember 2025</p>
-            <p className="mb-16">Wali Kelas,</p>
-            <p className="font-bold underline uppercase">{activePeriod?.wali_kelas?.name || '............................'}</p>
+
+          {/* Ruang tanda tangan */}
+          <div style={{ height: '70px' }}></div>
+
+          {/* Nama */}
+          <div className="grid grid-cols-2 text-xs">
+            <div className="text-center">
+              <p className="font-bold underline">
+                {previewStudent.parent_name || '............................'}
+              </p>
+            </div>
+
+            <div className="text-center">
+              <p className="font-bold underline">
+                {activePeriod?.wali_kelas?.name || '............................'}
+              </p>
+            </div>
           </div>
-          <div className="col-span-2 text-center mt-6">
-            <p className="mb-0">Mengetahui,</p>
-            <p className="mb-16">Kepala Sekolah SMP IT Al Anshar</p>
-            <p className="font-bold underline uppercase">{activePeriod?.kepala_sekolah_name || '............................'}</p>
+
+          {/* Kepala sekolah */}
+          <div className="text-center text-xs mt-8">
+            <p>Mengetahui,</p>
+            <p>Kepala Sekolah SMP IT Al Anshar</p>
+
+            <div style={{ height: '70px' }}></div>
+
+            <p className="font-bold underline">
+              {activePeriod?.kepala_sekolah_name || '............................'}
+            </p>
           </div>
         </div>
       </div>

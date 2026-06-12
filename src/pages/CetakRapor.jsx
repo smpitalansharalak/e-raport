@@ -39,12 +39,20 @@ export default function CetakRapor() {
     contentRef: printRef,
     documentTitle: previewStudent ? `Rapor - ${previewStudent.name}` : 'Rapor',
     pageStyle: `
-      @page { size: A4 portrait; margin: 15mm; }
-      .print-avoid-break {
-        break-inside: avoid;
-        page-break-inside: avoid;
-      }
-    `,
+    @page {
+      size: A4 portrait;
+      margin: 5mm 15mm 15mm 15mm;
+    }
+
+    .rapor-sheet {
+      padding-top: 0 !important;
+    }
+
+    .print-avoid-break {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+  `,
   })
 
   const handlePrintStudent = (student) => {
