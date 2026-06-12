@@ -41,11 +41,12 @@ export default function CetakRapor() {
     pageStyle: `
     @page {
       size: A4 portrait;
-      margin: 5mm 15mm 15mm 15mm;
+      margin: 2mm 15mm 2mm 15mm;
     }
 
     .rapor-sheet {
       padding-top: 0 !important;
+      padding-bottom: 0 !important;
     }
 
     .print-avoid-break {

@@ -15,8 +15,8 @@ const RaporSheet = React.forwardRef(function RaporSheet(
   return (
     <div
       ref={ref}
-      className="bg-white text-black p-4 select-none"
-      style={{ fontFamily: 'Arial, sans-serif', minWidth: '600px' }}
+      className="bg-white text-black p-4 print:p-0 select-none rapor-sheet"
+      style={{ fontFamily: 'Arial, sans-serif', width: '100%' }}
     >
       {/* ── Header ── */}
       <div className="flex items-center justify-center border-b-2 border-black pb-4">
@@ -41,16 +41,16 @@ const RaporSheet = React.forwardRef(function RaporSheet(
       </div>
 
       {/* ── Info Siswa ── */}
-      <div className="grid grid-cols-2 text-xs gap-x-8 mb-6 leading-relaxed">
-        <div className="space-y-1">
-          <p className="flex"><span className="w-24">Nama</span>: <span className="font-bold ml-1">{previewStudent.name}</span></p>
-          <p className="flex"><span className="w-24">NIS/NISN</span><span className="ml-1">: {previewStudent.nisn}</span></p>
-          <p className="flex"><span className="w-24">Nama Sekolah</span><span className="ml-1">: SMP IT Al Anshar</span></p>
+      <div className="flex justify-between text-xs mb-6 leading-relaxed">
+        <div className="space-y-1 w-[48%]">
+          <p className="flex"><span className="w-24 shrink-0">Nama</span>: <span className="font-bold ml-1">{previewStudent.name}</span></p>
+          <p className="flex"><span className="w-24 shrink-0">NIS/NISN</span><span className="ml-1">: {previewStudent.nisn}</span></p>
+          <p className="flex"><span className="w-24 shrink-0">Nama Sekolah</span><span className="ml-1">: SMP IT Al Anshar</span></p>
         </div>
-        <div className="space-y-1">
-          <p className="flex"><span className="w-28">Kelas / Fase</span><span className="ml-1">: {activePeriod?.class_name} / {previewStudent.phase}</span></p>
-          <p className="flex"><span className="w-28">Semester</span><span className="ml-1">: {activePeriod?.semester}</span></p>
-          <p className="flex"><span className="w-28">Tahun Ajaran</span><span className="ml-1">: {activePeriod?.academic_year}</span></p>
+        <div className="space-y-1 w-[48%]">
+          <p className="flex"><span className="w-28 shrink-0">Kelas / Fase</span><span className="ml-1">: {activePeriod?.class_name} / {previewStudent.phase}</span></p>
+          <p className="flex"><span className="w-28 shrink-0">Semester</span><span className="ml-1">: {activePeriod?.semester}</span></p>
+          <p className="flex"><span className="w-28 shrink-0">Tahun Ajaran</span><span className="ml-1">: {activePeriod?.academic_year}</span></p>
         </div>
       </div>
 
@@ -122,13 +122,13 @@ const RaporSheet = React.forwardRef(function RaporSheet(
         {/* ── Tanda Tangan ── */}
         <div className="mt-10">
           {/* Baris judul */}
-          <div className="grid grid-cols-2 text-xs">
-            <div className="text-center">
+          <div className="flex justify-between text-xs">
+            <div className="text-center w-1/2">
               <div className="h-4"></div>
               <p>Orang Tua / Wali Murid,</p>
             </div>
 
-            <div className="text-center">
+            <div className="text-center w-1/2">
               <p>Kota Kupang, Juni 2026</p>
               <p>Wali Kelas,</p>
             </div>
@@ -138,14 +138,14 @@ const RaporSheet = React.forwardRef(function RaporSheet(
           <div style={{ height: '70px' }}></div>
 
           {/* Nama */}
-          <div className="grid grid-cols-2 text-xs">
-            <div className="text-center">
+          <div className="flex justify-between text-xs">
+            <div className="text-center w-1/2">
               <p className="font-bold underline">
                 {previewStudent.parent_name || '............................'}
               </p>
             </div>
 
-            <div className="text-center">
+            <div className="text-center w-1/2">
               <p className="font-bold underline">
                 {activePeriod?.wali_kelas?.name || '............................'}
               </p>
