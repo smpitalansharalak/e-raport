@@ -111,11 +111,11 @@ export default function ScoreGrid({
                 return (
                   <th
                     key={mat.id}
-                    className="py-2 px-2 border-l border-slate-800 bg-indigo-500/8 text-indigo-300 leading-tight whitespace-normal break-words align-middle"
+                    className="py-2 px-2 border-l border-slate-800 bg-indigo-500/8 text-indigo-300 leading-tight whitespace-normal wrap-break-word align-middle"
                     colSpan={tpsInMat.length}
                     title={mat.name}
                   >
-                    <span className="block whitespace-normal break-words leading-tight">
+                    <span className="block whitespace-normal wrap-break-word leading-tight">
                       {mat.name}
                     </span>
                   </th>
@@ -163,7 +163,7 @@ export default function ScoreGrid({
                   px-1
                   text-center
                   whitespace-normal
-                  break-words
+                  wrap-break-word
                   leading-tight
                   min-h-[60px]
                   bg-violet-500/5
