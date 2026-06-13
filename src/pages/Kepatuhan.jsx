@@ -148,12 +148,40 @@ export default function Kepatuhan() {
         onConflict: 'student_id,report_period_id',
       })
       if (error) throw error
-      setSuccess('Data berhasil disimpan!')
+      setSuccess('Seluruh data kelas berhasil disimpan!')
       setTimeout(() => setSuccess(''), 4000)
     } catch (err) {
       setError('Gagal menyimpan: ' + err.message)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleSaveSingleStudent = async (studentId) => {
+    const att = attendance[studentId]
+    if (!att) return
+    
+    try {
+      const payload = {
+        student_id: att.student_id,
+        report_period_id: selectedPeriodId,
+        sakit: att.sakit,
+        izin: att.izin,
+        alpha: att.alpha,
+        catatan_khusus: JSON.stringify({
+          catatan: att.catatan,
+          kokurikuler: att.kokurikuler,
+          ekstrakurikuler: att.ekstrakurikuler
+        }),
+      }
+      const { error: saveErr } = await supabase.from('student_attendance').upsert(payload, {
+        onConflict: 'student_id,report_period_id',
+      })
+      if (saveErr) throw saveErr
+      return true
+    } catch (err) {
+      setError('Gagal menyimpan siswa: ' + err.message)
+      return false
     }
   }
 
@@ -237,14 +265,16 @@ export default function Kepatuhan() {
               </button>
             </div>
             
-            <button
-              onClick={handleSave}
-              disabled={loading}
-              className="bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 px-5 py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-md"
-            >
-              <Save size={16} />
-              {loading ? 'Menyimpan...' : 'Simpan Data'}
-            </button>
+            {activeMainTab === 'kehadiran' && (
+              <button
+                onClick={handleSave}
+                disabled={loading}
+                className="bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 px-5 py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-md"
+              >
+                <Save size={16} />
+                {loading ? 'Menyimpan...' : 'Simpan Semua Data Kehadiran'}
+              </button>
+            )}
           </div>
 
           {activeMainTab === 'kehadiran' && (
@@ -348,6 +378,13 @@ export default function Kepatuhan() {
                         }
                       }))
                     }}
+                    onSaveToDB={async () => {
+                      const success = await handleSaveSingleStudent(selectedStudentId)
+                      if (success) {
+                        setSuccess(`Data ${activeMainTab === 'kokurikuler' ? 'Kokurikuler' : 'Ekstrakurikuler'} ${students.find(s => s.id === selectedStudentId)?.name} berhasil disimpan!`)
+                        setTimeout(() => setSuccess(''), 3000)
+                      }
+                    }}
                   />
                 ) : (
                   <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-12 text-center text-slate-500 flex flex-col items-center">
@@ -364,11 +401,12 @@ export default function Kepatuhan() {
   )
 }
 
-function ActivityManager({ type, student, data, onUpdate }) {
+function ActivityManager({ type, student, data, onUpdate, onSaveToDB }) {
   const [form, setForm] = useState({ id: null, name: '', description: '' })
   const [isEditing, setIsEditing] = useState(false)
+  const [isSavingDB, setIsSavingDB] = useState(false)
 
-  const handleSave = () => {
+  const handleSaveLocal = () => {
     const cleanName = sanitizeText(form.name)
     const cleanDesc = sanitizeText(form.description)
     if (!cleanName) return
@@ -381,6 +419,12 @@ function ActivityManager({ type, student, data, onUpdate }) {
     onUpdate(newData)
     setForm({ id: null, name: '', description: '' })
     setIsEditing(false)
+  }
+
+  const handleCommitDB = async () => {
+    setIsSavingDB(true)
+    await onSaveToDB()
+    setIsSavingDB(false)
   }
 
   const handleEdit = (item) => {
@@ -401,6 +445,14 @@ function ActivityManager({ type, student, data, onUpdate }) {
           <h3 className="text-sm font-bold text-slate-100">{title} Siswa</h3>
           <p className="text-xs text-slate-400 mt-0.5">{student.name}</p>
         </div>
+        <button
+          onClick={handleCommitDB}
+          disabled={isSavingDB}
+          className="bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
+        >
+          <Save size={14} />
+          {isSavingDB ? 'Menyimpan...' : 'Simpan ke Database'}
+        </button>
       </div>
 
       <div className="p-4 space-y-4">
@@ -438,12 +490,12 @@ function ActivityManager({ type, student, data, onUpdate }) {
               </button>
             )}
             <button
-              onClick={handleSave}
+              onClick={handleSaveLocal}
               disabled={!form.name.trim()}
-              className="px-3 py-1.5 text-xs font-bold text-slate-950 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 rounded-lg flex items-center gap-1"
+              className="px-3 py-1.5 text-xs font-bold text-slate-950 bg-indigo-500 hover:bg-indigo-400 disabled:opacity-50 rounded-lg flex items-center gap-1 cursor-pointer"
             >
               {isEditing ? <Edit2 size={14} /> : <Plus size={14} />}
-              {isEditing ? 'Simpan Edit' : 'Tambah'}
+              {isEditing ? 'Simpan Edit (Lokal)' : 'Tambah ke Tabel'}
             </button>
           </div>
         </div>
