@@ -340,8 +340,8 @@ export default function BuatRapor() {
           <button
             onClick={() => setActiveTab('periode')}
             className={`px-4 py-2 text-xs font-bold rounded-lg flex items-center gap-2 transition-all cursor-pointer ${activeTab === 'periode'
-                ? 'bg-emerald-500 text-slate-950 shadow-md'
-                : 'text-slate-450 hover:text-slate-200'
+              ? 'bg-emerald-500 text-slate-950 shadow-md'
+              : 'text-slate-450 hover:text-slate-200'
               }`}
           >
             <FilePlus size={14} />
@@ -350,8 +350,8 @@ export default function BuatRapor() {
           <button
             onClick={() => setActiveTab('mapel')}
             className={`px-4 py-2 text-xs font-bold rounded-lg flex items-center gap-2 transition-all cursor-pointer ${activeTab === 'mapel'
-                ? 'bg-emerald-500 text-slate-950 shadow-md'
-                : 'text-slate-450 hover:text-slate-200'
+              ? 'bg-emerald-500 text-slate-950 shadow-md'
+              : 'text-slate-450 hover:text-slate-200'
               }`}
           >
             <BookOpen size={14} />
@@ -409,8 +409,8 @@ export default function BuatRapor() {
                       </h3>
                       <span
                         className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase ${p.is_active
-                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                            : 'bg-slate-800 text-slate-500 border border-slate-700/60'
+                          ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                          : 'bg-slate-800 text-slate-500 border border-slate-700/60'
                           }`}
                       >
                         {p.is_active ? 'Aktif' : 'Non-Aktif'}
@@ -589,8 +589,8 @@ export default function BuatRapor() {
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors"
                     {...periodForm.register('semester', { required: true })}
                   >
-                    <option value="I">Semester I (Ganjil)</option>
-                    <option value="II">Semester II (Genap)</option>
+                    <option value="I">Semester I (Satu) - (Ganjil)</option>
+                    <option value="II">Semester II (Dua) - (Genap)</option>
                   </select>
                 </div>
               </div>

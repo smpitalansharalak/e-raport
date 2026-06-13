@@ -56,6 +56,13 @@ const RaporSheet = React.forwardRef(function RaporSheet(
     </div>
   )
 
+  const formatSemester = (sem) => {
+    if (!sem) return ''
+    if (sem === 'I') return 'I (Satu)'
+    if (sem === 'II') return 'II (Dua)'
+    return sem
+  }
+
   return (
     <div
       ref={ref}
@@ -93,7 +100,7 @@ const RaporSheet = React.forwardRef(function RaporSheet(
         </div>
         <div className="space-y-1 w-[48%]">
           <p className="flex"><span className="w-28 shrink-0">Kelas / Fase</span><span className="ml-1">: {activePeriod?.class_name} / {previewStudent.phase}</span></p>
-          <p className="flex"><span className="w-28 shrink-0">Semester</span><span className="ml-1">: {activePeriod?.semester}</span></p>
+          <p className="flex"><span className="w-28 shrink-0">Semester</span><span className="ml-1">: {formatSemester(activePeriod?.semester)}</span></p>
           <p className="flex"><span className="w-28 shrink-0">Tahun Ajaran</span><span className="ml-1">: {activePeriod?.academic_year}</span></p>
         </div>
       </div>
