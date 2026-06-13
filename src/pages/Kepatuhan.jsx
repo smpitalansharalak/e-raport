@@ -7,9 +7,7 @@ function sanitizeText(str) {
   if (typeof str !== 'string') return str
   return str
     .replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '')
-    .replace(/[\u00AD\u200B\u200C\u200D\u200E\u200F\uFEFF\uFFFC\u2028\u2029]/g, '')
-    .replace(/[ \t]+/g, ' ')
-    .replace(/\r\n|\r/g, '\n')
+    .replace(/[\u00AD\u200B\u200C\u200D\u200E\u200F\uFEFF\uFFFC]/g, '')
     .trim()
 }
 
@@ -471,12 +469,12 @@ function ActivityManager({ type, student, data, onUpdate, onSaveToDB }) {
             </div>
             <div>
               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Keterangan</label>
-              <input
-                type="text"
+              <textarea
                 placeholder="Contoh: Sangat Baik"
                 value={form.description}
                 onChange={e => setForm({...form, description: e.target.value})}
-                className="w-full bg-slate-900 border border-slate-700 rounded-lg py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500"
+                className="w-full bg-slate-900 border border-slate-700 rounded-lg py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 resize-y min-h-[40px]"
+                rows="1"
               />
             </div>
           </div>
