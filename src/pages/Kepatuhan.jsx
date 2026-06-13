@@ -3,6 +3,16 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { Save, AlertCircle, CheckCircle, Plus, Edit2, Trash2, X } from 'lucide-react'
 
+function sanitizeText(str) {
+  if (typeof str !== 'string') return str
+  return str
+    .replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '')
+    .replace(/[\u00AD\u200B\u200C\u200D\u200E\u200F\uFEFF\uFFFC\u2028\u2029]/g, '')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\r\n|\r/g, '\n')
+    .trim()
+}
+
 export default function Kepatuhan() {
   const { profile } = useAuth()
   const [periods, setPeriods] = useState([])
@@ -114,7 +124,7 @@ export default function Kepatuhan() {
       ...prev,
       [studentId]: {
         ...prev[studentId],
-        [field]: field === 'catatan' ? val : (val === '' ? 0 : Math.max(0, Number(val))),
+        [field]: field === 'catatan' ? sanitizeText(val) : (val === '' ? 0 : Math.max(0, Number(val))),
       },
     }))
   }
@@ -359,12 +369,14 @@ function ActivityManager({ type, student, data, onUpdate }) {
   const [isEditing, setIsEditing] = useState(false)
 
   const handleSave = () => {
-    if (!form.name.trim()) return
+    const cleanName = sanitizeText(form.name)
+    const cleanDesc = sanitizeText(form.description)
+    if (!cleanName) return
     let newData = [...data]
     if (form.id) {
-      newData = newData.map(item => item.id === form.id ? { ...item, name: form.name, description: form.description } : item)
+      newData = newData.map(item => item.id === form.id ? { ...item, name: cleanName, description: cleanDesc } : item)
     } else {
-      newData.push({ id: Date.now().toString(), name: form.name, description: form.description })
+      newData.push({ id: Date.now().toString(), name: cleanName, description: cleanDesc })
     }
     onUpdate(newData)
     setForm({ id: null, name: '', description: '' })
