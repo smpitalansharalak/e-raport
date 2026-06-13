@@ -10,7 +10,7 @@ const RaporSheet = React.forwardRef(function RaporSheet(
 ) {
   const att = getStudentAttendance(previewStudent.id)
   const scores = getStudentScores(previewStudent.id)
-  
+
   let catatanKhusus = att.catatan_khusus || ''
   let kokurikuler = []
   let ekstrakurikuler = []
@@ -179,7 +179,7 @@ const RaporSheet = React.forwardRef(function RaporSheet(
             </div>
 
             <div className="text-center w-1/2">
-              <p>Kota Kupang, Juni 2026</p>
+              <p>Kota Kupang, 14 Juni 2026</p>
               <p>Wali Kelas,</p>
             </div>
           </div>
