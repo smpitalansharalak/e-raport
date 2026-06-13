@@ -402,23 +402,33 @@ export default function Kepatuhan() {
 }
 
 const ActivityManager = React.memo(({ type, student, data, onUpdate, onSaveToDB }) => {
-  const [form, setForm] = useState({ id: null, name: '', description: '' })
   const [isEditing, setIsEditing] = useState(false)
+  const [editingId, setEditingId] = useState(null)
   const [isSavingDB, setIsSavingDB] = useState(false)
+  
+  const nameRef = React.useRef(null)
+  const descRef = React.useRef(null)
 
   const handleSaveLocal = () => {
-    const cleanName = sanitizeText(form.name)
-    const cleanDesc = sanitizeText(form.description)
+    const rawName = nameRef.current?.value || ''
+    const rawDesc = descRef.current?.value || ''
+    const cleanName = sanitizeText(rawName)
+    const cleanDesc = sanitizeText(rawDesc)
     if (!cleanName) return
+
     let newData = [...data]
-    if (form.id) {
-      newData = newData.map(item => item.id === form.id ? { ...item, name: cleanName, description: cleanDesc } : item)
+    if (isEditing && editingId) {
+      newData = newData.map(item => item.id === editingId ? { ...item, name: cleanName, description: cleanDesc } : item)
     } else {
       newData.push({ id: Date.now().toString(), name: cleanName, description: cleanDesc })
     }
+    
     onUpdate(student.id, type, newData)
-    setForm({ id: null, name: '', description: '' })
+    
+    if (nameRef.current) nameRef.current.value = ''
+    if (descRef.current) descRef.current.value = ''
     setIsEditing(false)
+    setEditingId(null)
   }
 
   const handleCommitDB = async () => {
@@ -427,9 +437,18 @@ const ActivityManager = React.memo(({ type, student, data, onUpdate, onSaveToDB 
     setIsSavingDB(false)
   }
 
-  const handleEdit = (item) => {
-    setForm(item)
+  const handleEdit = React.useCallback((item) => {
     setIsEditing(true)
+    setEditingId(item.id)
+    if (nameRef.current) nameRef.current.value = item.name
+    if (descRef.current) descRef.current.value = item.description
+  }, [])
+
+  const handleCancelEdit = () => {
+    setIsEditing(false)
+    setEditingId(null)
+    if (nameRef.current) nameRef.current.value = ''
+    if (descRef.current) descRef.current.value = ''
   }
 
   const handleDelete = (id) => {
@@ -462,19 +481,17 @@ const ActivityManager = React.memo(({ type, student, data, onUpdate, onSaveToDB 
             <div>
               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Nama Kegiatan</label>
               <input
+                ref={nameRef}
                 type="text"
                 placeholder={`Contoh: ${type === 'kokurikuler' ? 'Pramuka' : 'Futsal'}`}
-                value={form.name}
-                onChange={e => setForm({...form, name: e.target.value})}
                 className="w-full bg-slate-900 border border-slate-700 rounded-lg py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500"
               />
             </div>
             <div>
               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Keterangan</label>
               <textarea
+                ref={descRef}
                 placeholder="Contoh: Sangat Baik"
-                value={form.description}
-                onChange={e => setForm({...form, description: e.target.value})}
                 className="w-full bg-slate-900 border border-slate-700 rounded-lg py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 resize-y min-h-[40px]"
                 rows="1"
               />
@@ -483,7 +500,7 @@ const ActivityManager = React.memo(({ type, student, data, onUpdate, onSaveToDB 
           <div className="flex justify-end gap-2">
             {isEditing && (
               <button
-                onClick={() => { setForm({ id: null, name: '', description: '' }); setIsEditing(false) }}
+                onClick={handleCancelEdit}
                 className="px-3 py-1.5 text-xs font-bold text-slate-400 hover:text-slate-200 bg-slate-800 rounded-lg cursor-pointer"
               >
                 Batal
@@ -491,7 +508,6 @@ const ActivityManager = React.memo(({ type, student, data, onUpdate, onSaveToDB 
             )}
             <button
               onClick={handleSaveLocal}
-              disabled={!form.name.trim()}
               className="px-3 py-1.5 text-xs font-bold text-slate-950 bg-indigo-500 hover:bg-indigo-400 disabled:opacity-50 rounded-lg flex items-center gap-1 cursor-pointer"
             >
               {isEditing ? <Edit2 size={14} /> : <Plus size={14} />}
