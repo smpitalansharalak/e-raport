@@ -187,6 +187,26 @@ export default function Kepatuhan() {
     }
   }, [selectedPeriodId])
 
+  const handleUpdateActivity = React.useCallback((studentId, tab, newData) => {
+    setAttendance((prev) => {
+      const updatedStudent = {
+        ...prev[studentId],
+        [tab]: newData
+      }
+      const newAttendance = { ...prev, [studentId]: updatedStudent }
+      attendanceRef.current = newAttendance
+      return newAttendance
+    })
+  }, [])
+
+  const handleSaveActivityDB = React.useCallback(async (studentId, tab, studentName) => {
+    const success = await handleSaveSingleStudent(studentId)
+    if (success) {
+      setSuccess(`Data ${tab === 'kokurikuler' ? 'Kokurikuler' : 'Ekstrakurikuler'} ${studentName} berhasil disimpan!`)
+      setTimeout(() => setSuccess(''), 3000)
+    }
+  }, [handleSaveSingleStudent])
+
   if (loading && periods.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh]">
@@ -344,21 +364,13 @@ export default function Kepatuhan() {
                     const isSelected = selectedStudentId === student.id
                     const itemsCount = (attendance[student.id]?.[activeMainTab] || []).length
                     return (
-                      <button
-                        key={student.id}
-                        onClick={() => setSelectedStudentId(student.id)}
-                        className={`w-full text-left p-3.5 flex items-center justify-between transition-colors ${isSelected ? 'bg-emerald-500/10 border-l-2 border-emerald-500' : 'hover:bg-slate-800/30'}`}
-                      >
-                        <div>
-                          <p className={`text-sm font-semibold ${isSelected ? 'text-emerald-400' : 'text-slate-200'}`}>{student.name}</p>
-                          <p className="text-[10px] text-slate-500 font-mono mt-0.5">{student.nisn}</p>
-                        </div>
-                        {itemsCount > 0 && (
-                          <span className="text-[10px] font-bold text-slate-950 bg-emerald-500 px-2 py-0.5 rounded-full">
-                            {itemsCount}
-                          </span>
-                        )}
-                      </button>
+                      <StudentButton 
+                        key={student.id} 
+                        student={student} 
+                        isSelected={isSelected} 
+                        itemsCount={itemsCount} 
+                        onClick={() => setSelectedStudentId(student.id)} 
+                      />
                     )
                   })}
                 </div>
@@ -371,24 +383,8 @@ export default function Kepatuhan() {
                     type={activeMainTab}
                     student={students.find(s => s.id === selectedStudentId)}
                     data={attendance[selectedStudentId]?.[activeMainTab] || []}
-                    onUpdate={(newData) => {
-                      setAttendance(prev => {
-                        const updatedStudent = {
-                          ...prev[selectedStudentId],
-                          [activeMainTab]: newData
-                        }
-                        const newAttendance = { ...prev, [selectedStudentId]: updatedStudent }
-                        attendanceRef.current = newAttendance
-                        return newAttendance
-                      })
-                    }}
-                    onSaveToDB={async () => {
-                      const success = await handleSaveSingleStudent(selectedStudentId)
-                      if (success) {
-                        setSuccess(`Data ${activeMainTab === 'kokurikuler' ? 'Kokurikuler' : 'Ekstrakurikuler'} ${students.find(s => s.id === selectedStudentId)?.name} berhasil disimpan!`)
-                        setTimeout(() => setSuccess(''), 3000)
-                      }
-                    }}
+                    onUpdate={handleUpdateActivity}
+                    onSaveToDB={handleSaveActivityDB}
                   />
                 ) : (
                   <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-12 text-center text-slate-500 flex flex-col items-center">
@@ -405,7 +401,7 @@ export default function Kepatuhan() {
   )
 }
 
-function ActivityManager({ type, student, data, onUpdate, onSaveToDB }) {
+const ActivityManager = React.memo(({ type, student, data, onUpdate, onSaveToDB }) => {
   const [form, setForm] = useState({ id: null, name: '', description: '' })
   const [isEditing, setIsEditing] = useState(false)
   const [isSavingDB, setIsSavingDB] = useState(false)
@@ -420,14 +416,14 @@ function ActivityManager({ type, student, data, onUpdate, onSaveToDB }) {
     } else {
       newData.push({ id: Date.now().toString(), name: cleanName, description: cleanDesc })
     }
-    onUpdate(newData)
+    onUpdate(student.id, type, newData)
     setForm({ id: null, name: '', description: '' })
     setIsEditing(false)
   }
 
   const handleCommitDB = async () => {
     setIsSavingDB(true)
-    await onSaveToDB()
+    await onSaveToDB(student.id, type, student.name)
     setIsSavingDB(false)
   }
 
@@ -437,7 +433,7 @@ function ActivityManager({ type, student, data, onUpdate, onSaveToDB }) {
   }
 
   const handleDelete = (id) => {
-    onUpdate(data.filter(item => item.id !== id))
+    onUpdate(student.id, type, data.filter(item => item.id !== id))
   }
 
   const title = type === 'kokurikuler' ? 'Kokurikuler' : 'Ekstrakurikuler'
@@ -488,7 +484,7 @@ function ActivityManager({ type, student, data, onUpdate, onSaveToDB }) {
             {isEditing && (
               <button
                 onClick={() => { setForm({ id: null, name: '', description: '' }); setIsEditing(false) }}
-                className="px-3 py-1.5 text-xs font-bold text-slate-400 hover:text-slate-200 bg-slate-800 rounded-lg"
+                className="px-3 py-1.5 text-xs font-bold text-slate-400 hover:text-slate-200 bg-slate-800 rounded-lg cursor-pointer"
               >
                 Batal
               </button>
@@ -532,13 +528,13 @@ function ActivityManager({ type, student, data, onUpdate, onSaveToDB }) {
                       <div className="flex justify-center gap-1.5">
                         <button
                           onClick={() => handleEdit(item)}
-                          className="p-1.5 text-indigo-400 hover:bg-indigo-500/20 rounded-md transition-colors"
+                          className="p-1.5 text-indigo-400 hover:bg-indigo-500/20 rounded-md transition-colors cursor-pointer"
                         >
                           <Edit2 size={14} />
                         </button>
                         <button
                           onClick={() => handleDelete(item.id)}
-                          className="p-1.5 text-rose-400 hover:bg-rose-500/20 rounded-md transition-colors"
+                          className="p-1.5 text-rose-400 hover:bg-rose-500/20 rounded-md transition-colors cursor-pointer"
                         >
                           <Trash2 size={14} />
                         </button>
@@ -553,4 +549,23 @@ function ActivityManager({ type, student, data, onUpdate, onSaveToDB }) {
       </div>
     </div>
   )
-}
+})
+
+const StudentButton = React.memo(({ student, isSelected, itemsCount, onClick }) => {
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full text-left p-3.5 flex items-center justify-between transition-colors cursor-pointer ${isSelected ? 'bg-emerald-500/10 border-l-2 border-emerald-500' : 'hover:bg-slate-800/30'}`}
+    >
+      <div>
+        <p className={`text-sm font-semibold ${isSelected ? 'text-emerald-400' : 'text-slate-200'}`}>{student.name}</p>
+        <p className="text-[10px] text-slate-500 font-mono mt-0.5">{student.nisn}</p>
+      </div>
+      {itemsCount > 0 && (
+        <span className="text-[10px] font-bold text-slate-950 bg-emerald-500 px-2 py-0.5 rounded-full">
+          {itemsCount}
+        </span>
+      )}
+    </button>
+  )
+})
