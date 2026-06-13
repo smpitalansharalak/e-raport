@@ -10,7 +10,51 @@ const RaporSheet = React.forwardRef(function RaporSheet(
 ) {
   const att = getStudentAttendance(previewStudent.id)
   const scores = getStudentScores(previewStudent.id)
-  const catatanKhusus = att.catatan_khusus || ''
+  
+  let catatanKhusus = att.catatan_khusus || ''
+  let kokurikuler = []
+  let ekstrakurikuler = []
+
+  try {
+    const parsed = JSON.parse(catatanKhusus)
+    if (typeof parsed === 'object' && parsed !== null && ('catatan' in parsed || 'kokurikuler' in parsed || 'ekstrakurikuler' in parsed)) {
+      catatanKhusus = parsed.catatan || ''
+      kokurikuler = parsed.kokurikuler || []
+      ekstrakurikuler = parsed.ekstrakurikuler || []
+    }
+  } catch (e) {
+    // string fallback
+  }
+
+  const renderActivityTable = (title, data) => (
+    <div className="mb-6" style={{ pageBreakInside: 'avoid' }}>
+      <p className="font-bold text-[12px] mb-1.5">{title}</p>
+      <table className="w-full border-collapse text-[11px]" style={{ borderCollapse: 'collapse' }}>
+        <thead>
+          <tr className="bg-white text-black font-bold">
+            {data.length > 0 && <th className="py-2 px-3 text-center" style={{ border: '1px solid black', width: '40px' }}>No</th>}
+            <th className="py-2 px-3 text-left" style={{ border: '1px solid black', width: data.length > 0 ? '250px' : 'auto' }}>Kegiatan</th>
+            {data.length > 0 && <th className="py-2 px-3 text-left" style={{ border: '1px solid black' }}>Keterangan</th>}
+          </tr>
+        </thead>
+        <tbody>
+          {data.length === 0 ? (
+            <tr>
+              <td className="py-2 px-3" style={{ border: '1px solid black', height: '28px' }}>-</td>
+            </tr>
+          ) : (
+            data.map((item, idx) => (
+              <tr key={idx}>
+                <td className="py-2 px-3 text-center font-mono" style={{ border: '1px solid black' }}>{idx + 1}</td>
+                <td className="py-2 px-3 font-semibold" style={{ border: '1px solid black' }}>{item.name}</td>
+                <td className="py-2 px-3" style={{ border: '1px solid black' }}>{item.description}</td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+    </div>
+  )
 
   return (
     <div
@@ -88,6 +132,12 @@ const RaporSheet = React.forwardRef(function RaporSheet(
           )}
         </tbody>
       </table>
+
+      {/* ── Kokurikuler & Ekstrakurikuler ── */}
+      <div className="mt-6">
+        {renderActivityTable('Kokurikuler', kokurikuler)}
+        {renderActivityTable('Ekstrakurikuler', ekstrakurikuler)}
+      </div>
 
       {/*
         ── Blok bawah: Catatan Khusus + Kepatuhan + TTD ──

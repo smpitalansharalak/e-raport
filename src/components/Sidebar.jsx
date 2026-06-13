@@ -41,7 +41,7 @@ export default function Sidebar() {
   const waliKelasLinks = [
     { to: '/', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/input-rapor', label: 'Input Rapor', icon: FileEdit },
-    { to: '/kepatuhan', label: 'Kepatuhan Siswa', icon: ClipboardCheck },
+    { to: '/kepatuhan', label: 'Menu Wali Kelas', icon: ClipboardCheck },
     { to: '/ganti-password', label: 'Ganti Password', icon: KeyRound },
   ]
 
