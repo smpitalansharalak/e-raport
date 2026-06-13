@@ -33,7 +33,7 @@ const RaporSheet = React.forwardRef(function RaporSheet(
         <thead>
           <tr className="bg-white text-black font-bold">
             {data.length > 0 && <th className="py-2 px-3 text-center" style={{ border: '1px solid black', width: '40px' }}>No</th>}
-            <th className="py-2 px-3 text-left" style={{ border: '1px solid black', width: data.length > 0 ? '250px' : 'auto' }}>Kegiatan</th>
+            <th className="py-2 px-3 text-left" style={{ border: '1px solid black', width: data.length > 0 ? '180px' : 'auto' }}>Kegiatan</th>
             {data.length > 0 && <th className="py-2 px-3 text-left" style={{ border: '1px solid black' }}>Keterangan</th>}
           </tr>
         </thead>
