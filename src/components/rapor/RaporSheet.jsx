@@ -68,7 +68,7 @@ const RaporSheet = React.forwardRef(function RaporSheet(
         <div className="text-center">
           <p className="font-bold text-sm tracking-wide">YAYASAN AL-ANSHAR AN'NUR</p>
           <p className="font-bold text-[14px] leading-none my-1 uppercase whitespace-nowrap">
-            SEKOLAH MENENGAH PERTAMA ISLAM TERPADU (SMP-IT) AL ANSHAR
+            SEKOLAH MENENGAH PERTAMA ISLAM TERPADU (SMP-IT) AL-ANSHAR
           </p>
           <p className="text-[10px] leading-tight text-gray-700">
             NPSN : 70055902 | Email : smpitalansharalak@gmail.com | HP : 0812 3743 8357
@@ -89,7 +89,7 @@ const RaporSheet = React.forwardRef(function RaporSheet(
         <div className="space-y-1 w-[48%]">
           <p className="flex"><span className="w-24 shrink-0">Nama</span>: <span className="font-bold ml-1">{previewStudent.name}</span></p>
           <p className="flex"><span className="w-24 shrink-0">NIS/NISN</span><span className="ml-1">: {previewStudent.nisn}</span></p>
-          <p className="flex"><span className="w-24 shrink-0">Nama Sekolah</span><span className="ml-1">: SMP IT Al Anshar</span></p>
+          <p className="flex"><span className="w-24 shrink-0">Nama Sekolah</span><span className="ml-1">: SMP-IT AL-Anshar</span></p>
         </div>
         <div className="space-y-1 w-[48%]">
           <p className="flex"><span className="w-28 shrink-0">Kelas / Fase</span><span className="ml-1">: {activePeriod?.class_name} / {previewStudent.phase}</span></p>
@@ -207,7 +207,7 @@ const RaporSheet = React.forwardRef(function RaporSheet(
           {/* Kepala sekolah */}
           <div className="text-center text-xs mt-8">
             <p>Mengetahui,</p>
-            <p>Kepala Sekolah SMP IT Al Anshar</p>
+            <p>Kepala Sekolah SMP-IT Al-Anshar</p>
 
             <div style={{ height: '70px' }}></div>
 
