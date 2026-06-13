@@ -148,25 +148,27 @@ const RaporSheet = React.forwardRef(function RaporSheet(
         className="print-avoid-break"
         style={{ breakInside: 'avoid', pageBreakInside: 'avoid', marginTop: '16px' }}
       >
-        {/* ── Catatan Khusus Wali Kelas ── */}
-        <div className="text-xs mb-4" style={{ border: '1px solid black', padding: '10px 12px' }}>
-          <p className="font-bold uppercase pb-1 mb-2" style={{ borderBottom: '1px solid black' }}>
-            Catatan Wali Kelas
-          </p>
-          <p
-            className="leading-relaxed text-[11px] min-h-[32px]"
-            style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
-          >
-            {catatanKhusus || <span className="text-gray-400 italic">—</span>}
-          </p>
-        </div>
+        <div className="flex gap-4 mb-6">
+          {/* ── Catatan Khusus Wali Kelas ── */}
+          <div className="text-xs flex-1" style={{ border: '1px solid black', padding: '10px 12px' }}>
+            <p className="font-bold uppercase pb-1 mb-2" style={{ borderBottom: '1px solid black' }}>
+              Catatan Wali Kelas
+            </p>
+            <p
+              className="leading-relaxed text-[11px] min-h-[32px]"
+              style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
+            >
+              {catatanKhusus || <span className="text-gray-400 italic">—</span>}
+            </p>
+          </div>
 
-        {/* ── Ketidakhadiran / Kepatuhan Siswa ── */}
-        <div className="text-xs mb-6" style={{ border: '1px solid black', width: '256px', padding: '10px 12px' }}>
-          <p className="font-bold uppercase pb-1 mb-1.5" style={{ borderBottom: '1px solid black' }}>Ketidakhadiran</p>
-          <p className="flex justify-between"><span>Sakit</span> <span>: {att.sakit} hari</span></p>
-          <p className="flex justify-between"><span>Izin</span> <span>: {att.izin} hari</span></p>
-          <p className="flex justify-between"><span>Tanpa Keterangan (Alpha)</span> <span>: {att.alpha} hari</span></p>
+          {/* ── Ketidakhadiran / Kepatuhan Siswa ── */}
+          <div className="text-xs" style={{ border: '1px solid black', width: '180px', padding: '10px 12px' }}>
+            <p className="font-bold uppercase pb-1 mb-1.5" style={{ borderBottom: '1px solid black' }}>Ketidakhadiran</p>
+            <p className="flex justify-between"><span>Sakit</span> <span>: {att.sakit} hari</span></p>
+            <p className="flex justify-between"><span>Izin</span> <span>: {att.izin} hari</span></p>
+            <p className="flex justify-between"><span>Tanpa Keterangan</span> <span>: {att.alpha} hari</span></p>
+          </div>
         </div>
 
         {/* ── Tanda Tangan ── */}
