@@ -17,6 +17,7 @@ export default function Kepatuhan() {
   const [selectedPeriodId, setSelectedPeriodId] = useState('')
   const [students, setStudents] = useState([])
   const [attendance, setAttendance] = useState({})
+  const attendanceRef = React.useRef({})
 
   const [loading, setLoading] = useState(false)
   const [loadingGrid, setLoadingGrid] = useState(false)
@@ -108,6 +109,7 @@ export default function Kepatuhan() {
         }
       })
 
+      attendanceRef.current = aMap
       setAttendance(aMap)
       setIsGridLoaded(true)
     } catch (err) {
@@ -117,20 +119,22 @@ export default function Kepatuhan() {
     }
   }
 
-  const handleChange = (studentId, field, val) => {
-    setAttendance((prev) => ({
-      ...prev,
-      [studentId]: {
+  const handleChange = React.useCallback((studentId, field, val) => {
+    setAttendance((prev) => {
+      const updatedStudent = {
         ...prev[studentId],
         [field]: field === 'catatan' ? sanitizeText(val) : (val === '' ? 0 : Math.max(0, Number(val))),
-      },
-    }))
-  }
+      }
+      const newAttendance = { ...prev, [studentId]: updatedStudent }
+      attendanceRef.current = newAttendance
+      return newAttendance
+    })
+  }, [])
 
   const handleSave = async () => {
     setError(''); setSuccess(''); setLoading(true)
     try {
-      const payload = Object.values(attendance).map((att) => ({
+      const payload = Object.values(attendanceRef.current).map((att) => ({
         student_id: att.student_id,
         report_period_id: selectedPeriodId,
         sakit: att.sakit,
@@ -155,8 +159,8 @@ export default function Kepatuhan() {
     }
   }
 
-  const handleSaveSingleStudent = async (studentId) => {
-    const att = attendance[studentId]
+  const handleSaveSingleStudent = React.useCallback(async (studentId) => {
+    const att = attendanceRef.current[studentId]
     if (!att) return
     
     try {
@@ -181,7 +185,7 @@ export default function Kepatuhan() {
       setError('Gagal menyimpan siswa: ' + err.message)
       return false
     }
-  }
+  }, [selectedPeriodId])
 
   if (loading && periods.length === 0) {
     return (
@@ -368,13 +372,15 @@ export default function Kepatuhan() {
                     student={students.find(s => s.id === selectedStudentId)}
                     data={attendance[selectedStudentId]?.[activeMainTab] || []}
                     onUpdate={(newData) => {
-                      setAttendance(prev => ({
-                        ...prev,
-                        [selectedStudentId]: {
+                      setAttendance(prev => {
+                        const updatedStudent = {
                           ...prev[selectedStudentId],
                           [activeMainTab]: newData
                         }
-                      }))
+                        const newAttendance = { ...prev, [selectedStudentId]: updatedStudent }
+                        attendanceRef.current = newAttendance
+                        return newAttendance
+                      })
                     }}
                     onSaveToDB={async () => {
                       const success = await handleSaveSingleStudent(selectedStudentId)
