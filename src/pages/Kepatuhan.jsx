@@ -132,34 +132,6 @@ export default function Kepatuhan() {
     })
   }, [])
 
-  const handleSave = async () => {
-    setError(''); setSuccess(''); setLoading(true)
-    try {
-      const payload = Object.values(attendanceRef.current).map((att) => ({
-        student_id: att.student_id,
-        report_period_id: selectedPeriodId,
-        sakit: att.sakit,
-        izin: att.izin,
-        alpha: att.alpha,
-        catatan_khusus: JSON.stringify({
-          catatan: att.catatan,
-          kokurikuler: att.kokurikuler,
-          ekstrakurikuler: att.ekstrakurikuler
-        }),
-      }))
-      const { error } = await supabase.from('student_attendance').upsert(payload, {
-        onConflict: 'student_id,report_period_id',
-      })
-      if (error) throw error
-      setSuccess('Seluruh data kelas berhasil disimpan!')
-      setTimeout(() => setSuccess(''), 4000)
-    } catch (err) {
-      setError('Gagal menyimpan: ' + err.message)
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const handleSaveSingleStudent = React.useCallback(async (studentId) => {
     const att = attendanceRef.current[studentId]
     if (!att) return
@@ -297,17 +269,6 @@ export default function Kepatuhan() {
                 Ekstrakurikuler
               </button>
             </div>
-            
-            {activeMainTab === 'kehadiran' && (
-              <button
-                onClick={handleSave}
-                disabled={loading}
-                className="bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 px-5 py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-md"
-              >
-                <Save size={16} />
-                {loading ? 'Menyimpan...' : 'Simpan Semua Data Kehadiran'}
-              </button>
-            )}
           </div>
 
           {activeMainTab === 'kehadiran' && (
