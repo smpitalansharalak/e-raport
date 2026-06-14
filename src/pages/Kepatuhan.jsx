@@ -27,6 +27,7 @@ export default function Kepatuhan() {
 
   const [activeMainTab, setActiveMainTab] = useState('kehadiran') // 'kehadiran', 'kokurikuler', 'ekstrakurikuler'
   const [selectedStudentId, setSelectedStudentId] = useState(null)
+  const [savingRows, setSavingRows] = useState({})
 
   useEffect(() => {
     if (profile) fetchPeriods()
@@ -207,6 +208,16 @@ export default function Kepatuhan() {
     }
   }, [handleSaveSingleStudent])
 
+  const handleSaveRow = React.useCallback(async (studentId, studentName) => {
+    setSavingRows(prev => ({ ...prev, [studentId]: true }))
+    const success = await handleSaveSingleStudent(studentId)
+    if (success) {
+      setSuccess(`Data kehadiran ${studentName} berhasil disimpan!`)
+      setTimeout(() => setSuccess(''), 3000)
+    }
+    setSavingRows(prev => ({ ...prev, [studentId]: false }))
+  }, [handleSaveSingleStudent])
+
   if (loading && periods.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh]">
@@ -306,44 +317,27 @@ export default function Kepatuhan() {
                   <thead>
                     <tr className="text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-800 bg-slate-900/40">
                       <th className="py-3 px-4 w-8">#</th>
-                      <th className="py-3 px-4">Nama Siswa</th>
+                      <th className="py-3 px-4 min-w-[150px]">Nama Siswa</th>
                       <th className="py-3 px-4 text-center w-20">Sakit</th>
                       <th className="py-3 px-4 text-center w-20">Izin</th>
                       <th className="py-3 px-4 text-center w-20">Alpha</th>
-                      <th className="py-3 px-4">Catatan Wali Kelas</th>
+                      <th className="py-3 px-4 min-w-[200px]">Catatan Wali Kelas</th>
+                      <th className="py-3 px-4 text-center w-16">Aksi</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/50">
                     {students.map((student, index) => {
                       const rec = attendance[student.id] || { sakit: 0, izin: 0, alpha: 0, catatan: '' }
                       return (
-                        <tr key={student.id} className="hover:bg-slate-800/20 transition-colors">
-                          <td className="py-3 px-4 text-xs text-slate-500 font-mono">{index + 1}</td>
-                          <td className="py-3 px-4">
-                            <p className="text-sm font-semibold text-slate-200 leading-tight">{student.name}</p>
-                            <p className="text-[10px] font-mono text-slate-500 mt-0.5">{student.nisn}</p>
-                          </td>
-                          {['sakit', 'izin', 'alpha'].map((field) => (
-                            <td key={field} className="py-3 px-4 text-center">
-                              <input
-                                type="number"
-                                min="0"
-                                value={rec[field]}
-                                onChange={(e) => handleChange(student.id, field, e.target.value)}
-                                className="w-14 bg-slate-950 border border-slate-800 rounded-lg text-center text-sm py-1.5 text-slate-200 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 transition-colors"
-                              />
-                            </td>
-                          ))}
-                          <td className="py-2.5 px-4">
-                            <input
-                              type="text"
-                              placeholder="Catatan khusus (opsional)..."
-                              value={rec.catatan || ''}
-                              onChange={(e) => handleChange(student.id, 'catatan', e.target.value)}
-                              className="w-full bg-slate-950 border border-slate-800 rounded-lg text-sm py-1.5 px-3 text-slate-200 placeholder-slate-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 transition-colors"
-                            />
-                          </td>
-                        </tr>
+                        <KehadiranRow
+                          key={student.id}
+                          student={student}
+                          index={index}
+                          rec={rec}
+                          onChange={handleChange}
+                          onSave={handleSaveRow}
+                          isSavingRow={savingRows[student.id]}
+                        />
                       )
                     })}
                   </tbody>
@@ -400,6 +394,52 @@ export default function Kepatuhan() {
     </div>
   )
 }
+
+const KehadiranRow = React.memo(({ student, index, rec, onChange, onSave, isSavingRow }) => {
+  return (
+    <tr className="hover:bg-slate-800/20 transition-colors">
+      <td className="py-3 px-4 text-xs text-slate-500 font-mono">{index + 1}</td>
+      <td className="py-3 px-4 min-w-[150px]">
+        <p className="text-sm font-semibold text-slate-200 leading-tight">{student.name}</p>
+        <p className="text-[10px] font-mono text-slate-500 mt-0.5">{student.nisn}</p>
+      </td>
+      {['sakit', 'izin', 'alpha'].map((field) => (
+        <td key={field} className="py-3 px-4 text-center">
+          <input
+            type="number"
+            min="0"
+            value={rec[field]}
+            onChange={(e) => onChange(student.id, field, e.target.value)}
+            className="w-14 bg-slate-950 border border-slate-800 rounded-lg text-center text-sm py-1.5 text-slate-200 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 transition-colors"
+          />
+        </td>
+      ))}
+      <td className="py-2.5 px-4 min-w-[200px]">
+        <textarea
+          rows="2"
+          placeholder="Catatan khusus (opsional)..."
+          value={rec.catatan || ''}
+          onChange={(e) => onChange(student.id, 'catatan', e.target.value)}
+          className="w-full bg-slate-950 border border-slate-800 rounded-lg text-sm py-2 px-3 text-slate-200 placeholder-slate-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 transition-colors resize-y min-h-[42px]"
+        />
+      </td>
+      <td className="py-2.5 px-4 text-center">
+        <button
+          onClick={() => onSave(student.id, student.name)}
+          disabled={isSavingRow}
+          className="p-2 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 rounded-lg transition-colors cursor-pointer flex items-center justify-center mx-auto"
+          title="Simpan baris ini"
+        >
+          {isSavingRow ? (
+            <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <Save size={16} />
+          )}
+        </button>
+      </td>
+    </tr>
+  )
+})
 
 const ActivityManager = React.memo(({ type, student, data, onUpdate, onSaveToDB }) => {
   const [isEditing, setIsEditing] = useState(false)
