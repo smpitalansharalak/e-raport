@@ -153,14 +153,31 @@ export default function ManajemenStatus() {
 
         for (const student of selected) {
             try {
+                let targetClass = student.class_name
+                let previousClass = student.previous_class
+                
+                if (showBulkModal === 'naik_kelas') {
+                    if (bulkTargetClass) {
+                        targetClass = bulkTargetClass
+                    } else {
+                        const autoNext = getNextClass(student.class_name)
+                        if (autoNext) {
+                            targetClass = autoNext
+                        }
+                    }
+                    if (targetClass !== student.class_name) {
+                        previousClass = student.class_name
+                    }
+                }
+
                 const updateData = {
                     status: showBulkModal,
                     status_changed_at: new Date().toISOString(),
                     promotion_note: bulkNote || null,
                 }
-                if (showBulkModal === 'naik_kelas' && bulkTargetClass) {
-                    updateData.previous_class = student.class_name
-                    updateData.class_name = bulkTargetClass
+                if (showBulkModal === 'naik_kelas' && targetClass !== student.class_name) {
+                    updateData.previous_class = previousClass
+                    updateData.class_name = targetClass
                 }
                 if (bulkTargetYear) updateData.academic_year = bulkTargetYear
                 if (showBulkModal === 'alumni') updateData.graduation_year = bulkTargetYear || student.academic_year
@@ -171,7 +188,7 @@ export default function ManajemenStatus() {
                     from_status: student.status,
                     to_status: showBulkModal,
                     from_class: student.class_name,
-                    to_class: showBulkModal === 'naik_kelas' && bulkTargetClass ? bulkTargetClass : student.class_name,
+                    to_class: showBulkModal === 'naik_kelas' ? targetClass : student.class_name,
                     academic_year: bulkTargetYear || student.academic_year,
                     note: bulkNote || null,
                 })

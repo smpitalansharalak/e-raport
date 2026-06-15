@@ -139,9 +139,8 @@ export default function useInputRapor() {
       if (selectedSubject.class_name) {
         const periodClass = selectedPeriod.class_name || ''
         const subjectClass = selectedSubject.class_name
-        const isMatch =
-          periodClass.toLowerCase().startsWith(subjectClass.toLowerCase()) ||
-          periodClass.toLowerCase().includes(subjectClass.toLowerCase())
+        const regex = new RegExp('\\b' + subjectClass + '\\b', 'i')
+        const isMatch = regex.test(periodClass)
         if (!isMatch) {
           throw new Error(
             `Anda tidak mengajar mata pelajaran ${selectedSubject.name} untuk kelas ${periodClass} (Mata pelajaran ini diset untuk Kelas ${subjectClass}).`

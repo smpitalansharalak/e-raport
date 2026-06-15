@@ -41,9 +41,9 @@ export default function SubjectOrderModal({ period, allSubjects, onClose, onSave
       // Filter subjects relevant to this period's class
       const filtered = allSubjects.filter((sub) => {
         if (!sub.class_name) return true
-        const pClass = (period.class_name || '').toLowerCase()
-        return pClass.startsWith(sub.class_name.toLowerCase()) ||
-               pClass.includes(sub.class_name.toLowerCase())
+        const pClass = period.class_name || ''
+        const regex = new RegExp('\\b' + sub.class_name + '\\b', 'i')
+        return regex.test(pClass)
       })
 
       // Split into assigned (ordered) and unassigned

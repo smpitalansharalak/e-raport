@@ -80,7 +80,11 @@ export default function CetakRapor() {
         .from('report_periods')
         .select('id, name, class_name, semester, academic_year, kepala_sekolah_name, is_active, wali_kelas:profiles(id, name)')
         .order('created_at', { ascending: false })
-      if (!alumniMode) q = q.eq('is_active', true)
+      if (!alumniMode) {
+        q = q.eq('is_active', true)
+      } else {
+        q = q.eq('is_active', false)
+      }
       const { data, error } = await q
       if (error) throw error
       setPeriods(data || [])
@@ -110,11 +114,29 @@ export default function CetakRapor() {
         .order('name', { ascending: true })
 
       if (alumniMode) {
-        q = supabase
-          .from('students')
-          .select('id, name, nisn, class_name, academic_year, phase, parent_name, status, graduation_year, previous_class')
-          .or(`and(class_name.eq.${period.class_name},academic_year.eq.${period.academic_year}),and(previous_class.eq.${period.class_name},academic_year.eq.${period.academic_year})`)
-          .order('name', { ascending: true })
+        // Fetch students who have scores or attendance in this period
+        const { data: scoreData } = await supabase.from('student_scores').select('student_id').eq('report_period_id', periodId)
+        const { data: attData } = await supabase.from('student_attendance').select('student_id').eq('report_period_id', periodId)
+        
+        const studentIds = new Set([
+          ...(scoreData || []).map(s => s.student_id),
+          ...(attData || []).map(s => s.student_id)
+        ])
+
+        if (studentIds.size > 0) {
+          const idList = Array.from(studentIds).join(',')
+          q = supabase
+            .from('students')
+            .select('id, name, nisn, class_name, academic_year, phase, parent_name, status, graduation_year, previous_class')
+            .or(`and(class_name.eq."${period.class_name}",academic_year.eq."${period.academic_year}"),id.in.(${idList})`)
+            .order('name', { ascending: true })
+        } else {
+          q = supabase
+            .from('students')
+            .select('id, name, nisn, class_name, academic_year, phase, parent_name, status, graduation_year, previous_class')
+            .or(`and(class_name.eq."${period.class_name}",academic_year.eq."${period.academic_year}"),and(previous_class.eq."${period.class_name}",academic_year.eq."${period.academic_year}")`)
+            .order('name', { ascending: true })
+        }
       }
 
       const { data: sData, error: sErr } = await q
@@ -262,7 +284,7 @@ export default function CetakRapor() {
         {alumniMode && (
           <div className="p-3.5 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-xl text-xs flex items-center gap-2">
             <Users size={14} className="shrink-0" />
-            Mode Alumni — semua periode rapor (aktif maupun arsip) ditampilkan.
+            Mode Arsip — hanya periode rapor yang sudah tidak aktif (diarsipkan) yang ditampilkan.
           </div>
         )}
 

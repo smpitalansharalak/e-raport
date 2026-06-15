@@ -23,8 +23,8 @@ export default function Layout() {
     // Initialize the timer
     resetTimer();
 
-    // Event listeners for user activity
-    const events = ['mousemove', 'keydown', 'click', 'scroll'];
+    // Event listeners for user activity (removed mousemove and scroll for performance)
+    const events = ['keydown', 'click'];
     const handleActivity = () => resetTimer();
 
     events.forEach(event => window.addEventListener(event, handleActivity));

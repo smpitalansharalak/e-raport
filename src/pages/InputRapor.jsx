@@ -118,10 +118,8 @@ export default function InputRapor() {
                 if (!currentPeriod) return true
                 if (!sub.class_name) return true
                 const pClass = currentPeriod.class_name || ''
-                return (
-                  pClass.toLowerCase().startsWith(sub.class_name.toLowerCase()) ||
-                  pClass.toLowerCase().includes(sub.class_name.toLowerCase())
-                )
+                const regex = new RegExp('\\b' + sub.class_name + '\\b', 'i')
+                return regex.test(pClass)
               })
               return filtered.map((sub) => (
                 <option key={sub.id} value={sub.id}>
