@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import {
   Users,
@@ -14,6 +14,8 @@ import {
   User,
   X,
   Loader2,
+  Plus,
+  Minus,
 } from 'lucide-react'
 
 const ROLE_OPTIONS = [
@@ -35,11 +37,29 @@ export default function KelolaUser() {
   const [teacherSubjects, setTeacherSubjects] = useState({})
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [subjectSearch, setSubjectSearch] = useState('')
   const [selected, setSelected] = useState(null) // selected profile object
   const [saving, setSaving] = useState(false)
   const [resetting, setResetting] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [expandedClasses, setExpandedClasses] = useState({})
+  const detailRef = useRef(null)
+
+  const toggleClass = (className) => {
+    setExpandedClasses(prev => ({
+      ...prev,
+      [className]: !prev[className]
+    }))
+  }
+
+  useEffect(() => {
+    if (selected && detailRef.current && window.innerWidth < 1024) {
+      setTimeout(() => {
+        detailRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 100)
+    }
+  }, [selected])
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -158,6 +178,25 @@ export default function KelolaUser() {
     p.email.toLowerCase().includes(search.toLowerCase())
   )
 
+  const groupedSubjects = subjects.reduce((acc, sub) => {
+    const className = sub.class_name || 'Tanpa Kelas';
+    if (!acc[className]) {
+      acc[className] = [];
+    }
+    acc[className].push(sub);
+    return acc;
+  }, {});
+
+  const sortedClasses = Object.keys(groupedSubjects).sort((a, b) => {
+    if (a === 'Tanpa Kelas') return 1;
+    if (b === 'Tanpa Kelas') return -1;
+    const romanOrder = { 'I':1, 'II':2, 'III':3, 'IV':4, 'V':5, 'VI':6, 'VII':7, 'VIII':8, 'IX':9, 'X':10, 'XI':11, 'XII':12 };
+    const numA = romanOrder[a.toUpperCase()];
+    const numB = romanOrder[b.toUpperCase()];
+    if (numA && numB) return numA - numB;
+    return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+  });
+
   const assignedCount = selected ? (teacherSubjects[selected.id] || []).length : 0
 
   if (loading) {
@@ -253,7 +292,7 @@ export default function KelolaUser() {
         </div>
 
         {/* ── PANEL KANAN: Detail Editor ── */}
-        <div className="lg:col-span-3">
+        <div className="lg:col-span-3" ref={detailRef}>
           {!selected ? (
             <div className="h-full min-h-[300px] bg-slate-900/40 border border-slate-800 rounded-2xl flex flex-col items-center justify-center gap-4 text-center p-8">
               <div className="p-4 bg-slate-800/40 rounded-2xl">
@@ -338,7 +377,7 @@ export default function KelolaUser() {
 
               {/* Mata Pelajaran */}
               <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 space-y-3">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <BookOpen size={14} className="text-slate-500" />
                     <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Mata Pelajaran Diampu</span>
@@ -353,32 +392,95 @@ export default function KelolaUser() {
                     Belum ada mata pelajaran. Tambahkan di menu "Buat Rapor".
                   </p>
                 ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-52 overflow-y-auto pr-0.5">
-                    {subjects.map(sub => {
-                      const isAssigned = (teacherSubjects[selected.id] || []).includes(sub.id)
-                      return (
-                        <button
-                          key={sub.id}
-                          disabled={saving}
-                          onClick={() => toggleSubject(sub.id)}
-                          className={`flex items-start gap-2 p-2.5 rounded-xl border text-left text-xs transition-all cursor-pointer disabled:opacity-60 ${isAssigned
-                              ? 'bg-slate-950 border-emerald-500/40 text-emerald-400 font-semibold'
-                              : 'bg-slate-950/40 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-300'
-                            }`}
-                        >
-                          {isAssigned
-                            ? <CheckSquare size={12} className="text-emerald-400 shrink-0 mt-0.5" />
-                            : <Square size={12} className="text-slate-600 shrink-0 mt-0.5" />}
-                          <span className="leading-tight">
-                            {sub.name}
-                            {sub.class_name && (
-                              <span className="block text-[9px] text-slate-500 font-normal mt-0.5">Kelas {sub.class_name}</span>
+                  <>
+                    <div className="relative">
+                      <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+                      <input
+                        type="text"
+                        placeholder="Cari mata pelajaran atau kelas..."
+                        value={subjectSearch}
+                        onChange={e => setSubjectSearch(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2.5 pl-9 pr-4 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
+                      />
+                    </div>
+                    
+                    <div className="max-h-[380px] overflow-y-auto pr-2 space-y-3 mt-3 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-slate-700 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-slate-600 transition-colors">
+                      {sortedClasses.map(className => {
+                        const classSubjects = groupedSubjects[className].filter(sub => 
+                           sub.name.toLowerCase().includes(subjectSearch.toLowerCase()) || 
+                           className.toLowerCase().includes(subjectSearch.toLowerCase())
+                        );
+
+                        if (classSubjects.length === 0) return null;
+
+                        const assignedInThisClass = classSubjects.filter(sub => (teacherSubjects[selected.id] || []).includes(sub.id)).length;
+                        const isExpanded = subjectSearch !== '' || expandedClasses[className];
+
+                        return (
+                          <div key={className} className="bg-slate-950/40 border border-slate-800/80 rounded-xl overflow-hidden transition-all">
+                            <button
+                              onClick={() => toggleClass(className)}
+                              className="w-full flex items-center justify-between p-3.5 hover:bg-slate-900/50 transition-colors cursor-pointer"
+                            >
+                              <div className="flex items-center gap-2">
+                                <div className="w-1.5 h-1.5 rounded-full bg-indigo-500"></div>
+                                <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                                  Kelas {className}
+                                </h4>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                {assignedInThisClass > 0 && (
+                                  <span className="text-[9px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                                    {assignedInThisClass} dipilih
+                                  </span>
+                                )}
+                                <div className="p-1 rounded bg-slate-900 border border-slate-800 text-slate-400">
+                                  {isExpanded ? <Minus size={12} /> : <Plus size={12} />}
+                                </div>
+                              </div>
+                            </button>
+                            
+                            {isExpanded && (
+                              <div className="p-3.5 pt-0 grid grid-cols-1 sm:grid-cols-2 gap-2 border-t border-slate-800/50 mt-1">
+                                {classSubjects.map(sub => {
+                                  const isAssigned = (teacherSubjects[selected.id] || []).includes(sub.id)
+                                  return (
+                                    <button
+                                      key={sub.id}
+                                      disabled={saving}
+                                      onClick={() => toggleSubject(sub.id)}
+                                      className={`flex items-start gap-2.5 p-2.5 rounded-lg border text-left text-xs transition-all cursor-pointer disabled:opacity-60 ${isAssigned
+                                          ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-sm shadow-emerald-500/5'
+                                          : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-300'
+                                        }`}
+                                    >
+                                      {isAssigned
+                                        ? <CheckSquare size={14} className="text-emerald-400 shrink-0 mt-0.5" />
+                                        : <Square size={14} className="text-slate-600 shrink-0 mt-0.5" />}
+                                      <span className="leading-snug font-medium">
+                                        {sub.name}
+                                      </span>
+                                    </button>
+                                  )
+                                })}
+                              </div>
                             )}
-                          </span>
-                        </button>
-                      )
-                    })}
-                  </div>
+                          </div>
+                        )
+                      })}
+                      {Object.keys(groupedSubjects).every(className => {
+                         const classSubjects = groupedSubjects[className].filter(sub => 
+                            sub.name.toLowerCase().includes(subjectSearch.toLowerCase()) || 
+                            className.toLowerCase().includes(subjectSearch.toLowerCase())
+                         );
+                         return classSubjects.length === 0;
+                      }) && (
+                        <div className="text-center py-6 text-slate-500 text-xs bg-slate-950/20 rounded-xl border border-slate-800/50 border-dashed">
+                           Tidak ada mata pelajaran yang cocok dengan "{subjectSearch}"
+                        </div>
+                      )}
+                    </div>
+                  </>
                 )}
               </div>
 

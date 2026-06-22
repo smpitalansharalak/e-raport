@@ -95,7 +95,7 @@ function StudentForm({ editingStudent, onSaved, onCancel }) {
           {...register('name', { required: 'Nama lengkap wajib diisi' })} />
         {errors.name && <span className="text-[11px] text-rose-500 mt-1 block">{errors.name.message}</span>}
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Kelas</label>
           <input type="text" placeholder="Contoh: VII A"
@@ -113,7 +113,7 @@ function StudentForm({ editingStudent, onSaved, onCancel }) {
           </select>
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Tahun Ajaran</label>
           <input type="text" placeholder="Contoh: 2025/2026"

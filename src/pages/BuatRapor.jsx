@@ -12,6 +12,7 @@ import {
   Check,
   ChevronRight,
   Settings,
+  Minus,
 } from 'lucide-react'
 import SubjectOrderModal from '../components/rapor/SubjectOrderModal'
 
@@ -21,6 +22,14 @@ export default function BuatRapor() {
   const [subjects, setSubjects] = useState([])
   const [teachers, setTeachers] = useState([]) // profiles with role = 'wali_kelas' or others
   const [periodSubjects, setPeriodSubjects] = useState({}) // key: period_id, value: array of subject_ids
+  const [expandedClasses, setExpandedClasses] = useState({})
+
+  const toggleClass = (className) => {
+    setExpandedClasses((prev) => ({
+      ...prev,
+      [className]: !prev[className],
+    }))
+  }
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -476,56 +485,97 @@ export default function BuatRapor() {
             </button>
           </div>
 
-          <div className="bg-slate-900/40 border border-slate-800 rounded-2xl overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-slate-900 border-b border-slate-800 text-xs font-bold text-slate-400 uppercase tracking-wider">
-                    <th className="py-4 px-6">No.</th>
-                    <th className="py-4 px-6">Nama Mata Pelajaran</th>
-                    <th className="py-4 px-6">Kelas</th>
-                    <th className="py-4 px-6 text-center">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60 text-sm text-slate-200">
-                  {subjects.length === 0 ? (
-                    <tr>
-                      <td colSpan="4" className="py-8 text-center text-slate-500">
-                        <BookOpen size={32} className="mx-auto mb-2 text-slate-650" />
-                        Belum ada mata pelajaran.
-                      </td>
-                    </tr>
-                  ) : (
-                    subjects.map((sub, idx) => (
-                      <tr key={sub.id} className="hover:bg-slate-900/20 transition-all">
-                        <td className="py-3 px-6 text-slate-400 font-mono font-medium">{idx + 1}.</td>
-                        <td className="py-3 px-6 font-semibold text-slate-250">{sub.name}</td>
-                        <td className="py-3 px-6 text-slate-400 text-xs">{sub.class_name || <span className="italic text-slate-600">—</span>}</td>
-                        <td className="py-3 px-6 text-center">
-                          <div className="flex justify-center gap-2">
-                            <button
-                              onClick={() => openEditSubjectModal(sub)}
-                              className="p-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/20 rounded-lg transition-all cursor-pointer"
-                              title="Edit Mapel"
-                            >
-                              <Edit2 size={13} />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteSubject(sub.id)}
-                              className="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 rounded-lg transition-all cursor-pointer"
-                              title="Hapus Mapel"
-                            >
-                              <Trash2 size={13} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+          {subjects.length === 0 ? (
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-12 text-center text-slate-500">
+              <BookOpen size={36} className="mx-auto text-slate-650 mb-2" />
+              Belum ada mata pelajaran.
             </div>
-          </div>
+          ) : (
+            <div className="space-y-3">
+              {(() => {
+                const groupedSubjects = subjects.reduce((acc, sub) => {
+                  const className = sub.class_name || 'Tanpa Kelas';
+                  if (!acc[className]) acc[className] = [];
+                  acc[className].push(sub);
+                  return acc;
+                }, {});
+
+                const sortedClasses = Object.keys(groupedSubjects).sort((a, b) => {
+                  if (a === 'Tanpa Kelas') return 1;
+                  if (b === 'Tanpa Kelas') return -1;
+                  const romanOrder = { 'I':1, 'II':2, 'III':3, 'IV':4, 'V':5, 'VI':6, 'VII':7, 'VIII':8, 'IX':9, 'X':10, 'XI':11, 'XII':12 };
+                  const numA = romanOrder[a.toUpperCase()];
+                  const numB = romanOrder[b.toUpperCase()];
+                  if (numA && numB) return numA - numB;
+                  return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+                });
+
+                return sortedClasses.map(className => {
+                  const classSubjects = groupedSubjects[className];
+                  const isExpanded = expandedClasses[className];
+
+                  return (
+                    <div key={className} className="bg-slate-900/40 border border-slate-800/80 rounded-xl overflow-hidden transition-all">
+                      <button
+                        onClick={() => toggleClass(className)}
+                        className="w-full flex items-center justify-between p-4 hover:bg-slate-800/30 transition-colors cursor-pointer"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-1.5 h-1.5 rounded-full bg-indigo-500"></div>
+                          <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                            Kelas {className}
+                          </h4>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-[10px] font-mono font-bold text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
+                            {classSubjects.length} Mapel
+                          </span>
+                          <div className="p-1 rounded bg-slate-900 border border-slate-800 text-slate-400">
+                            {isExpanded ? <Minus size={12} /> : <Plus size={12} />}
+                          </div>
+                        </div>
+                      </button>
+
+                      {isExpanded && (
+                        <div className="border-t border-slate-800/50 bg-slate-900/20">
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse min-w-[400px]">
+                              <tbody className="divide-y divide-slate-800/60 text-sm text-slate-200">
+                                {classSubjects.map((sub, idx) => (
+                                  <tr key={sub.id} className="hover:bg-slate-900/40 transition-all">
+                                    <td className="py-3 px-6 text-slate-400 font-mono font-medium w-16 text-center">{idx + 1}.</td>
+                                    <td className="py-3 px-4 font-semibold text-slate-250">{sub.name}</td>
+                                    <td className="py-3 px-6 text-center w-32">
+                                      <div className="flex justify-center gap-2">
+                                        <button
+                                          onClick={() => openEditSubjectModal(sub)}
+                                          className="p-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/20 rounded-lg transition-all cursor-pointer"
+                                          title="Edit Mapel"
+                                        >
+                                          <Edit2 size={13} />
+                                        </button>
+                                        <button
+                                          onClick={() => handleDeleteSubject(sub.id)}
+                                          className="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 rounded-lg transition-all cursor-pointer"
+                                          title="Hapus Mapel"
+                                        >
+                                          <Trash2 size={13} />
+                                        </button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+          )}
         </div>
       )}
 

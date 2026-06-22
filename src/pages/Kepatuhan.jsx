@@ -28,6 +28,15 @@ export default function Kepatuhan() {
   const [activeMainTab, setActiveMainTab] = useState('kehadiran') // 'kehadiran', 'kokurikuler', 'ekstrakurikuler'
   const [selectedStudentId, setSelectedStudentId] = useState(null)
   const [savingRows, setSavingRows] = useState({})
+  const activityRef = React.useRef(null)
+
+  useEffect(() => {
+    if (selectedStudentId && activityRef.current && window.innerWidth < 768) {
+      setTimeout(() => {
+        activityRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 100)
+    }
+  }, [selectedStudentId])
 
   useEffect(() => {
     if (profile) fetchPeriods()
@@ -332,7 +341,7 @@ export default function Kepatuhan() {
               </div>
 
               {/* Activity Manager */}
-              <div className="w-full md:w-2/3">
+              <div className="w-full md:w-2/3" ref={activityRef}>
                 {selectedStudentId ? (
                   <ActivityManager
                     type={activeMainTab}
@@ -519,15 +528,16 @@ const ActivityManager = React.memo(({ type, student, data, onUpdate, onSaveToDB 
 
         {/* Table */}
         <div className="border border-slate-800 rounded-xl overflow-hidden">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="bg-slate-950/50 border-b border-slate-800 text-[11px] font-bold text-slate-400 uppercase">
-                <th className="py-2.5 px-4 w-10 text-center">No</th>
-                <th className="py-2.5 px-4">Nama {title}</th>
-                <th className="py-2.5 px-4">Keterangan</th>
-                <th className="py-2.5 px-4 w-24 text-center">Aksi</th>
-              </tr>
-            </thead>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm min-w-[450px]">
+              <thead>
+                <tr className="bg-slate-950/50 border-b border-slate-800 text-[11px] font-bold text-slate-400 uppercase">
+                  <th className="py-2.5 px-4 w-10 text-center">No</th>
+                  <th className="py-2.5 px-4 min-w-[130px]">Nama {title}</th>
+                  <th className="py-2.5 px-4 min-w-[130px]">Keterangan</th>
+                  <th className="py-2.5 px-4 w-24 text-center">Aksi</th>
+                </tr>
+              </thead>
             <tbody className="divide-y divide-slate-800/50">
               {data.length === 0 ? (
                 <tr>
@@ -561,7 +571,8 @@ const ActivityManager = React.memo(({ type, student, data, onUpdate, onSaveToDB 
                 ))
               )}
             </tbody>
-          </table>
+            </table>
+          </div>
         </div>
       </div>
     </div>
