@@ -1,6 +1,5 @@
-import React from 'react'
 import { useAuth } from '../context/AuthContext'
-import { LogOut, User, GraduationCap, School, Menu, X } from 'lucide-react'
+import { LogOut, School, Menu, X } from 'lucide-react'
 
 export default function Header() {
   const { profile, signOut, sidebarOpen, toggleSidebar } = useAuth()
@@ -74,7 +73,8 @@ export default function Header() {
 
         <button
           onClick={signOut}
-          className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 transition-all duration-200 cursor-pointer"
+          aria-label="Keluar"
+          className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold border text-rose-400 bg-rose-500/10 border-rose-500/30 hover:bg-rose-500/15 hover:text-rose-300 sm:text-slate-400 sm:bg-transparent sm:border-transparent sm:hover:text-rose-400 sm:hover:bg-rose-500/10 sm:hover:border-rose-500/20 transition-all duration-200 cursor-pointer"
         >
           <LogOut size={16} />
           <span className="hidden sm:inline">Keluar</span>

@@ -19,7 +19,7 @@ export default function Dashboard() {
     totalReports: 0,
     totalSubjects: 0,
     teacherSubjectsCount: 0,
-    waliKelasCount: 0,
+    waliKelasClasses: [],
   })
   const [loading, setLoading] = useState(true)
 
@@ -61,14 +61,19 @@ export default function Dashboard() {
             .eq('teacher_id', profile.id),
           supabase
             .from('report_periods')
-            .select('*', { count: 'exact', head: true })
+            .select('class_name')
             .eq('wali_kelas_id', profile.id)
-            .eq('is_active', true),
+            .eq('is_active', true)
+            .order('class_name', { ascending: true }),
         ])
+
+        const waliKelasClasses = [
+          ...new Set((waliKelasRes.data || []).map(period => period.class_name).filter(Boolean)),
+        ]
 
         setStats({
           teacherSubjectsCount: teacherSubjectsRes.count || 0,
-          waliKelasCount: waliKelasRes.count || 0,
+          waliKelasClasses,
         })
       }
     } catch (err) {
@@ -118,74 +123,76 @@ export default function Dashboard() {
 
       {/* KPI Cards */}
       {profile?.role === 'admin' ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-4">
           {/* Card 1 */}
-          <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 flex items-center gap-4 transition-all duration-200 hover:border-slate-700/60 hover:shadow-lg">
-            <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl">
+          <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 sm:p-6 flex items-center gap-3 sm:gap-4 transition-all duration-200 hover:border-slate-700/60 hover:shadow-lg">
+            <div className="p-2.5 sm:p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl">
               <GraduationCap size={24} />
             </div>
             <div>
-              <p className="text-2xl font-bold text-slate-100">{stats.totalStudents}</p>
-              <p className="text-xs text-slate-400 font-medium uppercase tracking-wider mt-0.5">Total Siswa</p>
+              <p className="text-xl sm:text-2xl font-bold text-slate-100">{stats.totalStudents}</p>
+              <p className="text-[10px] sm:text-xs text-slate-400 font-medium uppercase tracking-wider mt-0.5">Total Siswa</p>
             </div>
           </div>
 
           {/* Card 2 */}
-          <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 flex items-center gap-4 transition-all duration-200 hover:border-slate-700/60 hover:shadow-lg">
-            <div className="p-3 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 rounded-xl">
+          <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 sm:p-6 flex items-center gap-3 sm:gap-4 transition-all duration-200 hover:border-slate-700/60 hover:shadow-lg">
+            <div className="p-2.5 sm:p-3 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 rounded-xl">
               <Users size={24} />
             </div>
             <div>
-              <p className="text-2xl font-bold text-slate-100">{stats.totalTeachers}</p>
-              <p className="text-xs text-slate-400 font-medium uppercase tracking-wider mt-0.5">Total Guru</p>
+              <p className="text-xl sm:text-2xl font-bold text-slate-100">{stats.totalTeachers}</p>
+              <p className="text-[10px] sm:text-xs text-slate-400 font-medium uppercase tracking-wider mt-0.5">Total Guru</p>
             </div>
           </div>
 
           {/* Card 3 */}
-          <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 flex items-center gap-4 transition-all duration-200 hover:border-slate-700/60 hover:shadow-lg">
-            <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-xl">
+          <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 sm:p-6 flex items-center gap-3 sm:gap-4 transition-all duration-200 hover:border-slate-700/60 hover:shadow-lg">
+            <div className="p-2.5 sm:p-3 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-xl">
               <FileSpreadsheet size={24} />
             </div>
             <div>
-              <p className="text-2xl font-bold text-slate-100">{stats.totalReports}</p>
-              <p className="text-xs text-slate-400 font-medium uppercase tracking-wider mt-0.5">Rapor Aktif</p>
+              <p className="text-xl sm:text-2xl font-bold text-slate-100">{stats.totalReports}</p>
+              <p className="text-[10px] sm:text-xs text-slate-400 font-medium uppercase tracking-wider mt-0.5">Rapor Aktif</p>
             </div>
           </div>
 
           {/* Card 4 */}
-          <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 flex items-center gap-4 transition-all duration-200 hover:border-slate-700/60 hover:shadow-lg">
-            <div className="p-3 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-xl">
+          <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 sm:p-6 flex items-center gap-3 sm:gap-4 transition-all duration-200 hover:border-slate-700/60 hover:shadow-lg">
+            <div className="p-2.5 sm:p-3 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-xl">
               <BookOpen size={24} />
             </div>
             <div>
-              <p className="text-2xl font-bold text-slate-100">{stats.totalSubjects}</p>
-              <p className="text-xs text-slate-400 font-medium uppercase tracking-wider mt-0.5">Mata Pelajaran</p>
+              <p className="text-xl sm:text-2xl font-bold text-slate-100">{stats.totalSubjects}</p>
+              <p className="text-[10px] sm:text-xs text-slate-400 font-medium uppercase tracking-wider mt-0.5">Mata Pelajaran</p>
             </div>
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-3xl">
+        <div className="grid grid-cols-2 gap-3 sm:gap-6 max-w-3xl">
           {/* Guru Card 1 */}
-          <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 flex items-center gap-4 transition-all duration-200 hover:border-slate-700/60 hover:shadow-lg">
-            <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl">
+          <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 sm:p-6 flex items-center gap-3 sm:gap-4 transition-all duration-200 hover:border-slate-700/60 hover:shadow-lg">
+            <div className="p-2.5 sm:p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl">
               <BookOpen size={24} />
             </div>
             <div>
-              <p className="text-2xl font-bold text-slate-100">{stats.teacherSubjectsCount}</p>
-              <p className="text-xs text-slate-400 font-medium uppercase tracking-wider mt-0.5">Mapel Yang Diajar</p>
+              <p className="text-xl sm:text-2xl font-bold text-slate-100">{stats.teacherSubjectsCount}</p>
+              <p className="text-[10px] sm:text-xs text-slate-400 font-medium uppercase tracking-wider mt-0.5">Mapel Yang Diajar</p>
             </div>
           </div>
 
           {/* Guru Card 2 */}
-          <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 flex items-center gap-4 transition-all duration-200 hover:border-slate-700/60 hover:shadow-lg">
-            <div className="p-3 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 rounded-xl">
+          <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 sm:p-6 flex items-center gap-3 sm:gap-4 transition-all duration-200 hover:border-slate-700/60 hover:shadow-lg">
+            <div className="p-2.5 sm:p-3 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 rounded-xl">
               <ClipboardCheck size={24} />
             </div>
             <div>
-              <p className="text-2xl font-bold text-slate-100">
-                {stats.waliKelasCount > 0 ? `Kelas Wali (${stats.waliKelasCount} Rapor)` : 'Bukan Wali Kelas'}
+              <p className="text-base sm:text-2xl font-bold text-slate-100">
+                {stats.waliKelasClasses.length > 0
+                  ? `Wali Kelas ${stats.waliKelasClasses.join(', ')}`
+                  : 'Bukan Wali Kelas'}
               </p>
-              <p className="text-xs text-slate-400 font-medium uppercase tracking-wider mt-0.5">Status Perwalian</p>
+              <p className="text-[10px] sm:text-xs text-slate-400 font-medium uppercase tracking-wider mt-0.5">Status Perwalian</p>
             </div>
           </div>
         </div>
