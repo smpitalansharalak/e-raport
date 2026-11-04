@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useRegisterSW } from 'virtual:pwa-register/react'
-import { Download, Info, RefreshCw, WifiOff, X } from 'lucide-react'
+import { Download, Info, WifiOff, X } from 'lucide-react'
 
 const INSTALL_DISMISSED_KEY = 'erapor:pwa-install-dismissed'
 
@@ -22,8 +22,6 @@ function wasInstallDismissed() {
 export default function PwaManager() {
   const {
     offlineReady: [offlineReady, setOfflineReady],
-    needRefresh: [needRefresh, setNeedRefresh],
-    updateServiceWorker,
   } = useRegisterSW({ immediate: true })
 
   const [installPrompt, setInstallPrompt] = useState(null)
@@ -100,7 +98,7 @@ export default function PwaManager() {
   }
 
   const hasNotification =
-    isOffline || needRefresh || offlineReady || (showInstall && !!installPrompt)
+    isOffline || offlineReady || (showInstall && !!installPrompt)
 
   if (!hasNotification) return null
 
@@ -120,47 +118,6 @@ export default function PwaManager() {
               Koneksi internet terputus. Data terbaru belum dapat dimuat sampai koneksi kembali.
             </p>
           </div>
-        </div>
-      )}
-
-      {needRefresh && (
-        <div
-          role="alert"
-          className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-white p-4 shadow-lg"
-        >
-          <div className="shrink-0 rounded-lg bg-emerald-500/10 p-2 text-emerald-600">
-            <RefreshCw size={18} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-slate-800">Versi baru tersedia</p>
-            <p className="mt-0.5 text-xs leading-relaxed text-slate-500">
-              Muat ulang untuk menggunakan pembaruan aplikasi.
-            </p>
-            <div className="mt-3 flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => updateServiceWorker(true)}
-                className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-emerald-700 cursor-pointer"
-              >
-                Muat ulang
-              </button>
-              <button
-                type="button"
-                onClick={() => setNeedRefresh(false)}
-                className="rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-500 transition-colors hover:bg-slate-100 cursor-pointer"
-              >
-                Nanti
-              </button>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => setNeedRefresh(false)}
-            aria-label="Tutup notifikasi pembaruan"
-            className="shrink-0 rounded-lg p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 cursor-pointer"
-          >
-            <X size={15} />
-          </button>
         </div>
       )}
 

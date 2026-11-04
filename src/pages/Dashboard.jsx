@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import {
@@ -9,11 +9,10 @@ import {
   ClipboardCheck,
   LayoutDashboard,
   CheckCircle,
-  FileEdit,
 } from 'lucide-react'
 
 export default function Dashboard() {
-  const { profile, role } = useAuth()
+  const { profile } = useAuth()
   const [stats, setStats] = useState({
     totalStudents: 0,
     totalTeachers: 0,
@@ -34,46 +33,42 @@ export default function Dashboard() {
     try {
       if (profile.role === 'admin') {
         // Admin stats
-        const { count: sCount } = await supabase
-          .from('students')
-          .select('*', { count: 'exact', head: true })
-
-        const { count: tCount } = await supabase
-          .from('profiles')
-          .select('*', { count: 'exact', head: true })
-          .in('role', ['guru_mapel', 'wali_kelas'])
-
-        const { count: rCount } = await supabase
-          .from('report_periods')
-          .select('*', { count: 'exact', head: true })
-          .eq('is_active', true)
-
-        const { count: subCount } = await supabase
-          .from('subjects')
-          .select('*', { count: 'exact', head: true })
+        const [studentsRes, teachersRes, periodsRes, subjectsRes] = await Promise.all([
+          supabase.from('students').select('*', { count: 'exact', head: true }),
+          supabase
+            .from('profiles')
+            .select('*', { count: 'exact', head: true })
+            .in('role', ['guru_mapel', 'wali_kelas']),
+          supabase
+            .from('report_periods')
+            .select('*', { count: 'exact', head: true })
+            .eq('is_active', true),
+          supabase.from('subjects').select('*', { count: 'exact', head: true }),
+        ])
 
         setStats({
-          totalStudents: sCount || 0,
-          totalTeachers: tCount || 0,
-          totalReports: rCount || 0,
-          totalSubjects: subCount || 0,
+          totalStudents: studentsRes.count || 0,
+          totalTeachers: teachersRes.count || 0,
+          totalReports: periodsRes.count || 0,
+          totalSubjects: subjectsRes.count || 0,
         })
       } else {
         // Guru/Wali stats
-        const { count: tsCount } = await supabase
-          .from('teacher_subjects')
-          .select('*', { count: 'exact', head: true })
-          .eq('teacher_id', profile.id)
-
-        const { count: wCount } = await supabase
-          .from('report_periods')
-          .select('*', { count: 'exact', head: true })
-          .eq('wali_kelas_id', profile.id)
-          .eq('is_active', true)
+        const [teacherSubjectsRes, waliKelasRes] = await Promise.all([
+          supabase
+            .from('teacher_subjects')
+            .select('*', { count: 'exact', head: true })
+            .eq('teacher_id', profile.id),
+          supabase
+            .from('report_periods')
+            .select('*', { count: 'exact', head: true })
+            .eq('wali_kelas_id', profile.id)
+            .eq('is_active', true),
+        ])
 
         setStats({
-          teacherSubjectsCount: tsCount || 0,
-          waliKelasCount: wCount || 0,
+          teacherSubjectsCount: teacherSubjectsRes.count || 0,
+          waliKelasCount: waliKelasRes.count || 0,
         })
       }
     } catch (err) {

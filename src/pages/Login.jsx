@@ -1,9 +1,11 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { LogIn, Lock, User, Eye, EyeOff, AlertCircle, Info, School } from 'lucide-react'
+
+const escapeLikePattern = (value) => value.replace(/[\\%_]/g, '\\$&')
 
 export default function Login() {
   const { user, loading } = useAuth()
@@ -33,10 +35,15 @@ export default function Login() {
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('email, name')
-        .ilike('username', trimmedUsername)
+        .ilike('username', escapeLikePattern(trimmedUsername))
         .maybeSingle()
 
-      if (profileError) throw profileError
+      if (profileError) {
+        if (profileError.code === 'PGRST116') {
+          throw new Error('Ditemukan lebih dari satu akun dengan username tersebut. Hubungi administrator.')
+        }
+        throw profileError
+      }
       if (!profile) {
         setError('Username tidak ditemukan. Pastikan username sudah terdaftar.')
         return
@@ -104,6 +111,7 @@ export default function Login() {
               </span>
               <input
                 type="text"
+                autoComplete="username"
                 placeholder="Contoh: username atau admin"
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2.5 pl-10 pr-4 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors"
                 {...register('username', { required: 'Username wajib diisi' })}
@@ -123,6 +131,7 @@ export default function Login() {
               </span>
               <input
                 type={showPassword ? 'text' : 'password'}
+                autoComplete="current-password"
                 placeholder="Masukkan password Anda"
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2.5 pl-10 pr-11 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors"
                 {...register('password', {

@@ -1,4 +1,3 @@
-import React from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider, useAuth } from './context/AuthContext'
@@ -22,7 +21,7 @@ const queryClient = new QueryClient({
 })
 
 function RoleGuard({ allowedRoles, children }) {
-  const { role, loading, user, initialized } = useAuth()
+  const { role, loading, user, initialized, profileLoading, profileError, refreshProfile, signOut } = useAuth()
   const location = useLocation()
 
   if (!initialized || loading) {
@@ -34,6 +33,34 @@ function RoleGuard({ allowedRoles, children }) {
   }
 
   if (!user) return <Navigate to="/login" replace />
+
+  if (profileError) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center px-4">
+        <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-6 text-center">
+          <p className="text-sm font-semibold text-slate-100">Gagal memuat profil akun</p>
+          <p className="mt-2 text-xs leading-relaxed text-slate-400 break-words">{profileError}</p>
+          <div className="mt-5 flex items-center justify-center gap-2">
+            <button
+              type="button"
+              onClick={refreshProfile}
+              disabled={profileLoading}
+              className="rounded-lg bg-emerald-500 px-4 py-2 text-xs font-bold text-slate-950 transition-colors hover:bg-emerald-400 disabled:opacity-50 cursor-pointer"
+            >
+              {profileLoading ? 'Memuat...' : 'Coba Lagi'}
+            </button>
+            <button
+              type="button"
+              onClick={signOut}
+              className="rounded-lg border border-slate-700 px-4 py-2 text-xs font-semibold text-slate-300 transition-colors hover:bg-slate-800 cursor-pointer"
+            >
+              Keluar
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   if (!role) {
     return (
