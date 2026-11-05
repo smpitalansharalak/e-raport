@@ -4,7 +4,7 @@
  */
 
 export const calculateFormativeAvg = (studentScoreObj, learningTargets = null) => {
-  let vals = []
+  let vals
   if (learningTargets) {
     vals = learningTargets
       .map((tp) => studentScoreObj.scores_formative?.[tp.id])
@@ -20,7 +20,7 @@ export const calculateFormativeAvg = (studentScoreObj, learningTargets = null) =
 }
 
 export const calculateSummativeAvg = (studentScoreObj, summatives = null) => {
-  let vals = []
+  let vals
   if (summatives) {
     vals = summatives
       .map((sum) => studentScoreObj.scores_summative?.[sum.id])

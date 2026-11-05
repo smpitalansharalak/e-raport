@@ -51,6 +51,7 @@ async function testInsert() {
 
   for (let i = 0; i < testStrings.length; i++) {
     const rawDesc = testStrings[i]
+    // eslint-disable-next-line no-control-regex
     const cleanDesc = rawDesc.trim().replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F-\x9F]/g, '')
     const code = `T-TEST-${i}`
     
