@@ -22,8 +22,10 @@ src/
 │   ├── students/         # Data siswa + impor Excel
 │   ├── users/            # Kelola pengguna & mapel diampu
 │   ├── student-status/   # Naik kelas, kelulusan, alumni
-│   ├── report-config/    # Periode rapor & mata pelajaran
-│   ├── input-rapor/      # Grid penilaian formatif/sumatif
+│   ├── assessment-formats/ # Format Penilaian: template komponen buatan admin
+│   ├── predicates/       # Predikat nilai global + penempatan badge di tabel input
+│   ├── report-config/    # Periode rapor & mata pelajaran (snapshot format saat periode dibuat)
+│   ├── input-rapor/      # Grid penilaian dinamis berdasarkan snapshot komponen
 │   ├── kepatuhan/        # Kehadiran, kokurikuler, ekstrakurikuler
 │   └── cetak-rapor/      # Pratinjau, cetak PDF, ekspor Excel
 ├── lib/                  # Integrasi pihak ketiga & util infrastruktur
@@ -109,6 +111,37 @@ export function useStudents() {
 
 ## Catatan fitur tertentu
 
+- **Format Penilaian** (`assessment-formats/`): admin menyusun template komponen
+  penilaian (mis. Formatif TP, Sumatif per Bab, Ulangan Harian, STS, SAS).
+  Dua tipe komponen: `countable` (jumlah item ditentukan guru, bisa berisi TP —
+  `with_tp`, dengan cara hitung `global` / `per_item`) dan `fixed` (selalu ada,
+  sub-nilai tunggal atau praktik/tertulis/custom). Mode hitung nilai akhir:
+  `equal` (rata-rata komponen terisi) atau `weighted` (bobot, dinormalisasi).
+- **Snapshot**: saat periode rapor dibuat, komponen format disalin ke
+  `period_components`. Guru Input Rapor bekerja dari snapshot ini — mengubah
+  format tidak mempengaruhi periode berjalan. Item yang ditambahkan guru
+  disimpan sebagai `assessment_items` (per periode + mapel + komponen).
+- **Nilai** disimpan pada `student_scores`: TP → `scores_formative`, input
+  langsung item → `scores_summative`, komponen fixed → `fixed_scores`.
+  Komponen yang kosong selalu dilewati saat menghitung nilai akhir.
+- **Migrasi** database lama → baru ada di `supabase_migration_assessment_formats.sql`
+  dan `supabase_migration_grade_predicates.sql` (keduanya idempotent, tidak
+  menghapus data lama; periode existing di-snapshot ke "Format Legacy" sehingga
+  nilai rapor lama tetap dihitung dengan rumus lama).
+- **Predikat** (`predicates/`): daftar predikat global (label + rentang, urutan
+  terbaik→terjelek menentukan warna otomatis) dan satu baris `predicate_settings`
+  untuk penempatan badge (`show_on_inputs` / `show_on_component_averages` /
+  `show_on_final`). Badge hanya display saat mengisi nilai — tidak disimpan dan
+  tidak mempengaruhi `final_score`.
+- **Arsip Rapor**: periode non-aktif = arsip. Di Cetak Rapor ada 2 tab
+  (Periode Aktif / Arsip Rapor) dengan SATU logika daftar siswa: union cocok
+  kelas+tahun ajaran ∪ punya nilai/kehadiran di periode itu ∪ `previous_class`.
+  Pengarsipan dilakukan lewat tombol "Arsipkan" di kartu periode (Buat Rapor);
+  periode arsip tidak dapat dihapus dari UI.
+- **Rincian Nilai** (admin, Cetak Rapor): tombol "Rincian" per siswa membuka
+  modal read-only berisi seluruh input guru per mapel (nilai TP/item/sub-nilai,
+  Rrt per komponen + predikat, deskripsi, nilai akhir). Berjalan untuk periode
+  aktif maupun arsip.
 - **Input Rapor** dan **Kepatuhan** tetap memakai state lokal untuk grid editable
   dan mutation per baris. Keduanya tidak menyimpan seluruh isian ke cache query;
   React Query dipakai untuk data yang memang read-heavy (mis. daftar periode).

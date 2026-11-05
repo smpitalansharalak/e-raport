@@ -2,20 +2,19 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeft, Loader2, Pencil, Search } from 'lucide-react'
 import Swal from 'sweetalert2'
 import {
-  calculateFormativeAvg,
-  calculateSummativeAvg,
-  calculateAvgOfTwo,
   calculateFinalRaporScore,
+  getComponentValue,
+  getFixedSubs,
+  itemsOfComponent,
 } from '@/utils/scoreCalculations'
+import { predicateForScore } from '@/utils/predicates'
+import PredicateBadge from '@/components/ui/PredicateBadge'
 import DescriptionTextarea from './DescriptionTextarea'
 
 const EMPTY_SCORE = {
   scores_formative: {},
   scores_summative: {},
-  sts_practice: '',
-  sts_written: '',
-  sas_practice: '',
-  sas_written: '',
+  fixed_scores: {},
   highest_achievement: '',
   lowest_achievement: '',
 }
@@ -27,23 +26,15 @@ const cloneScore = (score) => ({
   ...(score || {}),
   scores_formative: { ...(score?.scores_formative || {}) },
   scores_summative: { ...(score?.scores_summative || {}) },
+  fixed_scores: Object.fromEntries(
+    Object.entries(score?.fixed_scores ?? {}).map(([compId, subs]) => [compId, { ...(subs ?? {}) }])
+  ),
 })
-
-const countFilled = (values, ids) =>
-  ids.reduce((count, id) => {
-    const value = values?.[id]
-    return value !== '' && value !== null && value !== undefined ? count + 1 : count
-  }, 0)
 
 const isFilled = (value) => value !== '' && value !== null && value !== undefined
 
-const hasAnyScore = (score, learningTargets, summatives) =>
-  learningTargets.some((tp) => isFilled(score.scores_formative?.[tp.id])) ||
-  summatives.some((summative) => isFilled(score.scores_summative?.[summative.id])) ||
-  isFilled(score.sts_practice) ||
-  isFilled(score.sts_written) ||
-  isFilled(score.sas_practice) ||
-  isFilled(score.sas_written)
+const hasAnyScore = (score, components, items, learningTargets) =>
+  components.some((component) => getComponentValue(component, items, learningTargets, score) !== null)
 
 const selectOnFocus = (event) => event.target.select()
 
@@ -51,16 +42,16 @@ const SWAL_DARK = { background: '#0f172a', color: '#f8fafc' }
 
 /**
  * Tampilan input nilai untuk layar kecil.
- *
- * Alih-alih memaksa tabel 14+ kolom ke layar 360px, siswa ditampilkan sebagai
- * kartu ringkas. Tap "Edit Nilai" membuka sheet layar penuh dengan field
- * tersusun vertikal sehingga input lebih besar dan tidak perlu scroll ke samping.
+ * Komponen penilaian bersifat dinamis (snapshot periode).
  */
 export default function MobileScoreList({
   students,
-  materials,
+  components,
+  items,
   learningTargets,
-  summatives,
+  calculationMode,
+  predicates,
+  predicatePlacement,
   scores,
   handleScoreChange,
   handleSaveSingleRow,
@@ -82,7 +73,7 @@ export default function MobileScoreList({
 
   const activeStudent = useMemo(
     () => students.find((student) => student.id === activeStudentId) || null,
-    [students, activeStudentId],
+    [students, activeStudentId]
   )
 
   const filteredStudents = useMemo(() => {
@@ -107,7 +98,7 @@ export default function MobileScoreList({
         setOpeningId(null)
       }
     },
-    [handleEditRow],
+    [handleEditRow]
   )
 
   const requestClose = useCallback(async () => {
@@ -182,8 +173,11 @@ export default function MobileScoreList({
               key={student.id}
               student={student}
               score={getScore(scores, student.id)}
+              components={components}
+              items={items}
               learningTargets={learningTargets}
-              summatives={summatives}
+              predicates={predicates}
+              predicatePlacement={predicatePlacement}
               isOpening={openingId === student.id}
               onEdit={openEditor}
             />
@@ -196,9 +190,12 @@ export default function MobileScoreList({
           key={activeStudent.id}
           student={activeStudent}
           score={getScore(scores, activeStudent.id)}
-          materials={materials}
+          components={components}
+          items={items}
           learningTargets={learningTargets}
-          summatives={summatives}
+          calculationMode={calculationMode}
+          predicates={predicates}
+          predicatePlacement={predicatePlacement}
           isSaving={!!savingRows?.[activeStudent.id]}
           isEditing={!!editingRows?.[activeStudent.id]}
           onDirty={markDirty}
@@ -211,29 +208,23 @@ export default function MobileScoreList({
   )
 }
 
+// ── Kartu siswa ────────────────────────────────────────────────────────────────
 const StudentScoreCard = React.memo(function StudentScoreCard({
   student,
   score,
+  components,
+  items,
   learningTargets,
-  summatives,
+  calculationMode,
+  predicates,
+  predicatePlacement,
   isOpening,
   onEdit,
 }) {
-  const finalRapor = calculateFinalRaporScore(score, learningTargets, summatives)
-  const formativeAvg = calculateFormativeAvg(score, learningTargets)
-  const summativeAvg = calculateSummativeAvg(score, summatives)
-  const stsAvg = calculateAvgOfTwo(score.sts_practice, score.sts_written)
-  const sasAvg = calculateAvgOfTwo(score.sas_practice, score.sas_written)
-
-  const tpIds = learningTargets.map((tp) => tp.id)
-  const filledFormatif = countFilled(score.scores_formative, tpIds)
-  const filledSummative = countFilled(
-    score.scores_summative,
-    summatives.map((summative) => summative.id),
-  )
-  const hasSts = isFilled(score.sts_practice) || isFilled(score.sts_written)
-  const hasSas = isFilled(score.sas_practice) || isFilled(score.sas_written)
-  const hasScore = hasAnyScore(score, learningTargets, summatives)
+  const finalRapor = calculateFinalRaporScore(score, components, items, learningTargets, calculationMode)
+  const hasScore = hasAnyScore(score, components, items, learningTargets)
+  const finalPredicate =
+    predicatePlacement?.show_on_final && hasScore ? predicateForScore(finalRapor, predicates ?? []) : null
 
   return (
     <div className="rounded-2xl border border-slate-800 bg-slate-900 p-3 shadow-sm">
@@ -251,36 +242,22 @@ const StudentScoreCard = React.memo(function StudentScoreCard({
           >
             {hasScore ? finalRapor : '—'}
           </p>
+          {finalPredicate && (
+            <PredicateBadge predicate={finalPredicate} predicates={predicates ?? []} size="sm" className="mt-1" />
+          )}
         </div>
       </div>
 
       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-slate-500">
-        {learningTargets.length > 0 && (
-          <>
-            <span>
-              Formatif{' '}
-              <b className="text-indigo-500">
-                {filledFormatif}/{learningTargets.length}
-              </b>
+        {components.map((component) => {
+          const value = getComponentValue(component, items, learningTargets, score)
+          return (
+            <span key={component.id}>
+              {component.name}{' '}
+              <b className="text-slate-300">{value === null ? '—' : value}</b>
             </span>
-            <span>
-              Rrt Form{' '}
-              <b className="text-indigo-500">{filledFormatif > 0 ? formativeAvg : '—'}</b>
-            </span>
-          </>
-        )}
-        {summatives.length > 0 && (
-          <span>
-            Rrt Sum{' '}
-            <b className="text-violet-500">{filledSummative > 0 ? summativeAvg : '—'}</b>
-          </span>
-        )}
-        <span>
-          STS <b className="text-amber-500">{hasSts ? stsAvg : '—'}</b>
-        </span>
-        <span>
-          SAS <b className="text-orange-500">{hasSas ? sasAvg : '—'}</b>
-        </span>
+          )
+        })}
         {!hasScore && (
           <span className="rounded-full bg-amber-500/10 px-1.5 py-0.5 font-semibold text-amber-600">
             Belum dinilai
@@ -301,12 +278,16 @@ const StudentScoreCard = React.memo(function StudentScoreCard({
   )
 })
 
+// ── Sheet editor layar penuh ──────────────────────────────────────────────────
 function MobileScoreSheet({
   student,
   score,
-  materials,
+  components,
+  items,
   learningTargets,
-  summatives,
+  calculationMode,
+  predicates,
+  predicatePlacement,
   isSaving,
   isEditing,
   onDirty,
@@ -314,22 +295,11 @@ function MobileScoreSheet({
   onClose,
   onSave,
 }) {
-  const finalRapor = calculateFinalRaporScore(score, learningTargets, summatives)
-  const formativeAvg = calculateFormativeAvg(score, learningTargets)
-  const summativeAvg = calculateSummativeAvg(score, summatives)
-  const stsAvg = calculateAvgOfTwo(score.sts_practice, score.sts_written)
-  const sasAvg = calculateAvgOfTwo(score.sas_practice, score.sas_written)
-  const hasScore = hasAnyScore(score, learningTargets, summatives)
-
-  const tpsByMaterialId = useMemo(() => {
-    const grouped = new Map()
-    learningTargets.forEach((tp) => {
-      const existing = grouped.get(tp.material_id)
-      if (existing) existing.push(tp)
-      else grouped.set(tp.material_id, [tp])
-    })
-    return grouped
-  }, [learningTargets])
+  const finalRapor = calculateFinalRaporScore(score, components, items, learningTargets, calculationMode)
+  const hasScore = hasAnyScore(score, components, items, learningTargets)
+  const finalPredicate =
+    predicatePlacement?.show_on_final && hasScore ? predicateForScore(finalRapor, predicates ?? []) : null
+  const filledInputs = useMemo(() => countFilledInputs(score), [score])
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow
@@ -344,7 +314,7 @@ function MobileScoreSheet({
       onDirty()
       onChange(student.id, type, field, value)
     },
-    [onDirty, onChange, student.id],
+    [onDirty, onChange, student.id]
   )
 
   const autoResize = useCallback((event) => {
@@ -375,6 +345,9 @@ function MobileScoreSheet({
           <p className="text-base font-extrabold leading-none text-emerald-500">
             {hasScore ? finalRapor : '—'}
           </p>
+          {finalPredicate && (
+            <PredicateBadge predicate={finalPredicate} predicates={predicates ?? []} className="mt-1" />
+          )}
         </div>
       </header>
 
@@ -383,96 +356,24 @@ function MobileScoreSheet({
           disabled={!isEditing}
           className="m-0 mx-auto min-w-0 max-w-lg space-y-3 border-0 p-0"
         >
-          {learningTargets.length === 0 && summatives.length === 0 && (
+          {components.length === 0 && (
             <p className="rounded-xl border border-dashed border-slate-800 bg-slate-900 px-3 py-3 text-center text-xs text-slate-500">
-              Belum ada Lingkup Materi/TP atau Sumatif. Atur dulu lewat tombol
-              &quot;Atur Lingkup Materi &amp; TP&quot; / &quot;Atur Sumatif&quot;.
+              Periode ini belum memiliki komponen penilaian.
             </p>
           )}
 
-          <Section title="Formatif (TP)" badge={`Rrt ${formativeAvg}`} tone="text-indigo-500">
-            {learningTargets.length === 0 ? (
-              <EmptyHint text="Belum ada TP." />
-            ) : (
-              materials.map((material) => {
-                const tps = tpsByMaterialId.get(material.id) ?? []
-                if (tps.length === 0) return null
-                return (
-                  <div key={material.id} className="mb-3 last:mb-0">
-                    <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                      {material.name}
-                    </p>
-                    <div className="grid grid-cols-2 gap-2">
-                      {tps.map((tp) => (
-                        <NumberField
-                          key={tp.id}
-                          label={tp.code}
-                          description={tp.description}
-                          value={score.scores_formative?.[tp.id]}
-                          accent="text-indigo-500 focus:border-indigo-400 focus:ring-indigo-400/50"
-                          onChange={(value) => change('formative', tp.id, value)}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )
-              })
-            )}
-          </Section>
-
-          {summatives.length > 0 && (
-            <Section
-              title="Sumatif Lingkup Materi"
-              badge={`Rrt ${summativeAvg}`}
-              tone="text-violet-500"
-            >
-              <div className="grid grid-cols-2 gap-2">
-                {summatives.map((summative) => (
-                  <NumberField
-                    key={summative.id}
-                    label={summative.name}
-                    value={score.scores_summative?.[summative.id]}
-                    accent="text-violet-500 focus:border-violet-400 focus:ring-violet-400/50"
-                    onChange={(value) => change('summative', summative.id, value)}
-                  />
-                ))}
-              </div>
-            </Section>
-          )}
-
-          <Section title="Sumatif Tengah Semester" badge={`Rrt ${stsAvg}`} tone="text-amber-500">
-            <div className="grid grid-cols-2 gap-2">
-              <NumberField
-                label="Praktek"
-                value={score.sts_practice}
-                accent="text-amber-500 focus:border-amber-400 focus:ring-amber-400/50"
-                onChange={(value) => change('other', 'sts_practice', value)}
-              />
-              <NumberField
-                label="Tulis"
-                value={score.sts_written}
-                accent="text-amber-500 focus:border-amber-400 focus:ring-amber-400/50"
-                onChange={(value) => change('other', 'sts_written', value)}
-              />
-            </div>
-          </Section>
-
-          <Section title="Sumatif Akhir Semester" badge={`Rrt ${sasAvg}`} tone="text-orange-500">
-            <div className="grid grid-cols-2 gap-2">
-              <NumberField
-                label="Praktek"
-                value={score.sas_practice}
-                accent="text-orange-500 focus:border-orange-400 focus:ring-orange-400/50"
-                onChange={(value) => change('other', 'sas_practice', value)}
-              />
-              <NumberField
-                label="Tulis"
-                value={score.sas_written}
-                accent="text-orange-500 focus:border-orange-400 focus:ring-orange-400/50"
-                onChange={(value) => change('other', 'sas_written', value)}
-              />
-            </div>
-          </Section>
+          {components.map((component) => (
+            <ComponentSection
+              key={component.id}
+              component={component}
+              score={score}
+              items={items}
+              learningTargets={learningTargets}
+              change={change}
+              predicates={predicates}
+              predicatePlacement={predicatePlacement}
+            />
+          ))}
 
           <div className="flex items-center justify-between rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3">
             <div>
@@ -480,10 +381,17 @@ function MobileScoreSheet({
                 Nilai Rapor
               </p>
               <p className="text-[10px] text-slate-500">
-                Rata-rata formatif, sumatif, STS, dan SAS
+                {calculationMode === 'weighted'
+                  ? 'Rata-rata tertimbang bobot komponen'
+                  : 'Rata-rata komponen terisi'}
               </p>
             </div>
-            <p className="text-3xl font-extrabold leading-none text-emerald-500">{finalRapor}</p>
+            <div className="flex flex-col items-end gap-1">
+              <p className="text-3xl font-extrabold leading-none text-emerald-500">{finalRapor}</p>
+              {finalPredicate && (
+                <PredicateBadge predicate={finalPredicate} predicates={predicates ?? []} size="sm" />
+              )}
+            </div>
           </div>
 
           <Section title="Deskripsi Capaian" tone="text-slate-500">
@@ -523,6 +431,11 @@ function MobileScoreSheet({
             </div>
           </Section>
 
+          {filledInputs === 0 && (
+            <p className="pb-1 text-center text-[10px] text-slate-500">
+              Belum ada nilai terisi. Atur item lewat tombol &quot;Atur Komponen Penilaian&quot;.
+            </p>
+          )}
           {!isEditing && (
             <p className="pb-1 text-center text-[10px] text-slate-500">
               Data nilai sedang dimuat dari server...
@@ -549,6 +462,122 @@ function MobileScoreSheet({
   )
 }
 
+// ── Section per komponen ───────────────────────────────────────────────────────
+function ComponentSection({ component, score, items, learningTargets, change, predicates, predicatePlacement }) {
+  const value = getComponentValue(component, items, learningTargets, score)
+  const showInputBadges = Boolean(predicatePlacement?.show_on_inputs)
+  const showAverageBadges = Boolean(predicatePlacement?.show_on_component_averages)
+
+  /** Badge predikat untuk nilai input (null jika tidak aktif / kosong). */
+  const inputBadge = (val) => {
+    if (!showInputBadges) return null
+    const predicate = predicateForScore(val, predicates ?? [])
+    return predicate ? <PredicateBadge predicate={predicate} predicates={predicates ?? []} /> : null
+  }
+
+  /** Badge rata-rata komponen ("Rrt 80" + predikat jika aktif). */
+  const averageBadge = (
+    <span className="flex items-center gap-1.5">
+      Rrt {value === null ? '—' : value}
+      {showAverageBadges && value !== null && (
+        <PredicateBadge predicate={predicateForScore(value, predicates ?? [])} predicates={predicates ?? []} />
+      )}
+    </span>
+  )
+
+  if (component.kind === 'fixed') {
+    const subs = getFixedSubs(component)
+    return (
+      <Section title={component.name} badge={averageBadge} tone="text-amber-500">
+        <div className="grid grid-cols-2 gap-2">
+          {subs.map((sub) => (
+            <NumberField
+              key={sub.key}
+              label={sub.label}
+              value={score.fixed_scores?.[component.id]?.[sub.key]}
+              accent="text-amber-500 focus:border-amber-400 focus:ring-amber-400/50"
+              onChange={(val) => change('fixed', `${component.id}:${sub.key}`, val)}
+              badge={inputBadge(score.fixed_scores?.[component.id]?.[sub.key])}
+            />
+          ))}
+        </div>
+      </Section>
+    )
+  }
+
+  const compItems = itemsOfComponent(component.id, items)
+
+  if (component.with_tp) {
+    return (
+      <Section title={component.name} badge={averageBadge} tone="text-indigo-500">
+        {compItems.length === 0 ? (
+          <EmptyHint text='Belum ada Bab. Atur lewat "Atur Komponen Penilaian".' />
+        ) : (
+          compItems.map((item) => {
+            const tps = learningTargets.filter((tp) => tp.assessment_item_id === item.id)
+            return (
+              <div key={item.id} className="mb-3 last:mb-0">
+                <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                  {item.name}
+                </p>
+                {tps.length === 0 ? (
+                  <EmptyHint text="Belum ada TP untuk bab ini." />
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    {tps.map((tp) => (
+                      <NumberField
+                        key={tp.id}
+                        label={tp.code}
+                        description={tp.description}
+                        value={score.scores_formative?.[tp.id]}
+                        accent="text-indigo-500 focus:border-indigo-400 focus:ring-indigo-400/50"
+                        onChange={(val) => change('formative', tp.id, val)}
+                        badge={inputBadge(score.scores_formative?.[tp.id])}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })
+        )}
+      </Section>
+    )
+  }
+
+  return (
+    <Section title={component.name} badge={averageBadge} tone="text-violet-500">
+      {compItems.length === 0 ? (
+        <EmptyHint text="Belum ada item. Atur lewat &quot;Atur Komponen Penilaian&quot;." />
+      ) : (
+        <div className="grid grid-cols-2 gap-2">
+          {compItems.map((item) => (
+            <NumberField
+              key={item.id}
+              label={item.name}
+              value={score.scores_summative?.[item.id]}
+              accent="text-violet-500 focus:border-violet-400 focus:ring-violet-400/50"
+              onChange={(val) => change('summative', item.id, val)}
+              badge={inputBadge(score.scores_summative?.[item.id])}
+            />
+          ))}
+        </div>
+      )}
+    </Section>
+  )
+}
+
+// ── Util ───────────────────────────────────────────────────────────────────────
+function countFilledInputs(score) {
+  let count = 0
+  Object.values(score.scores_formative ?? {}).forEach((v) => { if (isFilled(v)) count += 1 })
+  Object.values(score.scores_summative ?? {}).forEach((v) => { if (isFilled(v)) count += 1 })
+  Object.values(score.fixed_scores ?? {}).forEach((subs) => {
+    Object.values(subs ?? {}).forEach((v) => { if (isFilled(v)) count += 1 })
+  })
+  return count
+}
+
 function Section({ title, badge, tone = 'text-slate-500', children }) {
   return (
     <section className="rounded-2xl border border-slate-800 bg-slate-900 p-3 shadow-sm">
@@ -565,7 +594,7 @@ function EmptyHint({ text }) {
   return <p className="py-1 text-center text-xs text-slate-500">{text}</p>
 }
 
-function NumberField({ label, description, value, onChange, accent }) {
+function NumberField({ label, description, value, onChange, accent, badge }) {
   return (
     <label className="block min-w-0">
       <span className="mb-1 flex items-baseline justify-between gap-1">
@@ -589,6 +618,7 @@ function NumberField({ label, description, value, onChange, accent }) {
         placeholder="—"
         className={`h-11 w-full rounded-xl border border-slate-800 bg-slate-950 px-2 text-center text-base font-semibold text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-1 disabled:opacity-60 ${accent}`}
       />
+      {badge && <div className="mt-1 flex justify-center">{badge}</div>}
     </label>
   )
 }

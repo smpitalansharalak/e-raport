@@ -8,6 +8,7 @@ import {
   savePeriodSubjectOrder,
   saveReportPeriod,
   saveSubject,
+  setReportPeriodActive,
 } from './reportConfigService'
 
 export function useReportConfig() {
@@ -28,8 +29,11 @@ export function usePeriodSubjectOrder(periodId) {
 export function useReportConfigMutations() {
   const queryClient = useQueryClient()
 
-  const invalidateReportConfig = () =>
+  const invalidateReportConfig = () => {
     queryClient.invalidateQueries({ queryKey: queryKeys.reportPeriods.all })
+    // jumlah "periode dipakai" yang tampil di kartu format ikut diperbarui
+    queryClient.invalidateQueries({ queryKey: queryKeys.assessmentFormats.all })
+  }
 
   const savePeriodMutation = useMutation({
     mutationFn: saveReportPeriod,
@@ -38,6 +42,11 @@ export function useReportConfigMutations() {
 
   const deletePeriodMutation = useMutation({
     mutationFn: deleteReportPeriod,
+    onSuccess: invalidateReportConfig,
+  })
+
+  const setActivePeriodMutation = useMutation({
+    mutationFn: setReportPeriodActive,
     onSuccess: invalidateReportConfig,
   })
 
@@ -59,6 +68,7 @@ export function useReportConfigMutations() {
   return {
     savePeriod: savePeriodMutation,
     deletePeriod: deletePeriodMutation,
+    setActivePeriod: setActivePeriodMutation,
     saveSubject: saveSubjectMutation,
     deleteSubject: deleteSubjectMutation,
     saveSubjectOrder: saveSubjectOrderMutation,

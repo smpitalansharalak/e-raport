@@ -2,6 +2,7 @@
  * Utility functions untuk membuat sheet Excel rapor.
  * XLSX di-load secara dinamis agar bundle utama tidak ikut memuat library Excel.
  */
+import { getComponentValue, getFixedSubs, itemsOfComponent } from '@/utils/scoreCalculations'
 
 const loadXLSX = () => import('xlsx')
 
@@ -65,16 +66,17 @@ export async function buildRekapSheet(students, subjects, allScores) {
 }
 
 /**
- * Sheet 2 — Detail Nilai Formatif, Sumatif, STS, SAS per siswa
- * Satu baris per siswa per mapel
+ * Sheet 2 — Detail Nilai per Komponen (dinamis mengikuti format penilaian periode).
+ * Satu baris per siswa per mapel.
+ * Kolom: Nama | NISN | Mapel | [per komponen: kolom nilai/TP + Rrt] | Nilai Rapor | Capaian
  */
 export async function buildDetailSheet(
   students,
   subjects,
   allScores,
-  materials,
+  components,
+  items,
   learningTargets,
-  summatives,
 ) {
   const XLSX = await loadXLSX()
 
@@ -82,80 +84,80 @@ export async function buildDetailSheet(
     allScores.map((sc) => [scoreKey(sc.student_id, sc.subject_id), sc]),
   )
 
-  const tpHeaders = learningTargets.map(tp => `F: ${tp.code}`)
-  const sumHeaders = summatives.map(s => `S: ${s.name}`)
+  // Susun definisi kolom per komponen (urut sort_order)
+  const componentColumns = components.map((component) => {
+    if (component.kind === 'fixed') {
+      const subs = getFixedSubs(component)
+      return { component, subs, type: 'fixed' }
+    }
+    // countable / countable with_tp: kolom per TP (with_tp) atau per item
+    if (component.with_tp) {
+      const compItems = itemsOfComponent(component.id, items)
+      const tpCols = compItems.flatMap((item) =>
+        learningTargets
+          .filter((tp) => tp.assessment_item_id === item.id)
+          .map((tp) => ({ tp, item })),
+      )
+      return { component, subs: tpCols, type: 'tp' }
+    }
+    const compItems = itemsOfComponent(component.id, items)
+    return { component, subs: compItems, type: 'item' }
+  })
 
   const headers = [
     'Nama Siswa',
     'NISN',
     'Mata Pelajaran',
-    ...tpHeaders,
-    'Rata Formatif',
-    ...sumHeaders,
-    'Rata Sumatif',
-    'STS Praktik',
-    'STS Tertulis',
-    'Rata STS',
-    'SAS Praktik',
-    'SAS Tertulis',
-    'Rata SAS',
+    ...componentColumns.flatMap(({ component, subs, type }) => [
+      ...subs.map((sub) => {
+        if (type === 'tp') return `${component.name}: ${sub.tp.code}`
+        if (type === 'item') return `${component.name}: ${sub.name}`
+        return `${component.name} ${sub.label}`
+      }),
+      `Rrt ${component.name}`,
+    ]),
     'Nilai Rapor',
     'Capaian Tertinggi',
     'Capaian Terendah',
   ]
 
   const rows = []
-  students.forEach(student => {
-    subjects.forEach(sub => {
+  students.forEach((student) => {
+    subjects.forEach((sub) => {
       const sc = scoreByStudentSubject.get(scoreKey(student.id, sub.id))
 
-      const tpVals = learningTargets.map(tp =>
-        sc?.scores_formative?.[tp.id] ?? ''
-      )
-      const sumVals = summatives.map(s =>
-        sc?.scores_summative?.[s.id] ?? ''
-      )
+      // Item & TP milik subjek ini saja (agar nilai mapel lain tidak tercampur)
+      const subjectItems = items.filter((item) => item.subject_id === sub.id)
+      const subjectItemIds = new Set(subjectItems.map((item) => item.id))
+      const subjectTps = learningTargets.filter((tp) => subjectItemIds.has(tp.assessment_item_id))
 
-      const numTP = tpVals.filter(v => v !== '' && !isNaN(Number(v)))
-      const rataF = numTP.length > 0
-        ? Number((numTP.reduce((a, b) => a + Number(b), 0) / numTP.length).toFixed(1))
-        : ''
+      const cellValues = componentColumns.flatMap(({ component, subs, type }) => {
+        let values
+        if (type === 'fixed') {
+          const fixed = sc?.fixed_scores?.[component.id] ?? {}
+          values = subs.map((sub) => fixed[sub.key] ?? '')
+        } else if (type === 'tp') {
+          values = subs.map(({ tp, item }) =>
+            item.subject_id === sub.id ? (sc?.scores_formative?.[tp.id] ?? '') : '',
+          )
+        } else {
+          values = subs.map((item) =>
+            item.subject_id === sub.id ? (sc?.scores_summative?.[item.id] ?? '') : '',
+          )
+        }
 
-      const numSum = sumVals.filter(v => v !== '' && !isNaN(Number(v)))
-      const rataS = numSum.length > 0
-        ? Number((numSum.reduce((a, b) => a + Number(b), 0) / numSum.length).toFixed(1))
-        : ''
+        const compValue = sc
+          ? getComponentValue(component, subjectItems, subjectTps, sc)
+          : null
 
-      const stsPrak = sc?.sts_practice ?? ''
-      const stsTulis = sc?.sts_written ?? ''
-      const rataSTS = stsPrak !== '' && stsTulis !== ''
-        ? Number(((Number(stsPrak) + Number(stsTulis)) / 2).toFixed(1))
-        : stsPrak !== '' ? Number(stsPrak)
-          : stsTulis !== '' ? Number(stsTulis)
-            : ''
-
-      const sasPrak = sc?.sas_practice ?? ''
-      const sasTulis = sc?.sas_written ?? ''
-      const rataSAS = sasPrak !== '' && sasTulis !== ''
-        ? Number(((Number(sasPrak) + Number(sasTulis)) / 2).toFixed(1))
-        : sasPrak !== '' ? Number(sasPrak)
-          : sasTulis !== '' ? Number(sasTulis)
-            : ''
+        return [...values, compValue === null ? '' : compValue]
+      })
 
       rows.push([
         student.name,
         student.nisn,
         sub.name,
-        ...tpVals,
-        rataF,
-        ...sumVals,
-        rataS,
-        stsPrak,
-        stsTulis,
-        rataSTS,
-        sasPrak,
-        sasTulis,
-        rataSAS,
+        ...cellValues,
         sc?.final_score ?? '',
         sc?.highest_achievement ?? '',
         sc?.lowest_achievement ?? '',
@@ -166,9 +168,11 @@ export async function buildDetailSheet(
   const ws = XLSX.utils.aoa_to_sheet([headers, ...rows])
 
   const fixedCols = [30, 15, 22] // Nama, NISN, Mapel
-  const tpCols = learningTargets.map(() => 10)
-  const sumCols = summatives.map(() => 14)
-  setColWidths(ws, [...fixedCols, ...tpCols, 12, ...sumCols, 12, 10, 12, 10, 10, 12, 10, 12, 14, 40, 40])
+  const perComponentCols = componentColumns.flatMap(({ subs }) => [
+    ...subs.map(() => 12),
+    11, // Rrt
+  ])
+  setColWidths(ws, [...fixedCols, ...perComponentCols, 12, 40, 40])
   addFreezePanes(ws, 1, 3)
   return ws
 }

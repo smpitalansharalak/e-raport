@@ -1,40 +1,61 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useAuth } from '@/features/auth/useAuth'
 import {
-  calculateFormativeAvg,
-  calculateSummativeAvg,
-  calculateAvgOfTwo,
   calculateFinalRaporScore,
   toNullableNumber,
 } from '@/utils/scoreCalculations'
 import Swal from 'sweetalert2'
 import { sanitizeText } from '@/utils/text'
 import {
+  createItem,
   createLearningTarget,
-  createMaterial,
-  createSummative,
+  deleteItem as deleteItemRequest,
   deleteLearningTarget,
-  deleteMaterial as deleteMaterialRequest,
-  deleteSummative as deleteSummativeRequest,
-  fetchMaterialsAndTargets,
-  fetchSummatives as fetchSummativesRequest,
+  fetchItemsAndTargets,
+  getPredicatePlacement,
   getStudentScore,
   listActiveReportPeriods,
+  listGradePredicates,
   listSubjectsForUser,
   loadInputRaporGrid,
+  renameItem as renameItemRequest,
   saveStudentScore,
 } from './inputRaporService'
+
+/** Konversi fixed_scores dari DB (number) → string agar cocok dengan input */
+const fixedScoresToString = (fixedScores) => {
+  const result = {}
+  Object.entries(fixedScores ?? {}).forEach(([compId, subObj]) => {
+    const subs = {}
+    Object.entries(subObj ?? {}).forEach(([key, val]) => {
+      subs[key] = val != null ? String(val) : ''
+    })
+    result[compId] = subs
+  })
+  return result
+}
+
+/** Konversi fixed_scores dari form (string) → number|dihapus agar bersih saat disimpan */
+const fixedScoresToNumber = (fixedScores) => {
+  const result = {}
+  Object.entries(fixedScores ?? {}).forEach(([compId, subObj]) => {
+    const subs = {}
+    Object.entries(subObj ?? {}).forEach(([key, val]) => {
+      const n = toNullableNumber(val)
+      if (n !== null) subs[key] = n
+    })
+    if (Object.keys(subs).length > 0) result[compId] = subs
+  })
+  return result
+}
 
 /**
  * Custom hook untuk Input Nilai Rapor.
  *
- * PERBAIKAN PERFORMA (laptop RAM 6GB sering hang):
- * 1. learningTargetsRef + summativesRef → handleSaveSingleRow tidak perlu
- *    di-recreate saat array berubah, memutus re-render chain di seluruh ScoreGrid.
- * 2. selectedPeriodIdRef + selectedSubjectIdRef → sama, untuk save & edit row.
- * 3. handleScoreChange sudah pakai useCallback tanpa dep → stabil.
- * 4. Semua handler save/edit stabil → ScoreRow React.memo benar-benar bekerja,
- *    hanya baris yang berubah yang re-render, bukan seluruh tabel.
+ * Komponen penilaian berasal dari snapshot periode (period_components).
+ * Countable dengan TP → nilai per TP (scores_formative);
+ * countable input langsung → nilai per item (scores_summative);
+ * fixed → nilai per sub-nilai (fixed_scores).
  */
 export default function useInputRapor() {
   const { profile } = useAuth()
@@ -44,10 +65,17 @@ export default function useInputRapor() {
   const [selectedSubjectId, setSelectedSubjectId] = useState('')
 
   const [students, setStudents] = useState([])
-  const [materials, setMaterials] = useState([])
+  const [components, setComponents] = useState([])
+  const [items, setItems] = useState([])
   const [learningTargets, setLearningTargets] = useState([])
-  const [summatives, setSummatives] = useState([])
+  const [calculationMode, setCalculationMode] = useState('equal')
   const [scores, setScores] = useState({})
+  const [gradePredicates, setGradePredicates] = useState([])
+  const [predicatePlacement, setPredicatePlacement] = useState({
+    show_on_inputs: false,
+    show_on_component_averages: true,
+    show_on_final: true,
+  })
 
   const [isGridLoaded, setIsGridLoaded] = useState(false)
   const [loadingDropdowns, setLoadingDropdowns] = useState(false)
@@ -57,27 +85,28 @@ export default function useInputRapor() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
-  const [showMaterialModal, setShowMaterialModal] = useState(false)
-  const [showSummativeModal, setShowSummativeModal] = useState(false)
+  const [showComponentModal, setShowComponentModal] = useState(false)
 
-  const [newMaterialName, setNewMaterialName] = useState('')
-  const [tpInputs, setTpInputs] = useState({ materialId: '', code: '', description: '' })
-  const [newSummativeName, setNewSummativeName] = useState('')
+  const [itemDrafts, setItemDrafts] = useState({})
+  const [tpInputs, setTpInputs] = useState({ itemId: '', code: '', description: '' })
   const [modalError, setModalError] = useState('')
 
   // ── Refs untuk nilai terbaru tanpa memicu re-render ──────────────────────────
   const scoresRef = useRef(scores)
   const savingRowsRef = useRef(savingRows)
-  // FIX: Tambahkan refs untuk arrays & IDs agar callback tidak perlu di-recreate
+  const componentsRef = useRef(components)
+  const itemsRef = useRef(items)
   const learningTargetsRef = useRef(learningTargets)
-  const summativesRef = useRef(summatives)
+  const calculationModeRef = useRef(calculationMode)
   const selectedPeriodIdRef = useRef(selectedPeriodId)
   const selectedSubjectIdRef = useRef(selectedSubjectId)
 
   useEffect(() => { scoresRef.current = scores }, [scores])
   useEffect(() => { savingRowsRef.current = savingRows }, [savingRows])
+  useEffect(() => { componentsRef.current = components }, [components])
+  useEffect(() => { itemsRef.current = items }, [items])
   useEffect(() => { learningTargetsRef.current = learningTargets }, [learningTargets])
-  useEffect(() => { summativesRef.current = summatives }, [summatives])
+  useEffect(() => { calculationModeRef.current = calculationMode }, [calculationMode])
   useEffect(() => { selectedPeriodIdRef.current = selectedPeriodId }, [selectedPeriodId])
   useEffect(() => { selectedSubjectIdRef.current = selectedSubjectId }, [selectedSubjectId])
 
@@ -134,17 +163,24 @@ export default function useInputRapor() {
         }
       }
 
-      const grid = await loadInputRaporGrid({
-        periodId: selectedPeriodId,
-        subjectId: selectedSubjectId,
-        className: selectedPeriod.class_name,
-      })
+      const [grid, predicates, placement] = await Promise.all([
+        loadInputRaporGrid({
+          periodId: selectedPeriodId,
+          subjectId: selectedSubjectId,
+          className: selectedPeriod.class_name,
+        }),
+        listGradePredicates(),
+        getPredicatePlacement(),
+      ])
 
       setStudents(grid.students)
-      setMaterials(grid.materials)
-      setSummatives(grid.summatives)
+      setComponents(grid.components)
+      setItems(grid.items)
       setLearningTargets(grid.learningTargets)
+      setCalculationMode(grid.calculationMode)
       setScores(grid.scores)
+      setGradePredicates(predicates)
+      setPredicatePlacement(placement)
       setIsGridLoaded(true)
     } catch (err) {
       console.error('Load grid failed:', err)
@@ -154,26 +190,20 @@ export default function useInputRapor() {
     }
   }
 
-  // ── Fetch helper: hanya refresh kolom, TIDAK reset scores ────────────────────
-  const fetchMaterialsAndTps = useCallback(async () => {
+  // ── Fetch helper: hanya refresh items & TP, TIDAK reset scores ────────────────
+  const fetchItemsAndTps = useCallback(async () => {
     const periodId = selectedPeriodIdRef.current
     const subjectId = selectedSubjectIdRef.current
-    const { materials: mData, learningTargets: tpData } = await fetchMaterialsAndTargets({
+    if (!periodId || !subjectId) return
+    const { items: itemData, learningTargets: tpData } = await fetchItemsAndTargets({
       periodId,
       subjectId,
     })
-    setMaterials(mData)
+    setItems(itemData)
     setLearningTargets(tpData)
-  }, []) // ← stable, tidak ada dep yang berubah-ubah
-
-  const fetchSummatives = useCallback(async () => {
-    const periodId = selectedPeriodIdRef.current
-    const subjectId = selectedSubjectIdRef.current
-    const sumData = await fetchSummativesRequest({ periodId, subjectId })
-    setSummatives(sumData)
   }, []) // ← stable
 
-  // ── handleScoreChange: STABIL, tidak pernah berubah referensi ────────────────
+  // ── handleScoreChange: STABIL ─────────────────────────────────────────────────
   const handleScoreChange = useCallback((studentId, type, field, value) => {
     const prev = scoresRef.current
     const updated = { ...prev[studentId] }
@@ -182,6 +212,15 @@ export default function useInputRapor() {
       updated.scores_formative = { ...updated.scores_formative, [field]: value }
     } else if (type === 'summative') {
       updated.scores_summative = { ...updated.scores_summative, [field]: value }
+    } else if (type === 'fixed') {
+      // field = "<period_component_id>:<subKey>"
+      const separator = field.indexOf(':')
+      const componentId = field.slice(0, separator)
+      const subKey = field.slice(separator + 1)
+      updated.fixed_scores = {
+        ...(updated.fixed_scores ?? {}),
+        [componentId]: { ...(updated.fixed_scores?.[componentId] ?? {}), [subKey]: value },
+      }
     } else {
       if (typeof value === 'string' && (field === 'highest_achievement' || field === 'lowest_achievement')) {
         updated[field] = sanitizeText(value)
@@ -190,23 +229,21 @@ export default function useInputRapor() {
       }
     }
 
-    // Sinkronkan ref langsung agar save yang dipicu tepat setelah blur
-    // (mis. tombol Simpan di sheet mobile) membaca nilai terbaru.
     const next = { ...prev, [studentId]: updated }
     scoresRef.current = next
     setScores(next)
-  }, []) // ← ZERO deps → referensi tidak pernah berubah → ScoreRow.memo efektif
+  }, []) // ← ZERO deps → stabil
 
-  // ── handleSaveSingleRow: STABIL karena pakai refs, bukan closure ─────────────
+  // ── handleSaveSingleRow: STABIL karena pakai refs ────────────────────────────
   const handleSaveSingleRow = useCallback(async (studentId) => {
     if (savingRowsRef.current?.[studentId]) return false
     setSavingRows((prev) => ({ ...prev, [studentId]: true }))
 
     try {
       const studentScore = scoresRef.current[studentId] || {}
-      // Ambil dari refs, bukan closure → tidak perlu LT/summatives di dep array
       const currentLearningTargets = learningTargetsRef.current
-      const currentSummatives = summativesRef.current
+      const currentComponents = componentsRef.current
+      const currentItems = itemsRef.current
       const periodId = selectedPeriodIdRef.current
       const subjectId = selectedSubjectIdRef.current
 
@@ -222,7 +259,15 @@ export default function useInputRapor() {
         if (n !== null) scoresSummativeNumeric[key] = n
       })
 
-      const finalScore = calculateFinalRaporScore(studentScore, currentLearningTargets, currentSummatives)
+      const fixedScoresNumeric = fixedScoresToNumber(studentScore.fixed_scores)
+
+      const finalScore = calculateFinalRaporScore(
+        studentScore,
+        currentComponents,
+        currentItems,
+        currentLearningTargets,
+        calculationModeRef.current
+      )
 
       const payload = {
         student_id: studentId,
@@ -230,10 +275,7 @@ export default function useInputRapor() {
         subject_id: subjectId,
         scores_formative: scoresFormativeNumeric,
         scores_summative: scoresSummativeNumeric,
-        sts_practice: toNullableNumber(studentScore.sts_practice),
-        sts_written: toNullableNumber(studentScore.sts_written),
-        sas_practice: toNullableNumber(studentScore.sas_practice),
-        sas_written: toNullableNumber(studentScore.sas_written),
+        fixed_scores: fixedScoresNumeric,
         highest_achievement: studentScore.highest_achievement || null,
         lowest_achievement: studentScore.lowest_achievement || null,
         final_score: finalScore,
@@ -271,7 +313,7 @@ export default function useInputRapor() {
     } finally {
       setSavingRows((prev) => ({ ...prev, [studentId]: false }))
     }
-  }, []) // ← ZERO deps → referensi stabil → ScoreRow.memo efektif
+  }, []) // ← ZERO deps → stabil
 
   // ── handleEditRow: STABIL karena pakai refs ──────────────────────────────────
   const handleEditRow = useCallback(async (studentId) => {
@@ -288,10 +330,7 @@ export default function useInputRapor() {
             ...prev[studentId],
             scores_formative: data.scores_formative || {},
             scores_summative: data.scores_summative || {},
-            sts_practice: data.sts_practice != null ? String(data.sts_practice) : '',
-            sts_written: data.sts_written != null ? String(data.sts_written) : '',
-            sas_practice: data.sas_practice != null ? String(data.sas_practice) : '',
-            sas_written: data.sas_written != null ? String(data.sas_written) : '',
+            fixed_scores: fixedScoresToString(data.fixed_scores),
             highest_achievement: data.highest_achievement || '',
             lowest_achievement: data.lowest_achievement || '',
           },
@@ -314,10 +353,6 @@ export default function useInputRapor() {
     }
   }, []) // ← ZERO deps → stabil
 
-  /**
-   * Kembalikan nilai siswa ke snapshot sebelum diedit, lalu matikan mode edit.
-   * Dipakai oleh editor mobile saat pengguna menutup tanpa menyimpan.
-   */
   const restoreStudentScore = useCallback((studentId, snapshot) => {
     const prev = scoresRef.current
     let next
@@ -329,38 +364,57 @@ export default function useInputRapor() {
       next = { ...prev, [studentId]: snapshot }
     }
 
-    // Sinkronkan ref langsung agar snapshot berikutnya tidak memakai nilai
-    // yang sudah dibatalkan.
     scoresRef.current = next
     setScores(next)
     setEditingRows((prevEditing) => ({ ...prevEditing, [studentId]: false }))
   }, [])
 
-  // ── Modal handlers ───────────────────────────────────────────────────────────
-  const handleAddMaterial = async () => {
+  // ── Komponen countable: tambah/ubah/hapus item ───────────────────────────────
+  const setItemDraft = useCallback((componentId, value) => {
+    setItemDrafts((prev) => ({ ...prev, [componentId]: value }))
+  }, [])
+
+  const handleAddItem = useCallback(async (componentId, suggestedName) => {
     setModalError('')
-    const cleanName = sanitizeText(newMaterialName)
-    if (!cleanName) {
-      setModalError('Gagal: Nama lingkup materi tidak boleh kosong.')
+    const draft = itemDrafts[componentId]
+    const name = sanitizeText((draft ?? suggestedName ?? '').trim())
+    if (!name) {
+      setModalError('Gagal: Nama item tidak boleh kosong.')
       return
     }
     try {
-      await createMaterial({
+      await createItem({
         periodId: selectedPeriodIdRef.current,
         subjectId: selectedSubjectIdRef.current,
-        name: cleanName,
+        componentId,
+        name,
       })
-      setNewMaterialName('')
-      await fetchMaterialsAndTps()
+      setItemDrafts((prev) => {
+        const next = { ...prev }
+        delete next[componentId]
+        return next
+      })
+      await fetchItemsAndTps()
     } catch (err) {
-      setModalError('Gagal menambah lingkup materi: ' + err.message)
+      setModalError('Gagal menambah item: ' + err.message)
     }
-  }
+  }, [itemDrafts, fetchItemsAndTps])
 
-  const handleDeleteMaterial = async (id) => {
+  const handleRenameItem = useCallback(async (itemId, name) => {
+    const clean = sanitizeText((name ?? '').trim())
+    if (!clean) return
+    try {
+      await renameItemRequest({ id: itemId, name: clean })
+      await fetchItemsAndTps()
+    } catch (err) {
+      setModalError('Gagal mengubah nama item: ' + err.message)
+    }
+  }, [fetchItemsAndTps])
+
+  const handleDeleteItem = useCallback(async (id) => {
     const result = await Swal.fire({
-      title: 'Hapus Lingkup Materi?',
-      text: 'TP di dalamnya akan ikut terhapus.',
+      title: 'Hapus item ini?',
+      text: 'TP di dalamnya (jika ada) akan ikut terhapus.',
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#10b981',
@@ -372,36 +426,36 @@ export default function useInputRapor() {
     })
     if (!result.isConfirmed) return
     try {
-      await deleteMaterialRequest(id)
-      await fetchMaterialsAndTps()
+      await deleteItemRequest(id)
+      await fetchItemsAndTps()
     } catch (err) {
       Swal.fire({ title: 'Gagal', text: err.message, icon: 'error', background: '#0f172a', color: '#f8fafc' })
     }
-  }
+  }, [fetchItemsAndTps])
 
-  const handleAddTp = async () => {
+  const handleAddTp = useCallback(async () => {
     setModalError('')
     const cleanCode = sanitizeText(tpInputs.code)
     const cleanDescription = sanitizeText(tpInputs.description)
 
-    if (!tpInputs.materialId) { setModalError('Gagal: Pilih Lingkup Materi (Bab) terlebih dahulu.'); return }
+    if (!tpInputs.itemId) { setModalError('Gagal: Pilih item (Bab) terlebih dahulu.'); return }
     if (!cleanCode) { setModalError('Gagal: Kolom Kode TP harus diisi (contoh: TP1).'); return }
-    if (!cleanDescription) { setModalError('Gagal: Deskripsi TP kosong atau hanya berisi karakter tidak valid. Ketik ulang teks ini.'); return }
+    if (!cleanDescription) { setModalError('Gagal: Deskripsi TP kosong atau hanya berisi karakter tidak valid.'); return }
 
     try {
       await createLearningTarget({
-        materialId: tpInputs.materialId,
+        itemId: tpInputs.itemId,
         code: cleanCode,
         description: cleanDescription,
       })
-      setTpInputs({ ...tpInputs, code: '', description: '' })
-      await fetchMaterialsAndTps()
+      setTpInputs((prev) => ({ ...prev, code: '', description: '' }))
+      await fetchItemsAndTps()
     } catch (err) {
       setModalError('Gagal menambah TP: ' + err.message)
     }
-  }
+  }, [tpInputs, fetchItemsAndTps])
 
-  const handleDeleteTp = async (id) => {
+  const handleDeleteTp = useCallback(async (id) => {
     const result = await Swal.fire({
       title: 'Hapus TP?',
       text: 'Anda yakin ingin menghapus Tujuan Pembelajaran ini?',
@@ -417,58 +471,17 @@ export default function useInputRapor() {
     if (!result.isConfirmed) return
     try {
       await deleteLearningTarget(id)
-      await fetchMaterialsAndTps()
+      await fetchItemsAndTps()
     } catch (err) {
       Swal.fire({ title: 'Gagal', text: err.message, icon: 'error', background: '#0f172a', color: '#f8fafc' })
     }
-  }
+  }, [fetchItemsAndTps])
 
-  const handleAddSummative = async () => {
-    if (!newSummativeName.trim()) return
-    try {
-      const cleanName = sanitizeText(newSummativeName)
-      await createSummative({
-        periodId: selectedPeriodIdRef.current,
-        subjectId: selectedSubjectIdRef.current,
-        name: cleanName,
-      })
-      setNewSummativeName('')
-      await fetchSummatives()
-    } catch (err) {
-      Swal.fire({ title: 'Gagal', text: err.message, icon: 'error', background: '#0f172a', color: '#f8fafc' })
-    }
-  }
-
-  const handleDeleteSummative = async (id) => {
-    const result = await Swal.fire({
-      title: 'Hapus Sumatif?',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#10b981',
-      cancelButtonColor: '#f43f5e',
-      confirmButtonText: 'Ya, hapus!',
-      cancelButtonText: 'Batal',
-      background: '#0f172a',
-      color: '#f8fafc',
-    })
-    if (!result.isConfirmed) return
-    try {
-      await deleteSummativeRequest(id)
-      await fetchSummatives()
-    } catch (err) {
-      Swal.fire({ title: 'Gagal', text: err.message, icon: 'error', background: '#0f172a', color: '#f8fafc' })
-    }
-  }
-
-  const handleCloseMaterialModal = useCallback(async () => {
-    setShowMaterialModal(false)
-    await fetchMaterialsAndTps()
-  }, [fetchMaterialsAndTps])
-
-  const handleCloseSummativeModal = useCallback(async () => {
-    setShowSummativeModal(false)
-    await fetchSummatives()
-  }, [fetchSummatives])
+  const handleCloseComponentModal = useCallback(async () => {
+    setShowComponentModal(false)
+    setModalError('')
+    await fetchItemsAndTps()
+  }, [fetchItemsAndTps])
 
   return {
     periods,
@@ -478,9 +491,12 @@ export default function useInputRapor() {
     selectedSubjectId,
     setSelectedSubjectId,
     students,
-    materials,
+    components,
+    items,
     learningTargets,
-    summatives,
+    calculationMode,
+    gradePredicates,
+    predicatePlacement,
     scores,
     isGridLoaded,
     setIsGridLoaded,
@@ -491,16 +507,12 @@ export default function useInputRapor() {
     setEditingRows,
     error,
     success,
-    showMaterialModal,
-    setShowMaterialModal,
-    showSummativeModal,
-    setShowSummativeModal,
-    newMaterialName,
-    setNewMaterialName,
+    showComponentModal,
+    setShowComponentModal,
+    itemDrafts,
+    setItemDraft,
     tpInputs,
     setTpInputs,
-    newSummativeName,
-    setNewSummativeName,
     modalError,
     setModalError,
 
@@ -509,18 +521,11 @@ export default function useInputRapor() {
     handleSaveSingleRow,
     handleEditRow,
     restoreStudentScore,
-    handleAddMaterial,
-    handleDeleteMaterial,
+    handleAddItem,
+    handleRenameItem,
+    handleDeleteItem,
     handleAddTp,
     handleDeleteTp,
-    handleAddSummative,
-    handleDeleteSummative,
-    handleCloseMaterialModal,
-    handleCloseSummativeModal,
-
-    calculateFormativeAvg,
-    calculateSummativeAvg,
-    calculateAvgOfTwo,
-    calculateFinalRaporScore,
+    handleCloseComponentModal,
   }
 }

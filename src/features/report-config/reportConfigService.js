@@ -1,12 +1,13 @@
 import { supabase } from '@/lib/supabase'
 
 export async function getReportConfigData() {
-  const [periodsRes, subjectsRes, teachersRes, periodSubjectsRes] = await Promise.all([
+  const [periodsRes, subjectsRes, teachersRes, periodSubjectsRes, formatsRes] = await Promise.all([
     supabase
       .from('report_periods')
       .select(`
         *,
-        wali_kelas:profiles(id, name)
+        wali_kelas:profiles(id, name),
+        format:assessment_formats(id, name)
       `)
       .order('created_at', { ascending: false }),
     supabase
@@ -19,12 +20,19 @@ export async function getReportConfigData() {
       .neq('role', 'admin')
       .order('name', { ascending: true }),
     supabase.from('report_subjects').select('report_period_id, subject_id'),
+    supabase
+      .from('assessment_formats')
+      .select('id, name, is_default, is_active, calculation_mode, components:assessment_format_components(count)')
+      .eq('is_active', true)
+      .order('is_default', { ascending: false })
+      .order('name', { ascending: true }),
   ])
 
   if (periodsRes.error) throw periodsRes.error
   if (subjectsRes.error) throw subjectsRes.error
   if (teachersRes.error) throw teachersRes.error
   if (periodSubjectsRes.error) throw periodSubjectsRes.error
+  if (formatsRes.error) throw formatsRes.error
 
   const periodSubjects = {}
   ;(periodSubjectsRes.data ?? []).forEach((row) => {
@@ -39,6 +47,10 @@ export async function getReportConfigData() {
     subjects: subjectsRes.data ?? [],
     teachers: teachersRes.data ?? [],
     periodSubjects,
+    formats: (formatsRes.data ?? []).map((format) => ({
+      ...format,
+      componentCount: format.components?.[0]?.count ?? 0,
+    })),
   }
 }
 
@@ -54,17 +66,77 @@ export async function saveReportPeriod({ id, values }) {
   }
 
   if (id) {
+    // Format penilaian tidak bisa diubah setelah periode dibuat (komponen sudah tersnapshot)
     const { error } = await supabase.from('report_periods').update(payload).eq('id', id)
     if (error) throw error
     return
   }
 
-  const { error } = await supabase.from('report_periods').insert(payload)
-  if (error) throw error
+  // ── CREATE ──────────────────────────────────────────────────────────────
+  let formatId = values.format_id || null
+  if (!formatId) {
+    const { data: defaultFormat, error: defaultError } = await supabase
+      .from('assessment_formats')
+      .select('id')
+      .eq('is_default', true)
+      .limit(1)
+      .maybeSingle()
+    if (defaultError) throw defaultError
+    formatId = defaultFormat?.id ?? null
+  }
+  if (!formatId) {
+    throw new Error('Pilih format penilaian untuk periode ini (buat dulu di menu Format Penilaian).')
+  }
+
+  const { data: format, error: formatError } = await supabase
+    .from('assessment_formats')
+    .select('*, components:assessment_format_components(*)')
+    .eq('id', formatId)
+    .single()
+  if (formatError) throw formatError
+
+  const components = (format.components ?? []).slice().sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+  if (components.length === 0) {
+    throw new Error(`Format "${format.name}" belum memiliki komponen. Lengkapi dulu di menu Format Penilaian.`)
+  }
+
+  const { data: inserted, error: insertError } = await supabase
+    .from('report_periods')
+    .insert({ ...payload, format_id: formatId, calculation_mode: format.calculation_mode })
+    .select('id')
+    .single()
+  if (insertError) throw insertError
+
+  // ── Snapshot komponen: salin ke period_components ──
+  try {
+    const rows = components.map((component, index) => ({
+      report_period_id: inserted.id,
+      source_component_id: component.id,
+      name: component.name,
+      kind: component.kind,
+      with_tp: component.kind === 'countable' ? Boolean(component.with_tp) : false,
+      tp_aggregation: component.tp_aggregation ?? 'global',
+      sub_values: component.sub_values ?? null,
+      weight: component.weight,
+      sort_order: index,
+    }))
+    const { error: snapshotError } = await supabase.from('period_components').insert(rows)
+    if (snapshotError) throw snapshotError
+  } catch (err) {
+    // rollback periode yang baru dibuat agar tidak ada periode tanpa komponen
+    await supabase.from('report_periods').delete().eq('id', inserted.id)
+    throw err
+  }
 }
 
 export async function deleteReportPeriod(id) {
   const { error } = await supabase.from('report_periods').delete().eq('id', id)
+  if (error) throw error
+}
+
+/** Arsipkan (is_active=false) atau aktifkan kembali sebuah periode rapor. */
+export async function setReportPeriodActive({ id, isActive }) {
+  const { error } = await supabase.from('report_periods').update({ is_active: isActive }).eq('id', id)
   if (error) throw error
 }
 

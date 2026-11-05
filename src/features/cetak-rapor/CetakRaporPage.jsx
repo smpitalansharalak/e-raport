@@ -6,38 +6,45 @@ import {
   Eye,
   AlertCircle,
   School,
-  Users,
   CheckCircle,
   Loader2,
+  Archive,
+  FileSearch,
 } from 'lucide-react'
 import useExcelExport from './useExcelExport'
 import ExportDropdown from './components/ExportDropdown'
 import RaporSheet from './components/RaporSheet'
+import RincianModal from './components/RincianModal'
 import { getExportDetailData } from './cetakRaporService'
-import { usePeriodSheetData, usePrintablePeriods } from './useCetakRapor'
+import { usePeriodSheetData, usePrintablePeriods, useRincianDetail, useRincianPredicates } from './useCetakRapor'
 
 const EMPTY_ATTENDANCE = { sakit: 0, izin: 0, alpha: 0, catatan_khusus: '' }
 
 export default function CetakRaporPage() {
   const [selectedPeriodId, setSelectedPeriodId] = useState('')
   const [search, setSearch] = useState('')
-  const [alumniMode, setAlumniMode] = useState(false)
+  const [archiveMode, setArchiveMode] = useState(false)
   const [previewStudent, setPreviewStudent] = useState(null)
+  const [rincianStudent, setRincianStudent] = useState(null)
   const [localError, setLocalError] = useState('')
 
   const { exportToExcel, exporting, exportSuccess } = useExcelExport()
 
   const printRef = useRef()
 
-  const periodsQuery = usePrintablePeriods(alumniMode)
-  const periods = periodsQuery.data ?? []
+  const periodsQuery = usePrintablePeriods(archiveMode)
+  const periods = useMemo(() => periodsQuery.data ?? [], [periodsQuery.data])
   const activePeriod = periods.find((p) => p.id === selectedPeriodId)
 
   const sheetQuery = usePeriodSheetData({
     periodId: selectedPeriodId,
     period: activePeriod,
-    alumniMode,
+    archiveMode,
   })
+
+  const rincianEnabled = Boolean(rincianStudent)
+  const rincianDetailQuery = useRincianDetail(selectedPeriodId, rincianEnabled)
+  const rincianPredicatesQuery = useRincianPredicates(rincianEnabled)
 
   const students = useMemo(() => sheetQuery.data?.students ?? [], [sheetQuery.data])
   const allSubjects = useMemo(() => sheetQuery.data?.subjects ?? [], [sheetQuery.data])
@@ -124,17 +131,30 @@ export default function CetakRaporPage() {
     }
   }
 
+  // Kelompokkan periode per tahun ajaran (terbaru dulu) untuk dropdown
+  const periodsByYear = useMemo(() => {
+    const map = new Map()
+    ;(periods ?? []).forEach((period) => {
+      const year = period.academic_year || 'Lainnya'
+      if (!map.has(year)) map.set(year, [])
+      map.get(year).push(period)
+    })
+    return Array.from(map.entries()).sort((a, b) => b[0].localeCompare(a[0]))
+  }, [periods])
+
   const handleModeChange = (nextMode) => {
-    if (nextMode === alumniMode) return
-    setAlumniMode(nextMode)
+    if (nextMode === archiveMode) return
+    setArchiveMode(nextMode)
     setSelectedPeriodId('')
     setPreviewStudent(null)
+    setRincianStudent(null)
     setLocalError('')
   }
 
   const handleSelectPeriod = (periodId) => {
     setSelectedPeriodId(periodId)
     setPreviewStudent(null)
+    setRincianStudent(null)
     setLocalError('')
   }
 
@@ -208,27 +228,34 @@ export default function CetakRaporPage() {
               Cetak PDF individual atau ekspor rekap nilai ke Excel per kelas.
             </p>
           </div>
-          {/* Toggle Mode Alumni */}
-          <div className="flex items-center bg-slate-900 border border-slate-800 p-1 rounded-xl">
+          {/* Tabs: Periode Aktif / Arsip Rapor */}
+          <div className="flex items-center bg-slate-900 border border-slate-800 p-1 rounded-xl" role="tablist" aria-label="Mode tampilan rapor">
             <button
+              role="tab"
+              aria-selected={!archiveMode}
               onClick={() => handleModeChange(false)}
-              className={`px-4 py-2 text-xs font-bold rounded-lg flex items-center gap-1.5 transition-all cursor-pointer ${!alumniMode ? 'bg-emerald-500 text-slate-950 shadow' : 'text-slate-400 hover:text-slate-200'}`}
+              className={`px-4 py-2 text-xs font-bold rounded-lg flex items-center gap-1.5 transition-all cursor-pointer ${!archiveMode ? 'bg-emerald-500 text-slate-950 shadow' : 'text-slate-400 hover:text-slate-200'}`}
             >
-              <School size={13} /> Siswa Aktif
+              <School size={13} /> Periode Aktif
             </button>
             <button
+              role="tab"
+              aria-selected={archiveMode}
               onClick={() => handleModeChange(true)}
-              className={`px-4 py-2 text-xs font-bold rounded-lg flex items-center gap-1.5 transition-all cursor-pointer ${alumniMode ? 'bg-emerald-500 text-slate-950 shadow' : 'text-slate-400 hover:text-slate-200'}`}
+              className={`px-4 py-2 text-xs font-bold rounded-lg flex items-center gap-1.5 transition-all cursor-pointer ${archiveMode ? 'bg-emerald-500 text-slate-950 shadow' : 'text-slate-400 hover:text-slate-200'}`}
             >
-              <Users size={13} /> Alumni / Arsip
+              <Archive size={13} /> Arsip Rapor
             </button>
           </div>
         </div>
 
-        {alumniMode && (
+        {archiveMode && (
           <div className="p-3.5 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-xl text-xs flex items-center gap-2">
-            <Users size={14} className="shrink-0" />
-            Mode Arsip — hanya periode rapor yang sudah tidak aktif (diarsipkan) yang ditampilkan.
+            <Archive size={14} className="shrink-0" />
+            <span>
+              Arsip Rapor — hanya menampilkan periode rapor yang sudah diarsipkan (non-aktif).
+              Nilai &amp; kehadiran siswa tetap tersimpan dan bisa dicetak/ekspor/diperiksa rinciannya.
+            </span>
           </div>
         )}
 
@@ -259,10 +286,14 @@ export default function CetakRaporPage() {
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2.5 px-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors"
               >
                 <option value="">-- Pilih Periode Cetak --</option>
-                {periods.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} (Kelas {p.class_name}){!p.is_active ? ' [Arsip]' : ''}
-                  </option>
+                {periodsByYear.map(([year, rows]) => (
+                  <optgroup key={year} label={`Tahun Ajaran ${year}`}>
+                    {rows.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} (Kelas {p.class_name}){!p.is_active ? ' [Arsip]' : ''}
+                      </option>
+                    ))}
+                  </optgroup>
                 ))}
               </select>
             </div>
@@ -332,7 +363,7 @@ export default function CetakRaporPage() {
               <div className="p-4 border-b border-slate-800 bg-slate-950/20 flex items-center justify-between">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                   Kelas {activePeriod?.class_name}
-                  {alumniMode && <span className="ml-1 text-amber-400">(Arsip)</span>}
+                  {archiveMode && <span className="ml-1 text-amber-400">(Arsip)</span>}
                 </span>
                 <span className="text-[10px] text-slate-500">
                   {filteredStudents.length} siswa
@@ -396,6 +427,13 @@ export default function CetakRaporPage() {
                             <Eye size={13} />
                           </button>
                           <button
+                            onClick={() => setRincianStudent(student)}
+                            className="p-1.5 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/20 rounded-lg transition-all cursor-pointer"
+                            title="Rincian Nilai (semua komponen, read-only)"
+                          >
+                            <FileSearch size={13} />
+                          </button>
+                          <button
                             onClick={() => handlePrintStudent(student)}
                             className="p-1.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/20 rounded-lg transition-all cursor-pointer"
                             title="Cetak PDF"
@@ -430,6 +468,13 @@ export default function CetakRaporPage() {
                       )}
                     </div>
                     <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setRincianStudent(previewStudent)}
+                        className="px-3 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 border border-indigo-500/30 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 hover:text-indigo-200 transition-colors cursor-pointer"
+                        title="Rincian Nilai (read-only)"
+                      >
+                        <FileSearch size={13} /> Rincian
+                      </button>
                       <ExportDropdown
                         onExport={handleExport}
                         disabled={false}
@@ -480,6 +525,23 @@ export default function CetakRaporPage() {
           </div>
         )}
       </div>
+
+      {/* Modal Rincian Nilai (read-only, admin) */}
+      {rincianStudent && (
+        <RincianModal
+          student={rincianStudent}
+          period={activePeriod}
+          allSubjects={allSubjects}
+          allScores={allScores}
+          components={rincianDetailQuery.data?.components ?? []}
+          items={rincianDetailQuery.data?.items ?? []}
+          learningTargets={rincianDetailQuery.data?.learningTargets ?? []}
+          predicates={rincianPredicatesQuery.data ?? []}
+          loading={rincianDetailQuery.isLoading}
+          isError={rincianDetailQuery.isError}
+          onClose={() => setRincianStudent(null)}
+        />
+      )}
     </div>
   )
 }

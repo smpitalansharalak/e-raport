@@ -6,6 +6,8 @@ import RoleGuard from './guards/RoleGuard'
 const LoginPage = lazy(() => import('@/features/auth/LoginPage'))
 const DashboardPage = lazy(() => import('@/features/dashboard/DashboardPage'))
 const StudentsPage = lazy(() => import('@/features/students/StudentsPage'))
+const AssessmentFormatsPage = lazy(() => import('@/features/assessment-formats/AssessmentFormatsPage'))
+const PredicatesPage = lazy(() => import('@/features/predicates/PredicatesPage'))
 const ReportConfigPage = lazy(() => import('@/features/report-config/ReportConfigPage'))
 const InputRaporPage = lazy(() => import('@/features/input-rapor/InputRaporPage'))
 const KepatuhanPage = lazy(() => import('@/features/kepatuhan/KepatuhanPage'))
@@ -33,6 +35,8 @@ export default function AppRoutes() {
           {/* Admin only */}
           <Route path="siswa" element={<RoleGuard allowedRoles={['admin']}><StudentsPage /></RoleGuard>} />
           <Route path="buat-rapor" element={<RoleGuard allowedRoles={['admin']}><ReportConfigPage /></RoleGuard>} />
+          <Route path="format-penilaian" element={<RoleGuard allowedRoles={['admin']}><AssessmentFormatsPage /></RoleGuard>} />
+          <Route path="predikat" element={<RoleGuard allowedRoles={['admin']}><PredicatesPage /></RoleGuard>} />
           <Route path="cetak-rapor" element={<RoleGuard allowedRoles={['admin']}><CetakRaporPage /></RoleGuard>} />
           <Route path="kelola-user" element={<RoleGuard allowedRoles={['admin']}><UsersPage /></RoleGuard>} />
           <Route path="manajemen-status" element={<RoleGuard allowedRoles={['admin']}><StudentStatusPage /></RoleGuard>} />

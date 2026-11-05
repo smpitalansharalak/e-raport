@@ -11,6 +11,8 @@ import {
   Check,
   Settings,
   Minus,
+  Archive,
+  ArchiveRestore,
 } from 'lucide-react'
 import { groupSubjectsByClass, sortClassNames } from '@/utils/classes'
 import { useReportConfig, useReportConfigMutations } from './useReportConfig'
@@ -46,10 +48,13 @@ export default function ReportConfigPage() {
   const subjects = configQuery.data?.subjects ?? []
   const teachers = configQuery.data?.teachers ?? []
   const periodSubjects = configQuery.data?.periodSubjects ?? {}
+  const formats = configQuery.data?.formats ?? []
+  const defaultFormatId = formats.find((f) => f.is_default)?.id ?? formats[0]?.id ?? ''
 
   const {
     savePeriod,
     deletePeriod,
+    setActivePeriod,
     saveSubject,
     deleteSubject,
   } = useReportConfigMutations()
@@ -69,6 +74,7 @@ export default function ReportConfigPage() {
       wali_kelas_id: '',
       kepala_sekolah_name: '',
       is_active: true,
+      format_id: defaultFormatId,
     })
     setError('')
     setShowPeriodModal(true)
@@ -84,6 +90,7 @@ export default function ReportConfigPage() {
       wali_kelas_id: period.wali_kelas_id || '',
       kepala_sekolah_name: period.kepala_sekolah_name,
       is_active: period.is_active,
+      format_id: period.format?.id ?? period.format_id ?? '',
     })
     setError('')
     setShowPeriodModal(true)
@@ -107,11 +114,16 @@ export default function ReportConfigPage() {
       setTimeout(() => setSuccess(''), 3000)
     } catch (err) {
       console.error('Period save failed:', err)
-      setError('Gagal menyimpan periode rapor.')
+      setError(err?.message ?? 'Gagal menyimpan periode rapor.')
     }
   }
 
   const handleDeletePeriod = async (id) => {
+    const target = periods.find((p) => p.id === id)
+    if (target && !target.is_active) {
+      setError('Periode arsip tidak dapat dihapus. Aktifkan kembali periode ini terlebih dahulu bila memang perlu dihapus.')
+      return
+    }
     if (!window.confirm('Hapus periode rapor ini? Seluruh data nilai, deskripsi, dan kehadiran siswa di dalamnya akan dihapus permanen!')) return
     setError('')
     setSuccess('')
@@ -123,6 +135,27 @@ export default function ReportConfigPage() {
     } catch (err) {
       console.error('Delete period failed:', err)
       setError('Gagal menghapus periode rapor.')
+    }
+  }
+
+  const handleToggleArchivePeriod = async (period) => {
+    const archiving = period.is_active
+    const confirmed = window.confirm(
+      archiving
+        ? `Arsipkan periode "${period.name}"?\n\nPeriode tidak akan muncul untuk diisi guru, tetapi seluruh nilai & kehadiran siswa tetap tersimpan dan bisa dicetak/ekspor kapan pun lewat tab Arsip Rapor di Cetak Rapor. Anda bisa mengaktifkan kembali kapan pun.`
+        : `Aktifkan kembali periode "${period.name}"?\n\nGuru dapat mengisi nilai lagi pada periode ini.`
+    )
+    if (!confirmed) return
+
+    setError('')
+    setSuccess('')
+    try {
+      await setActivePeriod.mutateAsync({ id: period.id, isActive: !period.is_active })
+      setSuccess(archiving ? 'Periode berhasil diarsipkan.' : 'Periode berhasil diaktifkan kembali.')
+      setTimeout(() => setSuccess(''), 3000)
+    } catch (err) {
+      console.error('Toggle archive failed:', err)
+      setError('Gagal mengubah status periode: ' + (err?.message ?? 'coba lagi.'))
     }
   }
 
@@ -264,7 +297,7 @@ export default function ReportConfigPage() {
             {periods.length === 0 ? (
               <div className="md:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-12 text-center text-slate-500">
                 <FilePlus size={36} className="mx-auto text-slate-650 mb-2" />
-                Belum ada periode rapor yang aktif. Silakan tambahkan.
+                Belum ada periode rapor. Silakan tambahkan.
               </div>
             ) : (
               periods.map((p) => (
@@ -283,7 +316,7 @@ export default function ReportConfigPage() {
                           : 'bg-slate-800 text-slate-500 border border-slate-700/60'
                           }`}
                       >
-                        {p.is_active ? 'Aktif' : 'Non-Aktif'}
+                        {p.is_active ? 'Aktif' : 'Arsip'}
                       </span>
                     </div>
 
@@ -308,6 +341,18 @@ export default function ReportConfigPage() {
 
                     <div className="flex gap-2">
                       <button
+                        onClick={() => handleToggleArchivePeriod(p)}
+                        disabled={setActivePeriod.isPending}
+                        className={`p-2 rounded-xl transition-all cursor-pointer border ${
+                          p.is_active
+                            ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border-amber-500/20 hover:border-amber-500/35'
+                            : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20 hover:border-emerald-500/35'
+                        } disabled:opacity-50`}
+                        title={p.is_active ? 'Arsipkan periode (nilai tetap tersimpan)' : 'Aktifkan kembali periode'}
+                      >
+                        {p.is_active ? <Archive size={13} /> : <ArchiveRestore size={13} />}
+                      </button>
+                      <button
                         onClick={() => openEditPeriodModal(p)}
                         className="p-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/20 hover:border-indigo-500/35 rounded-xl transition-all cursor-pointer"
                         title="Edit Periode"
@@ -316,8 +361,13 @@ export default function ReportConfigPage() {
                       </button>
                       <button
                         onClick={() => handleDeletePeriod(p.id)}
-                        className="p-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 hover:border-rose-500/35 rounded-xl transition-all cursor-pointer"
-                        title="Hapus Periode"
+                        disabled={!p.is_active}
+                        className={`p-2 rounded-xl border transition-all ${
+                          p.is_active
+                            ? 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border-rose-500/20 hover:border-rose-500/35 cursor-pointer'
+                            : 'bg-slate-800/40 text-slate-600 border-slate-800 cursor-not-allowed'
+                        }`}
+                        title={p.is_active ? 'Hapus Periode' : 'Periode arsip tidak dapat dihapus'}
                       >
                         <Trash2 size={13} />
                       </button>
@@ -530,6 +580,50 @@ export default function ReportConfigPage() {
                 </div>
               </div>
 
+              {/* Format Penilaian — pilih saat membuat periode, tidak bisa diubah setelahnya */}
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                  Format Penilaian
+                </label>
+                {!editingPeriod ? (
+                  <>
+                    <select
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors"
+                      {...periodForm.register('format_id', {
+                        required: 'Pilih format penilaian (buat dulu di menu Format Penilaian)',
+                      })}
+                    >
+                      <option value="">-- Pilih Format Penilaian --</option>
+                      {formats.map((format) => (
+                        <option key={format.id} value={format.id}>
+                          {format.name} — {format.componentCount} komponen
+                        </option>
+                      ))}
+                    </select>
+                    {periodForm.formState.errors.format_id && (
+                      <span className="text-[11px] text-rose-500 mt-1 block">
+                        {periodForm.formState.errors.format_id.message}
+                      </span>
+                    )}
+                    {formats.length === 0 && (
+                      <span className="text-[11px] text-amber-500 mt-1 block">
+                        Belum ada format aktif. Buat format dulu lewat menu Format Penilaian.
+                      </span>
+                    )}
+                    <span className="text-[10px] text-slate-500 mt-1 block">
+                      Komponen format akan disalin ke periode ini (snapshot). Guru menentukan jumlah itemnya nanti.
+                    </span>
+                  </>
+                ) : (
+                  <div className="w-full bg-slate-950/60 border border-slate-800 rounded-xl py-2 px-3 text-xs text-slate-400">
+                    {editingPeriod.format?.name ?? 'Format bawaan (snapshot)'}
+                    <span className="block text-[10px] text-slate-600 mt-0.5">
+                      Ditetapkan saat periode dibuat — tidak bisa diubah agar nilai yang sudah diinput tetap konsisten.
+                    </span>
+                  </div>
+                )}
+              </div>
+
               <div>
                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
                   Nama Kepala Sekolah
@@ -547,16 +641,12 @@ export default function ReportConfigPage() {
                 )}
               </div>
 
-              <div className="flex items-center gap-2 pt-2">
-                <input
-                  type="checkbox"
-                  id="is_active"
-                  className="accent-emerald-500 w-4 h-4 cursor-pointer"
-                  {...periodForm.register('is_active')}
-                />
-                <label htmlFor="is_active" className="text-xs text-slate-350 cursor-pointer font-medium select-none">
-                  Jadikan periode rapor ini aktif
-                </label>
+              <div className="flex items-center gap-2 pt-2 p-3 rounded-xl bg-slate-950/50 border border-slate-800">
+                <Archive size={14} className="text-slate-500 shrink-0" />
+                <p className="text-[10px] text-slate-500 leading-snug">
+                  Form ini tidak mengubah status arsip. Periode baru selalu aktif — pengarsipan dilakukan lewat tombol{' '}
+                  <b>Arsipkan</b> di kartu periode.
+                </p>
               </div>
 
               <div className="flex gap-3 justify-end pt-4 border-t border-slate-800">

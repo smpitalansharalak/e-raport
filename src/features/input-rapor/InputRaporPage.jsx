@@ -4,8 +4,7 @@ import useInputRapor from './useInputRapor'
 import useMediaQuery from '@/hooks/useMediaQuery'
 import ScoreGrid from './components/ScoreGrid'
 import MobileScoreList from './components/MobileScoreList'
-import MaterialModal from './components/MaterialModal'
-import SummativeModal from './components/SummativeModal'
+import ComponentManagerModal from './components/ComponentManagerModal'
 
 const MOBILE_VIEW_KEY = 'input-rapor:mobile-view'
 
@@ -29,9 +28,12 @@ export default function InputRaporPage() {
     selectedSubjectId,
     setSelectedSubjectId,
     students,
-    materials,
+    components,
+    items,
     learningTargets,
-    summatives,
+    calculationMode,
+    gradePredicates,
+    predicatePlacement,
     scores,
     isGridLoaded,
     setIsGridLoaded,
@@ -40,30 +42,24 @@ export default function InputRaporPage() {
     editingRows,
     error,
     success,
-    showMaterialModal,
-    setShowMaterialModal,
-    showSummativeModal,
-    setShowSummativeModal,
-    newMaterialName,
-    setNewMaterialName,
+    showComponentModal,
+    setShowComponentModal,
+    itemDrafts,
+    setItemDraft,
     tpInputs,
     setTpInputs,
-    newSummativeName,
-    setNewSummativeName,
+    modalError,
     handleLoadGrid,
     handleScoreChange,
     handleSaveSingleRow,
     handleEditRow,
     restoreStudentScore,
-    handleAddMaterial,
-    handleDeleteMaterial,
+    handleAddItem,
+    handleRenameItem,
+    handleDeleteItem,
     handleAddTp,
     handleDeleteTp,
-    handleAddSummative,
-    handleDeleteSummative,
-    handleCloseMaterialModal,
-    handleCloseSummativeModal,
-    modalError,
+    handleCloseComponentModal,
   } = useInputRapor()
 
   const filteredTeacherSubjects = useMemo(() => {
@@ -86,13 +82,15 @@ export default function InputRaporPage() {
     }
   }
 
+  const countableItemCount = items.length
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div>
         <h2 className="text-2xl font-bold text-slate-100 m-0">Input Nilai Rapor</h2>
         <p className="text-sm text-slate-400 mt-1">
-          Isi nilai formatif, sumatif, STS, SAS, dan deskripsi ketercapaian siswa.
+          Isi nilai siswa sesuai komponen penilaian pada format periode ini, lalu isi deskripsi ketercapaian.
         </p>
       </div>
 
@@ -170,19 +168,17 @@ export default function InputRaporPage() {
           <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-900/60 border border-slate-800 p-4 rounded-2xl">
             <div className="flex flex-wrap gap-2.5">
               <button
-                onClick={() => setShowMaterialModal(true)}
+                onClick={() => setShowComponentModal(true)}
                 className="px-3.5 py-2 bg-slate-950 hover:bg-slate-900 border border-slate-800 hover:border-slate-750 text-slate-350 hover:text-slate-200 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer"
               >
                 <Sliders size={14} className="text-slate-500" />
-                Atur Lingkup Materi & TP (Formatif: {learningTargets.length})
+                Atur Komponen Penilaian ({countableItemCount} item)
               </button>
-              <button
-                onClick={() => setShowSummativeModal(true)}
-                className="px-3.5 py-2 bg-slate-950 hover:bg-slate-900 border border-slate-800 hover:border-slate-750 text-slate-350 hover:text-slate-200 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer"
-              >
-                <Sliders size={14} className="text-slate-500" />
-                Atur Sumatif ({summatives.length})
-              </button>
+              {calculationMode === 'weighted' && (
+                <span className="px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-violet-300 border border-violet-500/30 bg-violet-500/10 rounded-xl flex items-center">
+                  Mode bobot (diatur admin)
+                </span>
+              )}
             </div>
 
             {!isDesktop && (
@@ -225,9 +221,12 @@ export default function InputRaporPage() {
           {isDesktop || mobileView === 'table' ? (
             <ScoreGrid
               students={students}
-              materials={materials}
+              components={components}
+              items={items}
               learningTargets={learningTargets}
-              summatives={summatives}
+              calculationMode={calculationMode}
+              predicates={gradePredicates}
+              predicatePlacement={predicatePlacement}
               scores={scores}
               handleScoreChange={handleScoreChange}
               handleSaveSingleRow={handleSaveSingleRow}
@@ -238,9 +237,12 @@ export default function InputRaporPage() {
           ) : (
             <MobileScoreList
               students={students}
-              materials={materials}
+              components={components}
+              items={items}
               learningTargets={learningTargets}
-              summatives={summatives}
+              calculationMode={calculationMode}
+              predicates={gradePredicates}
+              predicatePlacement={predicatePlacement}
               scores={scores}
               handleScoreChange={handleScoreChange}
               handleSaveSingleRow={handleSaveSingleRow}
@@ -253,33 +255,23 @@ export default function InputRaporPage() {
         </div>
       )}
 
-      {/* Modal Lingkup Materi & TP */}
-      {showMaterialModal && (
-        <MaterialModal
-          materials={materials}
+      {/* Modal Atur Komponen Penilaian */}
+      {showComponentModal && (
+        <ComponentManagerModal
+          components={components}
+          items={items}
           learningTargets={learningTargets}
-          newMaterialName={newMaterialName}
-          setNewMaterialName={setNewMaterialName}
+          itemDrafts={itemDrafts}
+          setItemDraft={setItemDraft}
+          onAddItem={handleAddItem}
+          onRenameItem={handleRenameItem}
+          onDeleteItem={handleDeleteItem}
           tpInputs={tpInputs}
           setTpInputs={setTpInputs}
-          handleAddMaterial={handleAddMaterial}
-          handleDeleteMaterial={handleDeleteMaterial}
-          handleAddTp={handleAddTp}
-          handleDeleteTp={handleDeleteTp}
-          onClose={handleCloseMaterialModal}
+          onAddTp={handleAddTp}
+          onDeleteTp={handleDeleteTp}
+          onClose={handleCloseComponentModal}
           modalError={modalError}
-        />
-      )}
-
-      {/* Modal Sumatif */}
-      {showSummativeModal && (
-        <SummativeModal
-          summatives={summatives}
-          newSummativeName={newSummativeName}
-          setNewSummativeName={setNewSummativeName}
-          handleAddSummative={handleAddSummative}
-          handleDeleteSummative={handleDeleteSummative}
-          onClose={handleCloseSummativeModal}
         />
       )}
     </div>

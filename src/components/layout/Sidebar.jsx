@@ -8,8 +8,10 @@ import {
   UserCog,
   FileEdit,
   ClipboardCheck,
+  ListChecks,
   KeyRound,
   ArrowUpCircle,
+  Award,
 } from 'lucide-react'
 
 export default function Sidebar() {
@@ -25,6 +27,8 @@ export default function Sidebar() {
     { to: '/', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/siswa', label: 'Input Siswa', icon: Users },
     { to: '/buat-rapor', label: 'Buat Rapor', icon: FilePlus },
+    { to: '/format-penilaian', label: 'Format Penilaian', icon: ListChecks },
+    { to: '/predikat', label: 'Predikat', icon: Award },
     { to: '/manajemen-status', label: 'Naik Kelas & Alumni', icon: ArrowUpCircle },
     { to: '/cetak-rapor', label: 'Cetak Rapor', icon: Printer },
     { to: '/kelola-user', label: 'Kelola User', icon: UserCog },

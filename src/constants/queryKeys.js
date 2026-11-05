@@ -21,6 +21,15 @@ export const queryKeys = {
     list: (filters) => ['student-status', 'list', filters],
     history: (studentId) => ['student-status', 'history', studentId],
   },
+  assessmentFormats: {
+    all: ['assessment-formats'],
+    list: () => ['assessment-formats', 'list'],
+  },
+  predicates: {
+    all: ['predicates'],
+    list: () => ['predicates', 'list'],
+    placement: () => ['predicates', 'placement'],
+  },
   reportPeriods: {
     all: ['report-periods'],
     list: (filters) => ['report-periods', 'list', filters],
@@ -32,7 +41,9 @@ export const queryKeys = {
   },
   cetakRapor: {
     all: ['cetak-rapor'],
-    periods: (alumniMode) => ['cetak-rapor', 'periods', alumniMode],
-    sheet: (periodId, alumniMode) => ['cetak-rapor', 'sheet', periodId, alumniMode],
+    periods: (archiveMode) => ['cetak-rapor', 'periods', archiveMode],
+    sheet: (periodId, archiveMode) => ['cetak-rapor', 'sheet', periodId, archiveMode],
+    rincian: (periodId) => ['cetak-rapor', 'rincian', periodId],
+    rincianPredicates: () => ['cetak-rapor', 'rincian-predicates'],
   },
 }

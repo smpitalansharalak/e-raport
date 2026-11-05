@@ -1,11 +1,13 @@
 import React, { useMemo, useCallback, useRef } from 'react'
 import { Check, Loader2, Edit2, ChevronLeft, ChevronRight } from 'lucide-react'
 import {
-  calculateFormativeAvg,
-  calculateSummativeAvg,
-  calculateAvgOfTwo,
   calculateFinalRaporScore,
+  getComponentValue,
+  getFixedSubs,
+  itemsOfComponent,
 } from '@/utils/scoreCalculations'
+import { predicateForScore } from '@/utils/predicates'
+import PredicateBadge from '@/components/ui/PredicateBadge'
 import useMediaQuery from '@/hooks/useMediaQuery'
 import DescriptionTextarea from './DescriptionTextarea'
 
@@ -13,22 +15,79 @@ const selectOnFocus = (e) => e.target.select()
 
 const COL_WIDTHS = {
   student: 200,
-  formative: 65,
-  formativeAvg: 55,
-  summative: 55,
-  summativeAvg: 55,
-  stsOrSas: 65,
-  stsOrSasAvg: 55,
+  tp: 65,
+  item: 88,
+  fixed: 65,
+  avg: 55,
   rapor: 70,
   description: 340,
   action: 50,
 }
 
+const TONES = [
+  { text: 'text-indigo-400', soft: 'bg-indigo-500/5', head: 'bg-indigo-500/8 text-indigo-300', ring: 'focus:border-indigo-400 focus:ring-indigo-400/50' },
+  { text: 'text-violet-400', soft: 'bg-violet-500/5', head: 'bg-violet-500/8 text-violet-300', ring: 'focus:border-violet-400 focus:ring-violet-400/50' },
+  { text: 'text-amber-400', soft: 'bg-amber-500/5', head: 'bg-amber-500/8 text-amber-300', ring: 'focus:border-amber-400 focus:ring-amber-400/50' },
+  { text: 'text-orange-400', soft: 'bg-orange-500/5', head: 'bg-orange-500/8 text-orange-300', ring: 'focus:border-orange-400 focus:ring-orange-400/50' },
+  { text: 'text-sky-400', soft: 'bg-sky-500/5', head: 'bg-sky-500/8 text-sky-300', ring: 'focus:border-sky-400 focus:ring-sky-400/50' },
+  { text: 'text-rose-400', soft: 'bg-rose-500/5', head: 'bg-rose-500/8 text-rose-300', ring: 'focus:border-rose-400 focus:ring-rose-400/50' },
+]
+
+const toneFor = (index) => TONES[index % TONES.length]
+
+/**
+ * Bangun "rencana kolom" dari komponen snapshot periode.
+ * Komponen countable kosong (belum ada item/TP) TIDAK dirender.
+ */
+function buildPlan(components, items, learningTargets) {
+  const sections = []
+  ;(components ?? []).forEach((component, index) => {
+    const tone = toneFor(index)
+
+    if (component.kind === 'fixed') {
+      const subs = getFixedSubs(component)
+      sections.push({ component, type: 'fixed', subs, tone })
+      return
+    }
+
+    const compItems = itemsOfComponent(component.id, items)
+
+    if (component.with_tp) {
+      const cells = []
+      compItems.forEach((item) => {
+        learningTargets
+          .filter((tp) => tp.assessment_item_id === item.id)
+          .forEach((tp) => cells.push({ tp, item }))
+      })
+      if (cells.length === 0) return
+      sections.push({ component, type: 'tp', items: compItems, cells, tone })
+      return
+    }
+
+    if (compItems.length === 0) return
+    sections.push({ component, type: 'direct', items: compItems, tone })
+  })
+  return sections
+}
+
+const sectionInputCount = (section) =>
+  section.type === 'fixed' ? section.subs.length : section.type === 'tp' ? section.cells.length : section.items.length
+
+const sectionColumnCount = (section) => sectionInputCount(section) + 1 // + kolom Rrt
+
+const sectionWidth = (section) => {
+  const col = section.type === 'direct' ? COL_WIDTHS.item : section.type === 'tp' ? COL_WIDTHS.tp : COL_WIDTHS.fixed
+  return sectionInputCount(section) * col + COL_WIDTHS.avg
+}
+
 export default function ScoreGrid({
   students,
-  materials,
+  components,
+  items,
   learningTargets,
-  summatives,
+  calculationMode,
+  predicates,
+  predicatePlacement,
   scores,
   handleScoreChange,
   handleSaveSingleRow,
@@ -46,51 +105,46 @@ export default function ScoreGrid({
     el.scrollBy({ left: direction * el.clientWidth * 0.8, behavior: 'smooth' })
   }, [])
 
+  const plan = useMemo(
+    () => buildPlan(components, items, learningTargets),
+    [components, items, learningTargets]
+  )
+
+  const totalInputCols = useMemo(
+    () => plan.reduce((sum, section) => sum + sectionInputCount(section), 0),
+    [plan]
+  )
+
   const totalWidth = useMemo(() => {
     let w = studentColWidth
-    if (learningTargets.length > 0) {
-      w += learningTargets.length * COL_WIDTHS.formative
-      w += COL_WIDTHS.formativeAvg
-    }
-    if (summatives.length > 0) {
-      w += summatives.length * COL_WIDTHS.summative
-      w += COL_WIDTHS.summativeAvg
-    }
-    w += COL_WIDTHS.stsOrSas * 2 + COL_WIDTHS.stsOrSasAvg
-    w += COL_WIDTHS.stsOrSas * 2 + COL_WIDTHS.stsOrSasAvg
+    plan.forEach((section) => {
+      w += sectionWidth(section)
+    })
     w += COL_WIDTHS.rapor + COL_WIDTHS.description + COL_WIDTHS.action
     return w
-  }, [learningTargets.length, summatives.length, studentColWidth])
+  }, [plan, studentColWidth])
 
-  const totalCols =
-    1 +
-    learningTargets.length +
-    (learningTargets.length > 0 ? 1 : 0) +
-    summatives.length +
-    (summatives.length > 0 ? 1 : 0) +
-    6 + 1 + 1 + 1
-
-  const tpsByMaterialId = useMemo(() => {
-    const grouped = new Map()
-    learningTargets.forEach((tp) => {
-      const existing = grouped.get(tp.material_id)
-      if (existing) {
-        existing.push(tp)
-      } else {
-        grouped.set(tp.material_id, [tp])
-      }
-    })
-    return grouped
-  }, [learningTargets])
+  const totalCols = useMemo(
+    () => 1 + plan.reduce((sum, section) => sum + sectionColumnCount(section), 0) + 1 + 1 + 1,
+    [plan]
+  )
 
   return (
     <div className="bg-slate-900/40 border border-slate-800 rounded-2xl overflow-hidden shadow-lg">
       <div className="flex items-center gap-3 px-4 py-2.5 bg-slate-950/60 border-b border-slate-800 flex-wrap">
         <span className="text-[11px] text-slate-500 font-medium">{students.length} siswa</span>
-        <span className="text-slate-700">•</span>
-        <span className="text-[11px] text-indigo-400 font-medium">{learningTargets.length} kolom formatif (TP)</span>
-        <span className="text-slate-700">•</span>
-        <span className="text-[11px] text-violet-400 font-medium">{summatives.length} kolom sumatif LM</span>
+        {plan.map((section) => (
+          <React.Fragment key={section.component.id}>
+            <span className="text-slate-700">•</span>
+            <span className={`text-[11px] font-medium ${section.tone.text}`}>
+              {section.type === 'tp'
+                ? `${section.cells.length} kolom ${section.component.name} (TP)`
+                : section.type === 'direct'
+                  ? `${section.items.length} kolom ${section.component.name}`
+                  : `${section.subs.length} kolom ${section.component.name}`}
+            </span>
+          </React.Fragment>
+        ))}
         <div className="ml-auto flex items-center gap-1.5">
           <span className="text-[10px] text-slate-600 italic hidden md:inline">
             ← geser horizontal untuk melihat semua kolom
@@ -116,6 +170,12 @@ export default function ScoreGrid({
         </div>
       </div>
 
+      {totalInputCols === 0 && (
+        <div className="px-4 py-6 text-center text-xs text-amber-500/90 border-b border-slate-800 bg-amber-500/5">
+          Belum ada item penilaian untuk komponen countable. Klik <b>Atur Komponen Penilaian</b> di atas untuk menambah (mis. Bab 1, Bab 2…).
+        </div>
+      )}
+
       <div ref={scrollRef} className="overflow-auto overscroll-x-contain md:max-h-[65vh] custom-scrollbar">
         <table
           className="text-left border-collapse"
@@ -123,27 +183,26 @@ export default function ScoreGrid({
         >
           <colgroup>
             <col style={{ width: `${studentColWidth}px`, minWidth: `${studentColWidth}px` }} />
-            {learningTargets.map((tp) => (
-              <col key={`tp-${tp.id}`} style={{ width: `${COL_WIDTHS.formative}px` }} />
-            ))}
-            {learningTargets.length > 0 && <col style={{ width: `${COL_WIDTHS.formativeAvg}px` }} />}
-            {summatives.map((sum) => (
-              <col key={`sum-${sum.id}`} style={{ width: `${COL_WIDTHS.summative}px` }} />
-            ))}
-            {summatives.length > 0 && <col style={{ width: `${COL_WIDTHS.summativeAvg}px` }} />}
-            <col style={{ width: `${COL_WIDTHS.stsOrSas}px` }} />
-            <col style={{ width: `${COL_WIDTHS.stsOrSas}px` }} />
-            <col style={{ width: `${COL_WIDTHS.stsOrSasAvg}px` }} />
-            <col style={{ width: `${COL_WIDTHS.stsOrSas}px` }} />
-            <col style={{ width: `${COL_WIDTHS.stsOrSas}px` }} />
-            <col style={{ width: `${COL_WIDTHS.stsOrSasAvg}px` }} />
+            {plan.map((section) => {
+              const col = section.type === 'direct' ? COL_WIDTHS.item : section.type === 'tp' ? COL_WIDTHS.tp : COL_WIDTHS.fixed
+              return [
+                ...Array.from({ length: sectionInputCount(section) }).map((_, index) => (
+                  <col
+                    key={`${section.component.id}-col-${index}`}
+                    style={{ width: `${col}px` }}
+                  />
+                )),
+                <col key={`${section.component.id}-avg`} style={{ width: `${COL_WIDTHS.avg}px` }} />,
+              ]
+            })}
             <col style={{ width: `${COL_WIDTHS.rapor}px` }} />
             <col style={{ width: `${COL_WIDTHS.description}px`, minWidth: `${COL_WIDTHS.description}px` }} />
             <col style={{ width: `${COL_WIDTHS.action}px` }} />
           </colgroup>
 
           <thead className="md:sticky md:top-0 z-30 shadow-md">
-            <tr className="bg-slate-950 text-slate-450 text-[10px] uppercase font-bold tracking-widest text-center border-b border-slate-800/80">
+            {/* Baris header 1: nama komponen */}
+            <tr className="bg-slate-950 text-[10px] uppercase font-bold tracking-widest text-center border-b border-slate-800/80">
               <th
                 className="py-2.5 px-3 text-left font-medium text-slate-500 sticky left-0 z-40 bg-slate-950 border-r border-slate-800"
                 rowSpan={2}
@@ -151,85 +210,67 @@ export default function ScoreGrid({
                 Informasi Siswa
               </th>
 
-              {materials.map((mat) => {
-                const tpsInMat = tpsByMaterialId.get(mat.id) ?? []
-                if (tpsInMat.length === 0) return null
-                return (
-                  <th
-                    key={mat.id}
-                    className="py-2 px-2 border-l border-slate-800 bg-indigo-500/8 text-indigo-300 leading-tight whitespace-normal wrap-break-word align-middle"
-                    colSpan={tpsInMat.length}
-                    title={mat.name}
-                  >
-                    <span className="block whitespace-normal wrap-break-word leading-tight">
-                      {mat.name}
-                    </span>
-                  </th>
-                )
-              })}
-
-              {learningTargets.length > 0 && (
-                <th className="py-2 px-1 border-l border-slate-800 text-slate-500 bg-indigo-500/5" rowSpan={2}>
-                  Rrt<br />Form
+              {plan.map((section) => (
+                <th
+                  key={section.component.id}
+                  className={`py-2 px-2 border-l border-slate-800 leading-tight whitespace-normal wrap-break-word align-middle ${section.tone.head}`}
+                  colSpan={sectionColumnCount(section)}
+                  title={section.component.name}
+                >
+                  <span className="block whitespace-normal wrap-break-word leading-tight">
+                    {section.component.name}
+                  </span>
                 </th>
-              )}
+              ))}
 
-              {summatives.length > 0 && (
-                <th className="py-2 px-2 border-l border-slate-800 text-black" colSpan={summatives.length + 1}>
-                  Sumatif Lingkup Materi
-                </th>
-              )}
-
-              <th className="py-2 px-1 border-l border-slate-800 text-black" colSpan={3}>Sumatif Tengah Semester</th>
-              <th className="py-2 px-1 border-l border-slate-800 text-black" colSpan={3}>Sumatif Akhir Semester</th>
               <th className="py-2 px-1 border-l border-slate-800 bg-emerald-500/8 text-emerald-300" rowSpan={2}>Rapor</th>
               <th className="py-2 px-3 border-l border-slate-800 text-left font-medium text-slate-500" rowSpan={2}>Deskripsi Capaian</th>
               <th className="py-2 px-1 border-l border-slate-800 text-center font-medium text-slate-500 sticky right-0 z-40 bg-slate-950" rowSpan={2}>Aksi</th>
             </tr>
 
+            {/* Baris header 2: label kolom */}
             <tr className="bg-slate-900 text-slate-400 text-[10px] font-semibold border-b border-slate-800">
-              {materials.map((mat) => {
-                const tpsInMat = tpsByMaterialId.get(mat.id) ?? []
-                return tpsInMat.map((tp, idx) => (
-                  <th
-                    key={tp.id}
-                    className={`py-2.5 px-1 text-center font-mono truncate bg-indigo-500/5 ${idx === 0 ? 'border-l border-slate-800' : ''}`}
-                    title={`${mat.name}: ${tp.description}`}
-                  >
-                    {tp.code}
+              {plan.map((section) => (
+                <React.Fragment key={`${section.component.id}-labels`}>
+                  {section.type === 'tp' &&
+                    section.cells.map(({ tp, item }, idx) => (
+                      <th
+                        key={tp.id}
+                        className={`py-2.5 px-1 text-center font-mono truncate ${section.tone.soft} ${
+                          idx === 0 ? 'border-l border-slate-800' : ''
+                        }`}
+                        title={`${item.name}: ${tp.description}`}
+                      >
+                        {tp.code}
+                      </th>
+                    ))}
+                  {section.type === 'direct' &&
+                    section.items.map((item, idx) => (
+                      <th
+                        key={item.id}
+                        className={`py-2 px-1 text-center whitespace-normal wrap-break-word leading-tight bg-slate-900 ${
+                          idx === 0 ? 'border-l border-slate-800' : ''
+                        }`}
+                        title={item.name}
+                      >
+                        {item.name}
+                      </th>
+                    ))}
+                  {section.type === 'fixed' &&
+                    section.subs.map((sub, idx) => (
+                      <th
+                        key={sub.key}
+                        className={`py-2.5 px-1 text-center bg-slate-900 ${idx === 0 ? 'border-l border-slate-800' : ''}`}
+                        title={sub.label}
+                      >
+                        {sub.label}
+                      </th>
+                    ))}
+                  <th className={`py-2.5 px-1 text-center border-l border-slate-800 text-slate-500 font-bold ${section.tone.soft}`}>
+                    Rrt
                   </th>
-                ))
-              })}
-
-              {summatives.map((sum, idx) => (
-                <th
-                  key={sum.id}
-                  className={`
-                  py-2
-                  px-1
-                  text-center
-                  whitespace-normal
-                  wrap-break-word
-                  leading-tight
-                  min-h-[60px]
-                  bg-violet-500/5
-                  ${idx === 0 ? 'border-l border-slate-800' : ''}
-                `}
-                  title={sum.name}
-                >
-                  {sum.name}
-                </th>
+                </React.Fragment>
               ))}
-              {summatives.length > 0 && (
-                <th className="py-2.5 px-1 text-center border-l border-slate-800 text-slate-500 font-bold bg-violet-500/5">Rrt</th>
-              )}
-
-              <th className="py-2.5 px-1 text-center border-l border-slate-800 text-black">Prak</th>
-              <th className="py-2.5 px-1 text-center text-black">Tulis</th>
-              <th className="py-2.5 px-1 text-center text-black font-bold">Rrt</th>
-              <th className="py-2.5 px-1 text-center border-l border-slate-800 text-black">Prak</th>
-              <th className="py-2.5 px-1 text-center text-black">Tulis</th>
-              <th className="py-2.5 px-1 text-center text-black font-bold">Rrt</th>
             </tr>
           </thead>
 
@@ -238,10 +279,7 @@ export default function ScoreGrid({
               const studentScore = scores[student.id] || {
                 scores_formative: {},
                 scores_summative: {},
-                sts_practice: '',
-                sts_written: '',
-                sas_practice: '',
-                sas_written: '',
+                fixed_scores: {},
                 highest_achievement: '',
                 lowest_achievement: '',
               }
@@ -251,16 +289,19 @@ export default function ScoreGrid({
                   key={student.id}
                   student={student}
                   studentScore={studentScore}
-                  materials={materials}
+                  plan={plan}
+                  components={components}
+                  items={items}
                   learningTargets={learningTargets}
-                  summatives={summatives}
+                  calculationMode={calculationMode}
                   isEditing={!!editingRows?.[student.id]}
-                  tpsByMaterialId={tpsByMaterialId}
                   isSaving={!!savingRows?.[student.id]}
                   handleScoreChange={handleScoreChange}
                   handleSaveSingleRow={handleSaveSingleRow}
                   handleEditRow={handleEditRow}
                   rowIdx={rowIdx}
+                  predicates={predicates}
+                  predicatePlacement={predicatePlacement}
                 />
               )
             })}
@@ -274,7 +315,7 @@ export default function ScoreGrid({
             {students.length} siswa × {totalCols} kolom
           </span>
           <span className="text-[10px] text-slate-600 italic">
-            Scroll ke kanan untuk kolom STS, SAS &amp; Deskripsi →
+            Scroll ke kanan untuk kolom lainnya &amp; Deskripsi →
           </span>
         </div>
       )}
@@ -283,35 +324,49 @@ export default function ScoreGrid({
 }
 
 // ─── ScoreRow ─────────────────────────────────────────────────────────────────
-// FIX: Gunakan custom comparison di React.memo agar hanya re-render saat
-// data baris ini benar-benar berubah, bukan saat baris lain berubah.
 const ScoreRow = React.memo(function ScoreRow({
   student,
   studentScore,
-  materials,
+  plan,
+  components,
+  items,
   learningTargets,
-  summatives,
-  tpsByMaterialId,
+  calculationMode,
   isEditing,
   isSaving,
   handleScoreChange,
   handleSaveSingleRow,
   handleEditRow,
   rowIdx,
+  predicates,
+  predicatePlacement,
 }) {
-  const formativeAvg = calculateFormativeAvg(studentScore, learningTargets)
-  const summativeAvg = calculateSummativeAvg(studentScore, summatives)
-  const stsAvg = calculateAvgOfTwo(studentScore.sts_practice, studentScore.sts_written)
-  const sasAvg = calculateAvgOfTwo(studentScore.sas_practice, studentScore.sas_written)
-  const finalRapor = calculateFinalRaporScore(studentScore, learningTargets, summatives)
-
+  const finalRapor = calculateFinalRaporScore(studentScore, components, items, learningTargets, calculationMode)
   const rowBg = rowIdx % 2 === 0 ? '' : 'bg-slate-900/20'
 
-  // FIX: autoResize stabil dengan useCallback, tidak dibuat ulang tiap render
+  const showInputBadges = Boolean(predicatePlacement?.show_on_inputs)
+  const showAverageBadges = Boolean(predicatePlacement?.show_on_component_averages)
+  const showFinalBadge = Boolean(predicatePlacement?.show_on_final)
+
+  const anyFilled = (components ?? []).some(
+    (component) => getComponentValue(component, items, learningTargets, studentScore) !== null
+  )
+
+  /** Badge predikat untuk sebuah nilai (input / rata-rata / final). */
+  const badgeFor = (value, { enabled = true, size = 'xs', className = '' } = {}) => {
+    if (!enabled) return null
+    const predicate = predicateForScore(value, predicates ?? [])
+    if (!predicate) return null
+    return <PredicateBadge predicate={predicate} predicates={predicates ?? []} size={size} className={className} />
+  }
+
   const autoResize = useCallback((e) => {
     e.target.style.height = 'auto'
     e.target.style.height = e.target.scrollHeight + 'px'
   }, [])
+
+  const numberInputClass =
+    'w-full min-w-0 bg-slate-950 border border-slate-800 rounded text-center text-xs h-9 md:h-8 py-0 px-0.5 text-slate-200 focus:outline-none focus:ring-1 transition-colors disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default'
 
   return (
     <tr className={`hover:bg-slate-800/30 transition-colors ${rowBg}`}>
@@ -323,100 +378,103 @@ const ScoreRow = React.memo(function ScoreRow({
         <p className="text-[10px] text-slate-500 font-mono mt-0.5 hidden sm:block">{student.nisn}</p>
       </td>
 
-      {/* Formatif per TP */}
-      {materials.map((mat) => {
-        const tpsInMat = tpsByMaterialId.get(mat.id) ?? []
-        return tpsInMat.map((tp, idx) => (
-          <td
-            key={tp.id}
-            className={`py-2 px-0.5 text-center bg-indigo-500/3 ${idx === 0 ? 'border-l border-slate-800' : ''}`}
-          >
-            <input
-              type="number"
-              inputMode="decimal"
-              min="0"
-              max="100"
-              disabled={!isEditing}
-              onFocus={selectOnFocus}
-              value={studentScore.scores_formative?.[tp.id] ?? ''}
-              onChange={(e) => handleScoreChange(student.id, 'formative', tp.id, e.target.value)}
-              className="w-full min-w-0 bg-slate-950 border border-slate-800 rounded text-center text-xs h-9 md:h-8 py-0 px-0.5 text-slate-200 focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400/50 transition-colors disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
-              title={`${tp.code} — ${tp.description}`}
-            />
-          </td>
-        ))
-      })}
+      {/* Kolom dinamis per komponen */}
+      {plan.map((section) => (
+        <React.Fragment key={section.component.id}>
+          {section.type === 'tp' &&
+            section.cells.map(({ tp, item }, idx) => {
+              const value = studentScore.scores_formative?.[tp.id] ?? ''
+              return (
+                <td
+                  key={tp.id}
+                  className={`py-2 px-0.5 text-center ${section.tone.soft} ${idx === 0 ? 'border-l border-slate-800' : ''}`}
+                >
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    min="0"
+                    max="100"
+                    disabled={!isEditing}
+                    onFocus={selectOnFocus}
+                    value={value}
+                    onChange={(e) => handleScoreChange(student.id, 'formative', tp.id, e.target.value)}
+                    className={`${numberInputClass} ${section.tone.ring}`}
+                    title={`${item.name} — ${tp.code}: ${tp.description}`}
+                  />
+                  {badgeFor(value, { enabled: showInputBadges, className: 'mt-0.5' })}
+                </td>
+              )
+            })}
 
-      {/* Rata-rata formatif */}
-      {learningTargets.length > 0 && (
-        <td className="py-2 px-1 border-l border-slate-800 text-center font-bold text-xs text-indigo-400 bg-indigo-500/5">
-          {formativeAvg}
-        </td>
-      )}
+          {section.type === 'direct' &&
+            section.items.map((item, idx) => {
+              const value = studentScore.scores_summative?.[item.id] ?? ''
+              return (
+                <td
+                  key={item.id}
+                  className={`py-2 px-0.5 text-center bg-slate-900/40 ${idx === 0 ? 'border-l border-slate-800' : ''}`}
+                >
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    min="0"
+                    max="100"
+                    disabled={!isEditing}
+                    onFocus={selectOnFocus}
+                    value={value}
+                    onChange={(e) => handleScoreChange(student.id, 'summative', item.id, e.target.value)}
+                    className={`${numberInputClass} ${section.tone.ring}`}
+                    title={`${section.component.name} — ${item.name}`}
+                  />
+                  {badgeFor(value, { enabled: showInputBadges, className: 'mt-0.5' })}
+                </td>
+              )
+            })}
 
-      {/* Sumatif LM */}
-      {summatives.map((sum, idx) => (
-        <td
-          key={sum.id}
-          className={`py-2 px-0.5 text-center bg-violet-500/3 ${idx === 0 ? 'border-l border-slate-800' : ''}`}
-        >
-          <input
-            type="number"
-            inputMode="decimal"
-            min="0"
-            max="100"
-            disabled={!isEditing}
-            onFocus={selectOnFocus}
-            value={studentScore.scores_summative?.[sum.id] ?? ''}
-            onChange={(e) => handleScoreChange(student.id, 'summative', sum.id, e.target.value)}
-            className="w-full bg-slate-950 border border-slate-800 rounded text-center text-xs h-9 md:h-8 py-0 px-0.5 text-slate-200 focus:outline-none focus:border-violet-400 focus:ring-1 focus:ring-violet-400/50 transition-colors disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
-            title={sum.name}
-          />
-        </td>
+          {section.type === 'fixed' &&
+            section.subs.map((sub, idx) => {
+              const value = studentScore.fixed_scores?.[section.component.id]?.[sub.key] ?? ''
+              return (
+                <td
+                  key={sub.key}
+                  className={`py-2 px-0.5 text-center bg-slate-900/40 ${idx === 0 ? 'border-l border-slate-800' : ''}`}
+                >
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    min="0"
+                    max="100"
+                    disabled={!isEditing}
+                    onFocus={selectOnFocus}
+                    value={value}
+                    onChange={(e) => handleScoreChange(student.id, 'fixed', `${section.component.id}:${sub.key}`, e.target.value)}
+                    className={`${numberInputClass} ${section.tone.ring}`}
+                    title={`${section.component.name} — ${sub.label}`}
+                  />
+                  {badgeFor(value, { enabled: showInputBadges, className: 'mt-0.5' })}
+                </td>
+              )
+            })}
+
+          {/* Rata-rata komponen */}
+          {(() => {
+            const value = getComponentValue(section.component, items, learningTargets, studentScore)
+            return (
+              <td
+                className={`py-2 px-1 border-l border-slate-800 text-center font-bold text-xs ${section.tone.text} ${section.tone.soft}`}
+              >
+                <span className="block">{value === null ? '—' : value}</span>
+                {badgeFor(value, { enabled: showAverageBadges && value !== null, className: 'mt-0.5' })}
+              </td>
+            )
+          })()}
+        </React.Fragment>
       ))}
-      {summatives.length > 0 && (
-        <td className="py-2 px-1 border-l border-slate-800 text-center font-bold text-xs text-violet-400 bg-violet-500/5">
-          {summativeAvg}
-        </td>
-      )}
-
-      {/* STS */}
-      <td className="py-2 px-0.5 border-l border-slate-800 text-center">
-        <input type="number" inputMode="decimal" min="0" max="100" disabled={!isEditing} onFocus={selectOnFocus}
-          value={studentScore.sts_practice ?? ''}
-          onChange={(e) => handleScoreChange(student.id, 'other', 'sts_practice', e.target.value)}
-          className="w-full bg-slate-950 border border-slate-800 rounded text-center text-xs h-9 md:h-8 py-0 px-0.5 text-slate-200 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400/50 transition-colors disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
-        />
-      </td>
-      <td className="py-2 px-0.5 text-center">
-        <input type="number" inputMode="decimal" min="0" max="100" disabled={!isEditing} onFocus={selectOnFocus}
-          value={studentScore.sts_written ?? ''}
-          onChange={(e) => handleScoreChange(student.id, 'other', 'sts_written', e.target.value)}
-          className="w-full bg-slate-950 border border-slate-800 rounded text-center text-xs h-9 md:h-8 py-0 px-0.5 text-slate-200 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400/50 transition-colors disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
-        />
-      </td>
-      <td className="py-2 px-1 text-center font-bold text-xs text-amber-400">{stsAvg || 0}</td>
-
-      {/* SAS */}
-      <td className="py-2 px-0.5 border-l border-slate-800 text-center">
-        <input type="number" inputMode="decimal" min="0" max="100" disabled={!isEditing} onFocus={selectOnFocus}
-          value={studentScore.sas_practice ?? ''}
-          onChange={(e) => handleScoreChange(student.id, 'other', 'sas_practice', e.target.value)}
-          className="w-full bg-slate-950 border border-slate-800 rounded text-center text-xs h-9 md:h-8 py-0 px-0.5 text-slate-200 focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400/50 transition-colors disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
-        />
-      </td>
-      <td className="py-2 px-0.5 text-center">
-        <input type="number" inputMode="decimal" min="0" max="100" disabled={!isEditing} onFocus={selectOnFocus}
-          value={studentScore.sas_written ?? ''}
-          onChange={(e) => handleScoreChange(student.id, 'other', 'sas_written', e.target.value)}
-          className="w-full bg-slate-950 border border-slate-800 rounded text-center text-xs h-9 md:h-8 py-0 px-0.5 text-slate-200 focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400/50 transition-colors disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
-        />
-      </td>
-      <td className="py-2 px-1 text-center font-bold text-xs text-orange-400">{sasAvg || 0}</td>
 
       {/* Nilai Rapor */}
       <td className="py-2 px-1 border-l border-slate-800 text-center font-extrabold text-sm text-emerald-400 bg-emerald-500/5">
-        {finalRapor}
+        <span className="block">{finalRapor}</span>
+        {badgeFor(finalRapor, { enabled: showFinalBadge && anyFilled, size: 'sm', className: 'mt-0.5' })}
       </td>
 
       {/* Deskripsi Capaian */}
@@ -473,16 +531,16 @@ const ScoreRow = React.memo(function ScoreRow({
     </tr>
   )
 }, (prevProps, nextProps) => {
-  // Custom equality: hanya re-render jika data baris ini yang berubah
   return (
     prevProps.studentScore === nextProps.studentScore &&
     prevProps.isEditing === nextProps.isEditing &&
     prevProps.isSaving === nextProps.isSaving &&
+    prevProps.plan === nextProps.plan &&
+    prevProps.components === nextProps.components &&
+    prevProps.items === nextProps.items &&
     prevProps.learningTargets === nextProps.learningTargets &&
-    prevProps.summatives === nextProps.summatives &&
-    prevProps.materials === nextProps.materials &&
-    prevProps.tpsByMaterialId === nextProps.tpsByMaterialId
-    // handleScoreChange, handleSaveSingleRow, handleEditRow selalu stabil (zero-dep useCallback)
-    // sehingga tidak perlu dibandingkan
+    prevProps.calculationMode === nextProps.calculationMode &&
+    prevProps.predicates === nextProps.predicates &&
+    prevProps.predicatePlacement === nextProps.predicatePlacement
   )
 })

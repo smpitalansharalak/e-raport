@@ -59,9 +59,9 @@ export default function useExcelExport() {
       }
 
       if (mode === 'detail' || mode === 'lengkap') {
-        // Fetch materials, TP, summatives jika belum ada
-        const { materials, learningTargets, summatives } = await fetchDetail(periodId)
-        const wsDetail = await buildDetailSheet(students, allSubjects, allScores, materials, learningTargets, summatives)
+        // Fetch komponen, item, TP jika belum ada
+        const { components, items, learningTargets } = await fetchDetail(periodId)
+        const wsDetail = await buildDetailSheet(students, allSubjects, allScores, components, items, learningTargets)
         XLSX.utils.book_append_sheet(wb, wsDetail, 'Detail Nilai')
       }
 
