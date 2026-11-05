@@ -1,9 +1,11 @@
-import * as XLSX from 'xlsx'
-
 /**
  * Utility functions untuk membuat sheet Excel rapor.
- * Diekstrak dari CetakRapor.jsx agar file utama lebih ringkas.
+ * XLSX di-load secara dinamis agar bundle utama tidak ikut memuat library Excel.
  */
+
+const loadXLSX = () => import('xlsx')
+
+const scoreKey = (studentId, subjectId) => `${studentId}:${subjectId}`
 
 /**
  * Terapkan style ke setiap cell dalam satu baris header.
@@ -24,7 +26,13 @@ export function addFreezePanes(ws, row, col) {
  * Sheet 1 — Rekap Nilai Akhir per Siswa per Mapel
  * Kolom: No | Nama | NISN | Kelas | <setiap mapel> | Rata-rata
  */
-export function buildRekapSheet(students, subjects, allScores) {
+export async function buildRekapSheet(students, subjects, allScores) {
+  const XLSX = await loadXLSX()
+
+  const scoreByStudentSubject = new Map(
+    allScores.map((sc) => [scoreKey(sc.student_id, sc.subject_id), sc]),
+  )
+
   const headers = [
     'No',
     'Nama Siswa',
@@ -35,9 +43,8 @@ export function buildRekapSheet(students, subjects, allScores) {
   ]
 
   const rows = students.map((student, idx) => {
-    const scores = allScores.filter(sc => sc.student_id === student.id)
     const subjectScores = subjects.map(sub => {
-      const sc = scores.find(s => s.subject_id === sub.id)
+      const sc = scoreByStudentSubject.get(scoreKey(student.id, sub.id))
       return sc?.final_score ?? ''
     })
     const numericScores = subjectScores.filter(v => v !== '' && !isNaN(Number(v)))
@@ -61,7 +68,20 @@ export function buildRekapSheet(students, subjects, allScores) {
  * Sheet 2 — Detail Nilai Formatif, Sumatif, STS, SAS per siswa
  * Satu baris per siswa per mapel
  */
-export function buildDetailSheet(students, subjects, allScores, materials, learningTargets, summatives) {
+export async function buildDetailSheet(
+  students,
+  subjects,
+  allScores,
+  materials,
+  learningTargets,
+  summatives,
+) {
+  const XLSX = await loadXLSX()
+
+  const scoreByStudentSubject = new Map(
+    allScores.map((sc) => [scoreKey(sc.student_id, sc.subject_id), sc]),
+  )
+
   const tpHeaders = learningTargets.map(tp => `F: ${tp.code}`)
   const sumHeaders = summatives.map(s => `S: ${s.name}`)
 
@@ -87,9 +107,7 @@ export function buildDetailSheet(students, subjects, allScores, materials, learn
   const rows = []
   students.forEach(student => {
     subjects.forEach(sub => {
-      const sc = allScores.find(
-        s => s.student_id === student.id && s.subject_id === sub.id
-      )
+      const sc = scoreByStudentSubject.get(scoreKey(student.id, sub.id))
 
       const tpVals = learningTargets.map(tp =>
         sc?.scores_formative?.[tp.id] ?? ''
@@ -158,10 +176,14 @@ export function buildDetailSheet(students, subjects, allScores, materials, learn
 /**
  * Sheet 3 — Kehadiran
  */
-export function buildKehadiranSheet(students, allAttendance) {
+export async function buildKehadiranSheet(students, allAttendance) {
+  const XLSX = await loadXLSX()
+
+  const attendanceByStudent = new Map(allAttendance.map(a => [a.student_id, a]))
+
   const headers = ['No', 'Nama Siswa', 'NISN', 'Kelas', 'Sakit (hari)', 'Izin (hari)', 'Alpha (hari)', 'Total Tidak Hadir']
   const rows = students.map((student, idx) => {
-    const att = allAttendance.find(a => a.student_id === student.id) || { sakit: 0, izin: 0, alpha: 0 }
+    const att = attendanceByStudent.get(student.id) || { sakit: 0, izin: 0, alpha: 0 }
     const total = (att.sakit || 0) + (att.izin || 0) + (att.alpha || 0)
     return [idx + 1, student.name, student.nisn, student.class_name, att.sakit || 0, att.izin || 0, att.alpha || 0, total]
   })

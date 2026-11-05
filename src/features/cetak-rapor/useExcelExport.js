@@ -1,5 +1,4 @@
 import { useState, useCallback } from 'react'
-import * as XLSX from 'xlsx'
 import {
   buildRekapSheet,
   buildDetailSheet,
@@ -29,6 +28,7 @@ export default function useExcelExport() {
     setExporting(true)
     setExportSuccess('')
     try {
+      const XLSX = await import('xlsx')
       const wb = XLSX.utils.book_new()
       const periodName = activePeriod
         ? `${activePeriod.class_name}_${activePeriod.semester}_${activePeriod.academic_year.replace('/', '-')}`
@@ -54,22 +54,22 @@ export default function useExcelExport() {
       XLSX.utils.book_append_sheet(wb, wsInfo, 'Info')
 
       if (mode === 'rekap' || mode === 'lengkap') {
-        const wsRekap = buildRekapSheet(students, allSubjects, allScores)
+        const wsRekap = await buildRekapSheet(students, allSubjects, allScores)
         XLSX.utils.book_append_sheet(wb, wsRekap, 'Rekap Nilai')
       }
 
       if (mode === 'detail' || mode === 'lengkap') {
         // Fetch materials, TP, summatives jika belum ada
         const { materials, learningTargets, summatives } = await fetchDetail(periodId)
-        const wsDetail = buildDetailSheet(students, allSubjects, allScores, materials, learningTargets, summatives)
+        const wsDetail = await buildDetailSheet(students, allSubjects, allScores, materials, learningTargets, summatives)
         XLSX.utils.book_append_sheet(wb, wsDetail, 'Detail Nilai')
       }
 
       if (mode === 'lengkap') {
-        const wsAtt = buildKehadiranSheet(students, allAttendance)
+        const wsAtt = await buildKehadiranSheet(students, allAttendance)
         XLSX.utils.book_append_sheet(wb, wsAtt, 'Kehadiran')
       } else if (mode === 'rekap') {
-        const wsAtt = buildKehadiranSheet(students, allAttendance)
+        const wsAtt = await buildKehadiranSheet(students, allAttendance)
         XLSX.utils.book_append_sheet(wb, wsAtt, 'Kehadiran')
       }
 

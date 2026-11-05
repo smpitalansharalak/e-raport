@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { Sliders, AlertCircle, CheckCircle } from 'lucide-react'
 import useInputRapor from './useInputRapor'
 import ScoreGrid from './components/ScoreGrid'
@@ -48,6 +49,17 @@ export default function InputRaporPage() {
     handleCloseSummativeModal,
     modalError,
   } = useInputRapor()
+
+  const filteredTeacherSubjects = useMemo(() => {
+    const currentPeriod = periods.find((p) => p.id === selectedPeriodId)
+    return teacherSubjects.filter((sub) => {
+      if (!currentPeriod) return true
+      if (!sub.class_name) return true
+      const pClass = currentPeriod.class_name || ''
+      const regex = new RegExp(`\\b${sub.class_name}\\b`, 'i')
+      return regex.test(pClass)
+    })
+  }, [periods, selectedPeriodId, teacherSubjects])
 
   return (
     <div className="space-y-6">
@@ -109,21 +121,11 @@ export default function InputRaporPage() {
             className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2.5 px-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors"
           >
             <option value="">-- Pilih Mata Pelajaran --</option>
-            {(() => {
-              const currentPeriod = periods.find((p) => p.id === selectedPeriodId)
-              const filtered = teacherSubjects.filter((sub) => {
-                if (!currentPeriod) return true
-                if (!sub.class_name) return true
-                const pClass = currentPeriod.class_name || ''
-                const regex = new RegExp('\\b' + sub.class_name + '\\b', 'i')
-                return regex.test(pClass)
-              })
-              return filtered.map((sub) => (
-                <option key={sub.id} value={sub.id}>
-                  {sub.name} {sub.class_name ? `(Kelas ${sub.class_name})` : ''}
-                </option>
-              ))
-            })()}
+            {filteredTeacherSubjects.map((sub) => (
+              <option key={sub.id} value={sub.id}>
+                {sub.name} {sub.class_name ? `(Kelas ${sub.class_name})` : ''}
+              </option>
+            ))}
           </select>
         </div>
 

@@ -10,6 +10,10 @@ const RaporSheet = React.forwardRef(function RaporSheet(
 ) {
   const att = getStudentAttendance(previewStudent.id)
   const scores = getStudentScores(previewStudent.id)
+  const scoreBySubject = React.useMemo(
+    () => new Map(scores.map((sc) => [sc.subject_id, sc])),
+    [scores],
+  )
 
   let catatanKhusus = att.catatan_khusus || ''
   let kokurikuler = []
@@ -125,7 +129,7 @@ const RaporSheet = React.forwardRef(function RaporSheet(
             </tr>
           ) : (
             allSubjects.map((sub, index) => {
-              const score = scores.find(sc => sc.subject_id === sub.id)
+              const score = scoreBySubject.get(sub.id)
               return (
                 <tr key={sub.id}>
                   <td className="py-2.5 px-3 text-center font-mono" style={{ border: '1px solid black' }}>{index + 1}</td>

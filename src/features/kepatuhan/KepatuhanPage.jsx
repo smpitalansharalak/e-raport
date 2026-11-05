@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { AlertCircle, CheckCircle } from 'lucide-react'
 import { useKepatuhan } from './useKepatuhan'
 import KehadiranRow from './components/KehadiranRow'
@@ -31,6 +31,10 @@ export default function KepatuhanPage() {
   } = useKepatuhan()
 
   const activityRef = useRef(null)
+  const selectedStudent = useMemo(
+    () => students.find((s) => s.id === selectedStudentId) ?? null,
+    [students, selectedStudentId],
+  )
 
   useEffect(() => {
     if (selectedStudentId && activityRef.current && window.innerWidth < 768) {
@@ -198,7 +202,7 @@ export default function KepatuhanPage() {
                 {selectedStudentId ? (
                   <ActivityManager
                     type={activeMainTab}
-                    student={students.find((s) => s.id === selectedStudentId)}
+                    student={selectedStudent}
                     data={attendance[selectedStudentId]?.[activeMainTab] || []}
                     onUpdate={handleUpdateActivity}
                     onSaveToDB={handleSaveActivityDB}

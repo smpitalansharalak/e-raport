@@ -16,6 +16,8 @@ import RaporSheet from './components/RaporSheet'
 import { getExportDetailData } from './cetakRaporService'
 import { usePeriodSheetData, usePrintablePeriods } from './useCetakRapor'
 
+const EMPTY_ATTENDANCE = { sakit: 0, izin: 0, alpha: 0, catatan_khusus: '' }
+
 export default function CetakRaporPage() {
   const [selectedPeriodId, setSelectedPeriodId] = useState('')
   const [search, setSearch] = useState('')
@@ -41,6 +43,47 @@ export default function CetakRaporPage() {
   const allSubjects = useMemo(() => sheetQuery.data?.subjects ?? [], [sheetQuery.data])
   const allScores = useMemo(() => sheetQuery.data?.scores ?? [], [sheetQuery.data])
   const allAttendance = useMemo(() => sheetQuery.data?.attendance ?? [], [sheetQuery.data])
+
+  const scoresByStudentId = useMemo(() => {
+    const map = new Map()
+    allScores.forEach((sc) => {
+      const existing = map.get(sc.student_id)
+      if (existing) {
+        existing.push(sc)
+      } else {
+        map.set(sc.student_id, [sc])
+      }
+    })
+    return map
+  }, [allScores])
+
+  const attendanceByStudentId = useMemo(
+    () => new Map(allAttendance.map((att) => [att.student_id, att])),
+    [allAttendance],
+  )
+
+  const scoreByStudentSubject = useMemo(
+    () =>
+      new Map(
+        allScores.map((sc) => [`${sc.student_id}:${sc.subject_id}`, sc]),
+      ),
+    [allScores],
+  )
+
+  const completedStudentIds = useMemo(() => {
+    const completed = new Set()
+    if (allSubjects.length === 0) return completed
+
+    students.forEach((student) => {
+      const isComplete = allSubjects.every((sub) => {
+        const score = scoreByStudentSubject.get(`${student.id}:${sub.id}`)
+        return score && score.final_score !== null
+      })
+      if (isComplete) completed.add(student.id)
+    })
+
+    return completed
+  }, [allSubjects, scoreByStudentSubject, students])
 
   const loading = periodsQuery.isLoading
   const loadingSheet = sheetQuery.isFetching
@@ -125,31 +168,25 @@ export default function CetakRaporPage() {
     ],
   )
 
-  const getStudentScores = (studentId) => allScores.filter((sc) => sc.student_id === studentId)
-  const getStudentAttendance = (studentId) =>
-    allAttendance.find((att) => att.student_id === studentId) || {
-      sakit: 0,
-      izin: 0,
-      alpha: 0,
-      catatan_khusus: '',
-    }
-
-  const filteredStudents = students.filter(
-    (s) =>
-      s.name.toLowerCase().includes(search.toLowerCase()) || s.nisn.includes(search),
+  const getStudentScores = useCallback(
+    (studentId) => scoresByStudentId.get(studentId) ?? [],
+    [scoresByStudentId],
+  )
+  const getStudentAttendance = useCallback(
+    (studentId) => attendanceByStudentId.get(studentId) || EMPTY_ATTENDANCE,
+    [attendanceByStudentId],
   )
 
+  const filteredStudents = useMemo(() => {
+    const normalizedSearch = search.toLowerCase()
+    return students.filter(
+      (s) =>
+        s.name.toLowerCase().includes(normalizedSearch) || s.nisn.includes(search),
+    )
+  }, [search, students])
+
   // Hitung kelengkapan nilai untuk badge
-  const completedCount = students.filter(
-    (s) =>
-      allSubjects.length > 0 &&
-      allSubjects.every((sub) =>
-        allScores.some(
-          (sc) =>
-            sc.student_id === s.id && sc.subject_id === sub.id && sc.final_score !== null,
-        ),
-      ),
-  ).length
+  const completedCount = completedStudentIds.size
 
   if (loading && periods.length === 0) {
     return (
@@ -315,16 +352,7 @@ export default function CetakRaporPage() {
                 ) : (
                   filteredStudents.map((student) => {
                     const isSelected = previewStudent?.id === student.id
-                    const hasScore =
-                      allSubjects.length > 0 &&
-                      allSubjects.every((sub) =>
-                        allScores.some(
-                          (sc) =>
-                            sc.student_id === student.id &&
-                            sc.subject_id === sub.id &&
-                            sc.final_score !== null,
-                        ),
-                      )
+                    const hasScore = completedStudentIds.has(student.id)
 
                     return (
                       <div
@@ -452,20 +480,6 @@ export default function CetakRaporPage() {
           </div>
         )}
       </div>
-
-      {/* Rapor Sheet — only visible during print */}
-      {previewStudent && (
-        <div className="hidden print:block">
-          <RaporSheet
-            ref={printRef}
-            previewStudent={previewStudent}
-            activePeriod={activePeriod}
-            allSubjects={allSubjects}
-            getStudentScores={getStudentScores}
-            getStudentAttendance={getStudentAttendance}
-          />
-        </div>
-      )}
     </div>
   )
 }

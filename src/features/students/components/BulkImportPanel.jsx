@@ -1,5 +1,4 @@
 import { useRef, useState } from 'react'
-import * as XLSX from 'xlsx'
 import {
   AlertCircle,
   CheckCircle2,
@@ -25,7 +24,8 @@ export default function BulkImportPanel({ onImportDone }) {
   const { importStudents } = useStudentMutations()
 
   // ── Download template ──────────────────────────────────────────
-  const downloadTemplate = () => {
+  const downloadTemplate = async () => {
+    const XLSX = await import('xlsx')
     const wb = XLSX.utils.book_new()
     const ws = XLSX.utils.aoa_to_sheet([
       CSV_HEADERS,
@@ -45,8 +45,9 @@ export default function BulkImportPanel({ onImportDone }) {
     setImportResult(null)
 
     const reader = new FileReader()
-    reader.onload = (evt) => {
+    reader.onload = async (evt) => {
       try {
+        const XLSX = await import('xlsx')
         const wb = XLSX.read(evt.target.result, { type: 'binary' })
         const ws = wb.Sheets[wb.SheetNames[0]]
         const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' })

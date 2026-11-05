@@ -57,6 +57,19 @@ export default function ScoreGrid({
     (summatives.length > 0 ? 1 : 0) +
     6 + 1 + 1 + 1
 
+  const tpsByMaterialId = useMemo(() => {
+    const grouped = new Map()
+    learningTargets.forEach((tp) => {
+      const existing = grouped.get(tp.material_id)
+      if (existing) {
+        existing.push(tp)
+      } else {
+        grouped.set(tp.material_id, [tp])
+      }
+    })
+    return grouped
+  }, [learningTargets])
+
   return (
     <div className="bg-slate-900/40 border border-slate-800 rounded-2xl overflow-hidden shadow-lg">
       <div className="flex items-center gap-3 px-4 py-2.5 bg-slate-950/60 border-b border-slate-800 flex-wrap">
@@ -106,7 +119,7 @@ export default function ScoreGrid({
               </th>
 
               {materials.map((mat) => {
-                const tpsInMat = learningTargets.filter((tp) => tp.material_id === mat.id)
+                const tpsInMat = tpsByMaterialId.get(mat.id) ?? []
                 if (tpsInMat.length === 0) return null
                 return (
                   <th
@@ -143,7 +156,7 @@ export default function ScoreGrid({
 
             <tr className="bg-slate-900 text-slate-400 text-[10px] font-semibold border-b border-slate-800">
               {materials.map((mat) => {
-                const tpsInMat = learningTargets.filter((tp) => tp.material_id === mat.id)
+                const tpsInMat = tpsByMaterialId.get(mat.id) ?? []
                 return tpsInMat.map((tp, idx) => (
                   <th
                     key={tp.id}
@@ -209,6 +222,7 @@ export default function ScoreGrid({
                   learningTargets={learningTargets}
                   summatives={summatives}
                   isEditing={!!editingRows?.[student.id]}
+                  tpsByMaterialId={tpsByMaterialId}
                   isSaving={!!savingRows?.[student.id]}
                   handleScoreChange={handleScoreChange}
                   handleSaveSingleRow={handleSaveSingleRow}
@@ -244,6 +258,7 @@ const ScoreRow = React.memo(function ScoreRow({
   materials,
   learningTargets,
   summatives,
+  tpsByMaterialId,
   isEditing,
   isSaving,
   handleScoreChange,
@@ -277,7 +292,7 @@ const ScoreRow = React.memo(function ScoreRow({
 
       {/* Formatif per TP */}
       {materials.map((mat) => {
-        const tpsInMat = learningTargets.filter((tp) => tp.material_id === mat.id)
+        const tpsInMat = tpsByMaterialId.get(mat.id) ?? []
         return tpsInMat.map((tp, idx) => (
           <td
             key={tp.id}
@@ -428,7 +443,8 @@ const ScoreRow = React.memo(function ScoreRow({
     prevProps.isSaving === nextProps.isSaving &&
     prevProps.learningTargets === nextProps.learningTargets &&
     prevProps.summatives === nextProps.summatives &&
-    prevProps.materials === nextProps.materials
+    prevProps.materials === nextProps.materials &&
+    prevProps.tpsByMaterialId === nextProps.tpsByMaterialId
     // handleScoreChange, handleSaveSingleRow, handleEditRow selalu stabil (zero-dep useCallback)
     // sehingga tidak perlu dibandingkan
   )
