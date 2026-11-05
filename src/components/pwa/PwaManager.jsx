@@ -104,7 +104,7 @@ export default function PwaManager() {
 
   return (
     <div
-      className="no-print fixed bottom-4 right-4 z-[60] flex w-[calc(100vw-2rem)] max-w-sm flex-col gap-3"
+      className="no-print fixed bottom-24 right-4 z-[60] flex w-[calc(100vw-2rem)] max-w-sm flex-col gap-3 lg:bottom-4"
       aria-live="polite"
     >
       {isOffline && (

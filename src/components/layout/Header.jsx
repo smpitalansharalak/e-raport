@@ -1,8 +1,8 @@
 import { useAuth } from '@/features/auth/useAuth'
-import { LogOut, School, Menu, X } from 'lucide-react'
+import { LogOut, School } from 'lucide-react'
 
 export default function Header() {
-  const { profile, signOut, sidebarOpen, toggleSidebar } = useAuth()
+  const { profile, signOut } = useAuth()
 
   const getRoleBadge = (role) => {
     switch (role) {
@@ -33,14 +33,6 @@ export default function Header() {
   return (
     <header className="no-print h-16 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 flex items-center justify-between px-4 sm:px-6 sticky top-0 z-40">
       <div className="flex items-center gap-2 sm:gap-3">
-        {/* Toggle Sidebar Button for Mobile */}
-        <button
-          onClick={toggleSidebar}
-          className="lg:hidden p-2 -ml-1 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors focus:outline-none cursor-pointer"
-        >
-          {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
-        </button>
-
         <div className="p-2 bg-emerald-500/10 rounded-lg border border-emerald-500/20 text-emerald-400 shrink-0">
           <School size={20} />
         </div>

@@ -1,10 +1,12 @@
-import { Navigate, Outlet } from 'react-router-dom'
+import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '@/features/auth/useAuth'
+import BottomNav from './BottomNav'
 import Header from './Header'
 import Sidebar from './Sidebar'
 
 export default function AppLayout() {
-  const { user, loading, initialized, sidebarOpen, setSidebarOpen } = useAuth()
+  const { user, loading, initialized } = useAuth()
+  const { pathname } = useLocation()
 
   if (!initialized || loading) {
     return (
@@ -31,18 +33,14 @@ export default function AppLayout() {
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
       <Header />
       <div className="flex flex-1 relative">
-        {/* Mobile Backdrop Overlay */}
-        {sidebarOpen && (
-          <div
-            className="fixed inset-0 top-16 bg-black/40 backdrop-blur-sm z-20 lg:hidden transition-all duration-300"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
         <Sidebar />
         <main className="flex-1 overflow-x-hidden p-4 sm:p-6 md:p-8 bg-slate-950">
-          <Outlet />
+          <div key={pathname} className="page-transition pb-24 lg:pb-0 print:pb-0">
+            <Outlet />
+          </div>
         </main>
       </div>
+      <BottomNav />
     </div>
   )
 }

@@ -18,12 +18,9 @@ export function AuthProvider({ children }) {
   const [initialized, setInitialized] = useState(false)
   const [profileLoading, setProfileLoading] = useState(false)
   const [profileError, setProfileError] = useState(null)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const profileRequestRef = useRef(0)
   const lastUserIdRef = useRef(null)
-
-  const toggleSidebar = () => setSidebarOpen((prev) => !prev)
 
   const fetchProfile = useCallback(async (userId) => {
     if (!userId) return
@@ -170,9 +167,6 @@ export function AuthProvider({ children }) {
         loading,
         profileLoading,
         profileError,
-        sidebarOpen,
-        setSidebarOpen,
-        toggleSidebar,
         signOut,
         refreshProfile,
       }}

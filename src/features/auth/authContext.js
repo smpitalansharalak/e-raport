@@ -8,9 +8,6 @@ export const defaultAuthContext = {
   initialized: false,
   profileLoading: false,
   profileError: null,
-  sidebarOpen: false,
-  setSidebarOpen: () => {},
-  toggleSidebar: () => {},
   signOut: async () => {},
   refreshProfile: async () => {},
 }

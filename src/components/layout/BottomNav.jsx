@@ -1,0 +1,244 @@
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { NavLink, useLocation } from 'react-router-dom'
+import { MoreHorizontal, X } from 'lucide-react'
+import { useAuth } from '@/features/auth/useAuth'
+import { getNavLinks } from './navLinks'
+
+function isLinkActive(pathname, to) {
+  if (to === '/') return pathname === '/'
+  return pathname === to || pathname.startsWith(`${to}/`)
+}
+
+function MoreSheet({ links, pathname, closing, onClose }) {
+  return (
+    <div className="no-print fixed inset-0 z-50 lg:hidden">
+      {/* Backdrop */}
+      <div
+        onClick={onClose}
+        className={`absolute inset-0 bg-slate-950/50 backdrop-blur-[2px] motion-reduce:animate-none ${
+          closing ? 'animate-[fade-out_0.18s_ease-in_forwards]' : 'animate-[fade-in_0.2s_ease-out]'
+        }`}
+      />
+
+      {/* Panel */}
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Menu lainnya"
+        style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))' }}
+        className={`absolute inset-x-0 bottom-0 rounded-t-3xl border-t border-slate-200 bg-white shadow-2xl motion-reduce:animate-none ${
+          closing
+            ? 'animate-[sheet-down_0.18s_ease-in_forwards]'
+            : 'animate-[sheet-up_0.3s_cubic-bezier(0.16,1,0.3,1)]'
+        }`}
+      >
+        <div className="mx-auto mt-3 h-1 w-10 rounded-full bg-slate-200" />
+
+        <div className="flex items-center justify-between px-5 pb-1 pt-4">
+          <p className="text-sm font-bold text-slate-900">Menu Lainnya</p>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Tutup menu"
+            className="cursor-pointer rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-3 gap-1 px-3 pb-3 pt-2">
+          {links.map((link, index) => {
+            const Icon = link.icon
+            const active = isLinkActive(pathname, link.to)
+            return (
+              <NavLink
+                key={link.to}
+                to={link.to}
+                end={link.to === '/'}
+                onClick={onClose}
+                style={{ animationDelay: `${60 + index * 35}ms` }}
+                className="flex flex-col items-center gap-2 rounded-2xl px-2 py-3 text-center transition duration-150 animate-[menu-item-in_0.25s_ease-out_backwards] hover:bg-slate-100 active:scale-95 motion-reduce:animate-none"
+              >
+                <span
+                  className={`flex h-11 w-11 items-center justify-center rounded-2xl ${
+                    active ? 'bg-emerald-500/15 text-emerald-600' : 'bg-slate-100 text-slate-600'
+                  }`}
+                >
+                  <Icon size={20} />
+                </span>
+                <span
+                  className={`text-[11px] font-medium leading-tight ${
+                    active ? 'text-emerald-700' : 'text-slate-600'
+                  }`}
+                >
+                  {link.label}
+                </span>
+              </NavLink>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default function BottomNav() {
+  const { role } = useAuth()
+  const { pathname } = useLocation()
+  const [sheetOpen, setSheetOpen] = useState(false)
+  const [sheetClosing, setSheetClosing] = useState(false)
+
+  const sheetOpenRef = useRef(false)
+  const closeTimerRef = useRef(null)
+
+  const { primary, overflow } = getNavLinks(role)
+  const hasMore = overflow.length > 0
+
+  useEffect(() => {
+    sheetOpenRef.current = sheetOpen
+  }, [sheetOpen])
+
+  useEffect(() => {
+    return () => {
+      if (closeTimerRef.current) clearTimeout(closeTimerRef.current)
+    }
+  }, [])
+
+  const openSheet = () => {
+    if (closeTimerRef.current) clearTimeout(closeTimerRef.current)
+    setSheetClosing(false)
+    setSheetOpen(true)
+  }
+
+  const closeSheet = useCallback(() => {
+    if (!sheetOpenRef.current) return
+    setSheetClosing(true)
+    if (closeTimerRef.current) clearTimeout(closeTimerRef.current)
+    closeTimerRef.current = setTimeout(() => {
+      setSheetOpen(false)
+      setSheetClosing(false)
+    }, 180)
+  }, [])
+
+  // Tutup sheet otomatis saat pindah halaman.
+  useEffect(() => {
+    closeSheet()
+  }, [pathname, closeSheet])
+
+  // Tutup dengan tombol Escape.
+  useEffect(() => {
+    if (!sheetOpen) return
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') closeSheet()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [sheetOpen, closeSheet])
+
+  // Kunci scroll body selama sheet terbuka.
+  useEffect(() => {
+    if (!sheetOpen) return
+    const previous = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = previous
+    }
+  }, [sheetOpen])
+
+  if (primary.length === 0) return null
+
+  const tabs = [
+    ...primary.map((link) => ({ ...link, key: link.to })),
+    ...(hasMore ? [{ key: 'more', label: 'Lainnya', icon: MoreHorizontal, isMore: true }] : []),
+  ]
+
+  const activePrimaryIndex = primary.findIndex((link) => isLinkActive(pathname, link.to))
+  const moreActive = hasMore && (sheetOpen || overflow.some((link) => isLinkActive(pathname, link.to)))
+  const hasActiveTab = activePrimaryIndex >= 0 || moreActive
+  const activeIndex = moreActive ? primary.length : Math.max(activePrimaryIndex, 0)
+
+  const tabBaseClass =
+    'relative flex min-h-[58px] flex-col items-center justify-center gap-1 px-1 pb-1.5 pt-2 text-[10px] font-semibold transition duration-200 active:scale-95'
+
+  return (
+    <nav aria-label="Navigasi utama" className="no-print fixed inset-x-0 bottom-0 z-40 lg:hidden">
+      <div
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+        className="border-t border-slate-200 bg-white/90 shadow-[0_-6px_24px_rgba(15,23,42,0.08)] backdrop-blur-xl"
+      >
+        <div
+          className="relative grid"
+          style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
+        >
+          {/* Indikator aktif yang bergeser */}
+          <span
+            aria-hidden="true"
+            className={`pointer-events-none absolute inset-y-1 left-0 transition-transform duration-300 ease-out motion-reduce:transition-none ${
+              hasActiveTab ? 'opacity-100' : 'opacity-0'
+            }`}
+            style={{
+              width: `calc(100% / ${tabs.length})`,
+              transform: `translateX(${activeIndex * 100}%)`,
+            }}
+          >
+            <span className="absolute inset-x-2 inset-y-0 rounded-2xl bg-emerald-500/10" />
+          </span>
+
+          {primary.map((link) => {
+            const Icon = link.icon
+            return (
+              <NavLink
+                key={link.to}
+                to={link.to}
+                end={link.to === '/'}
+                className={tabBaseClass}
+              >
+                {({ isActive }) => (
+                  <>
+                    <Icon
+                      size={20}
+                      className={
+                        isActive
+                          ? 'animate-[nav-pop_0.35s_ease-out] text-emerald-600 motion-reduce:animate-none'
+                          : 'text-slate-500'
+                      }
+                    />
+                    <span className={`w-full truncate ${isActive ? 'text-emerald-700' : 'text-slate-500'}`}>
+                      {link.label}
+                    </span>
+                  </>
+                )}
+              </NavLink>
+            )
+          })}
+
+          {hasMore && (
+            <button
+              type="button"
+              onClick={sheetOpen ? closeSheet : openSheet}
+              aria-expanded={sheetOpen}
+              aria-label="Buka menu lainnya"
+              className={tabBaseClass}
+            >
+              <MoreHorizontal
+                size={20}
+                className={
+                  moreActive
+                    ? 'animate-[nav-pop_0.35s_ease-out] text-emerald-600 motion-reduce:animate-none'
+                    : 'text-slate-500'
+                }
+              />
+              <span className={`w-full truncate ${moreActive ? 'text-emerald-700' : 'text-slate-500'}`}>
+                Lainnya
+              </span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {sheetOpen && (
+        <MoreSheet links={overflow} pathname={pathname} closing={sheetClosing} onClose={closeSheet} />
+      )}
+    </nav>
+  )
+}
