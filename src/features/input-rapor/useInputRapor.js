@@ -175,32 +175,35 @@ export default function useInputRapor() {
 
   // ── handleScoreChange: STABIL, tidak pernah berubah referensi ────────────────
   const handleScoreChange = useCallback((studentId, type, field, value) => {
-    setScores((prev) => {
-      const updated = { ...prev[studentId] }
+    const prev = scoresRef.current
+    const updated = { ...prev[studentId] }
 
-      if (type === 'formative') {
-        updated.scores_formative = { ...updated.scores_formative, [field]: value }
-      } else if (type === 'summative') {
-        updated.scores_summative = { ...updated.scores_summative, [field]: value }
+    if (type === 'formative') {
+      updated.scores_formative = { ...updated.scores_formative, [field]: value }
+    } else if (type === 'summative') {
+      updated.scores_summative = { ...updated.scores_summative, [field]: value }
+    } else {
+      if (typeof value === 'string' && (field === 'highest_achievement' || field === 'lowest_achievement')) {
+        updated[field] = sanitizeText(value)
       } else {
-        if (typeof value === 'string' && (field === 'highest_achievement' || field === 'lowest_achievement')) {
-          updated[field] = sanitizeText(value)
-        } else {
-          updated[field] = value
-        }
+        updated[field] = value
       }
+    }
 
-      return { ...prev, [studentId]: updated }
-    })
+    // Sinkronkan ref langsung agar save yang dipicu tepat setelah blur
+    // (mis. tombol Simpan di sheet mobile) membaca nilai terbaru.
+    const next = { ...prev, [studentId]: updated }
+    scoresRef.current = next
+    setScores(next)
   }, []) // ← ZERO deps → referensi tidak pernah berubah → ScoreRow.memo efektif
 
   // ── handleSaveSingleRow: STABIL karena pakai refs, bukan closure ─────────────
   const handleSaveSingleRow = useCallback(async (studentId) => {
-    if (savingRowsRef.current?.[studentId]) return
+    if (savingRowsRef.current?.[studentId]) return false
     setSavingRows((prev) => ({ ...prev, [studentId]: true }))
 
     try {
-      const studentScore = scoresRef.current[studentId]
+      const studentScore = scoresRef.current[studentId] || {}
       // Ambil dari refs, bukan closure → tidak perlu LT/summatives di dep array
       const currentLearningTargets = learningTargetsRef.current
       const currentSummatives = summativesRef.current
@@ -251,6 +254,7 @@ export default function useInputRapor() {
         background: '#0f172a',
         color: '#f8fafc',
       })
+      return true
     } catch (err) {
       console.error('Error saving single row:', err)
       Swal.fire({
@@ -263,6 +267,7 @@ export default function useInputRapor() {
         background: '#0f172a',
         color: '#f8fafc',
       })
+      return false
     } finally {
       setSavingRows((prev) => ({ ...prev, [studentId]: false }))
     }
@@ -308,6 +313,28 @@ export default function useInputRapor() {
       })
     }
   }, []) // ← ZERO deps → stabil
+
+  /**
+   * Kembalikan nilai siswa ke snapshot sebelum diedit, lalu matikan mode edit.
+   * Dipakai oleh editor mobile saat pengguna menutup tanpa menyimpan.
+   */
+  const restoreStudentScore = useCallback((studentId, snapshot) => {
+    const prev = scoresRef.current
+    let next
+
+    if (!snapshot) {
+      next = { ...prev }
+      delete next[studentId]
+    } else {
+      next = { ...prev, [studentId]: snapshot }
+    }
+
+    // Sinkronkan ref langsung agar snapshot berikutnya tidak memakai nilai
+    // yang sudah dibatalkan.
+    scoresRef.current = next
+    setScores(next)
+    setEditingRows((prevEditing) => ({ ...prevEditing, [studentId]: false }))
+  }, [])
 
   // ── Modal handlers ───────────────────────────────────────────────────────────
   const handleAddMaterial = async () => {
@@ -481,6 +508,7 @@ export default function useInputRapor() {
     handleScoreChange,
     handleSaveSingleRow,
     handleEditRow,
+    restoreStudentScore,
     handleAddMaterial,
     handleDeleteMaterial,
     handleAddTp,

@@ -1,12 +1,15 @@
 import React, { useMemo, useCallback, useRef } from 'react'
-import { Check, Loader2, Edit2 } from 'lucide-react'
+import { Check, Loader2, Edit2, ChevronLeft, ChevronRight } from 'lucide-react'
 import {
   calculateFormativeAvg,
   calculateSummativeAvg,
   calculateAvgOfTwo,
   calculateFinalRaporScore,
 } from '@/utils/scoreCalculations'
-import { sanitizeText } from '@/utils/text'
+import useMediaQuery from '@/hooks/useMediaQuery'
+import DescriptionTextarea from './DescriptionTextarea'
+
+const selectOnFocus = (e) => e.target.select()
 
 const COL_WIDTHS = {
   student: 200,
@@ -33,8 +36,18 @@ export default function ScoreGrid({
   savingRows,
   editingRows,
 }) {
+  const isMobile = useMediaQuery('(max-width: 767px)')
+  const studentColWidth = isMobile ? 112 : COL_WIDTHS.student
+  const scrollRef = useRef(null)
+
+  const scrollByScreen = useCallback((direction) => {
+    const el = scrollRef.current
+    if (!el) return
+    el.scrollBy({ left: direction * el.clientWidth * 0.8, behavior: 'smooth' })
+  }, [])
+
   const totalWidth = useMemo(() => {
-    let w = COL_WIDTHS.student
+    let w = studentColWidth
     if (learningTargets.length > 0) {
       w += learningTargets.length * COL_WIDTHS.formative
       w += COL_WIDTHS.formativeAvg
@@ -47,7 +60,7 @@ export default function ScoreGrid({
     w += COL_WIDTHS.stsOrSas * 2 + COL_WIDTHS.stsOrSasAvg
     w += COL_WIDTHS.rapor + COL_WIDTHS.description + COL_WIDTHS.action
     return w
-  }, [learningTargets.length, summatives.length])
+  }, [learningTargets.length, summatives.length, studentColWidth])
 
   const totalCols =
     1 +
@@ -78,18 +91,38 @@ export default function ScoreGrid({
         <span className="text-[11px] text-indigo-400 font-medium">{learningTargets.length} kolom formatif (TP)</span>
         <span className="text-slate-700">•</span>
         <span className="text-[11px] text-violet-400 font-medium">{summatives.length} kolom sumatif LM</span>
-        <span className="ml-auto text-[10px] text-slate-600 italic hidden sm:inline">
-          ← geser horizontal untuk melihat semua kolom
-        </span>
+        <div className="ml-auto flex items-center gap-1.5">
+          <span className="text-[10px] text-slate-600 italic hidden md:inline">
+            ← geser horizontal untuk melihat semua kolom
+          </span>
+          <button
+            type="button"
+            onClick={() => scrollByScreen(-1)}
+            className="p-1.5 rounded-lg border border-slate-800 bg-slate-900 text-slate-500 hover:text-slate-200 hover:border-slate-700 transition-colors cursor-pointer"
+            aria-label="Geser tabel ke kiri"
+            title="Geser ke kiri"
+          >
+            <ChevronLeft size={15} />
+          </button>
+          <button
+            type="button"
+            onClick={() => scrollByScreen(1)}
+            className="p-1.5 rounded-lg border border-slate-800 bg-slate-900 text-slate-500 hover:text-slate-200 hover:border-slate-700 transition-colors cursor-pointer"
+            aria-label="Geser tabel ke kanan"
+            title="Geser ke kanan"
+          >
+            <ChevronRight size={15} />
+          </button>
+        </div>
       </div>
 
-      <div className="overflow-auto max-h-[65vh] custom-scrollbar">
+      <div ref={scrollRef} className="overflow-auto overscroll-x-contain md:max-h-[65vh] custom-scrollbar">
         <table
           className="text-left border-collapse"
           style={{ width: `${totalWidth}px`, minWidth: `${totalWidth}px` }}
         >
           <colgroup>
-            <col style={{ width: `${COL_WIDTHS.student}px`, minWidth: `${COL_WIDTHS.student}px` }} />
+            <col style={{ width: `${studentColWidth}px`, minWidth: `${studentColWidth}px` }} />
             {learningTargets.map((tp) => (
               <col key={`tp-${tp.id}`} style={{ width: `${COL_WIDTHS.formative}px` }} />
             ))}
@@ -109,7 +142,7 @@ export default function ScoreGrid({
             <col style={{ width: `${COL_WIDTHS.action}px` }} />
           </colgroup>
 
-          <thead className="sticky top-0 z-30 shadow-md">
+          <thead className="md:sticky md:top-0 z-30 shadow-md">
             <tr className="bg-slate-950 text-slate-450 text-[10px] uppercase font-bold tracking-widest text-center border-b border-slate-800/80">
               <th
                 className="py-2.5 px-3 text-left font-medium text-slate-500 sticky left-0 z-40 bg-slate-950 border-r border-slate-800"
@@ -283,11 +316,11 @@ const ScoreRow = React.memo(function ScoreRow({
   return (
     <tr className={`hover:bg-slate-800/30 transition-colors ${rowBg}`}>
       {/* Nama — sticky */}
-      <td className="py-3 px-3 sticky left-0 z-10 bg-slate-900 border-r border-slate-800">
-        <p className="font-semibold text-slate-200 leading-tight text-xs truncate max-w-[180px]" title={student.name}>
+      <td className="py-3 px-3 sticky left-0 z-10 bg-slate-900 border-r border-slate-800 shadow-[4px_0_8px_-6px_rgba(15,23,42,0.35)]">
+        <p className="font-semibold text-slate-200 leading-tight text-xs line-clamp-2" title={student.name}>
           {student.name}
         </p>
-        <p className="text-[10px] text-slate-500 font-mono mt-0.5">{student.nisn}</p>
+        <p className="text-[10px] text-slate-500 font-mono mt-0.5 hidden sm:block">{student.nisn}</p>
       </td>
 
       {/* Formatif per TP */}
@@ -300,12 +333,14 @@ const ScoreRow = React.memo(function ScoreRow({
           >
             <input
               type="number"
+              inputMode="decimal"
               min="0"
               max="100"
               disabled={!isEditing}
+              onFocus={selectOnFocus}
               value={studentScore.scores_formative?.[tp.id] ?? ''}
               onChange={(e) => handleScoreChange(student.id, 'formative', tp.id, e.target.value)}
-              className="w-full min-w-0 bg-slate-950 border border-slate-800 rounded text-center text-xs py-1 px-0.5 text-slate-200 focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400/50 transition-colors disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
+              className="w-full min-w-0 bg-slate-950 border border-slate-800 rounded text-center text-xs h-9 md:h-8 py-0 px-0.5 text-slate-200 focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400/50 transition-colors disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
               title={`${tp.code} — ${tp.description}`}
             />
           </td>
@@ -327,12 +362,14 @@ const ScoreRow = React.memo(function ScoreRow({
         >
           <input
             type="number"
+            inputMode="decimal"
             min="0"
             max="100"
             disabled={!isEditing}
+            onFocus={selectOnFocus}
             value={studentScore.scores_summative?.[sum.id] ?? ''}
             onChange={(e) => handleScoreChange(student.id, 'summative', sum.id, e.target.value)}
-            className="w-full bg-slate-950 border border-slate-800 rounded text-center text-xs py-1 px-0.5 text-slate-200 focus:outline-none focus:border-violet-400 focus:ring-1 focus:ring-violet-400/50 transition-colors disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
+            className="w-full bg-slate-950 border border-slate-800 rounded text-center text-xs h-9 md:h-8 py-0 px-0.5 text-slate-200 focus:outline-none focus:border-violet-400 focus:ring-1 focus:ring-violet-400/50 transition-colors disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
             title={sum.name}
           />
         </td>
@@ -345,34 +382,34 @@ const ScoreRow = React.memo(function ScoreRow({
 
       {/* STS */}
       <td className="py-2 px-0.5 border-l border-slate-800 text-center">
-        <input type="number" min="0" max="100" disabled={!isEditing}
+        <input type="number" inputMode="decimal" min="0" max="100" disabled={!isEditing} onFocus={selectOnFocus}
           value={studentScore.sts_practice ?? ''}
           onChange={(e) => handleScoreChange(student.id, 'other', 'sts_practice', e.target.value)}
-          className="w-full bg-slate-950 border border-slate-800 rounded text-center text-xs py-1 px-0.5 text-slate-200 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400/50 transition-colors disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
+          className="w-full bg-slate-950 border border-slate-800 rounded text-center text-xs h-9 md:h-8 py-0 px-0.5 text-slate-200 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400/50 transition-colors disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
         />
       </td>
       <td className="py-2 px-0.5 text-center">
-        <input type="number" min="0" max="100" disabled={!isEditing}
+        <input type="number" inputMode="decimal" min="0" max="100" disabled={!isEditing} onFocus={selectOnFocus}
           value={studentScore.sts_written ?? ''}
           onChange={(e) => handleScoreChange(student.id, 'other', 'sts_written', e.target.value)}
-          className="w-full bg-slate-950 border border-slate-800 rounded text-center text-xs py-1 px-0.5 text-slate-200 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400/50 transition-colors disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
+          className="w-full bg-slate-950 border border-slate-800 rounded text-center text-xs h-9 md:h-8 py-0 px-0.5 text-slate-200 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400/50 transition-colors disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
         />
       </td>
       <td className="py-2 px-1 text-center font-bold text-xs text-amber-400">{stsAvg || 0}</td>
 
       {/* SAS */}
       <td className="py-2 px-0.5 border-l border-slate-800 text-center">
-        <input type="number" min="0" max="100" disabled={!isEditing}
+        <input type="number" inputMode="decimal" min="0" max="100" disabled={!isEditing} onFocus={selectOnFocus}
           value={studentScore.sas_practice ?? ''}
           onChange={(e) => handleScoreChange(student.id, 'other', 'sas_practice', e.target.value)}
-          className="w-full bg-slate-950 border border-slate-800 rounded text-center text-xs py-1 px-0.5 text-slate-200 focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400/50 transition-colors disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
+          className="w-full bg-slate-950 border border-slate-800 rounded text-center text-xs h-9 md:h-8 py-0 px-0.5 text-slate-200 focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400/50 transition-colors disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
         />
       </td>
       <td className="py-2 px-0.5 text-center">
-        <input type="number" min="0" max="100" disabled={!isEditing}
+        <input type="number" inputMode="decimal" min="0" max="100" disabled={!isEditing} onFocus={selectOnFocus}
           value={studentScore.sas_written ?? ''}
           onChange={(e) => handleScoreChange(student.id, 'other', 'sas_written', e.target.value)}
-          className="w-full bg-slate-950 border border-slate-800 rounded text-center text-xs py-1 px-0.5 text-slate-200 focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400/50 transition-colors disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
+          className="w-full bg-slate-950 border border-slate-800 rounded text-center text-xs h-9 md:h-8 py-0 px-0.5 text-slate-200 focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400/50 transition-colors disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
         />
       </td>
       <td className="py-2 px-1 text-center font-bold text-xs text-orange-400">{sasAvg || 0}</td>
@@ -386,7 +423,7 @@ const ScoreRow = React.memo(function ScoreRow({
       <td className="py-2 px-3 border-l border-slate-800 space-y-1.5">
         <div className="flex items-center gap-1.5">
           <span className="text-[9px] font-bold text-emerald-500/80 uppercase tracking-wide shrink-0 w-10">Tinggi</span>
-          <DebouncedTextarea
+          <DescriptionTextarea
             disabled={!isEditing}
             value={studentScore.highest_achievement ?? ''}
             placeholder={isEditing ? 'Capaian kompetensi tertinggi...' : '-'}
@@ -399,7 +436,7 @@ const ScoreRow = React.memo(function ScoreRow({
         </div>
         <div className="flex items-center gap-1.5">
           <span className="text-[9px] font-bold text-rose-500/80 uppercase tracking-wide shrink-0 w-10">Rendah</span>
-          <DebouncedTextarea
+          <DescriptionTextarea
             disabled={!isEditing}
             value={studentScore.lowest_achievement ?? ''}
             placeholder={isEditing ? 'Capaian kompetensi terendah...' : '-'}
@@ -447,91 +484,5 @@ const ScoreRow = React.memo(function ScoreRow({
     prevProps.tpsByMaterialId === nextProps.tpsByMaterialId
     // handleScoreChange, handleSaveSingleRow, handleEditRow selalu stabil (zero-dep useCallback)
     // sehingga tidak perlu dibandingkan
-  )
-})
-
-// ─── DebouncedTextarea ────────────────────────────────────────────────────────
-// FIX: Textarea deskripsi menggunakan local state + debounce ke parent.
-// Ini mencegah setiap keystroke memicu re-render seluruh tabel (30+ baris).
-// Debounce 300ms: perubahan dikirim ke parent hanya setelah user berhenti mengetik,
-// sedangkan tampilan tetap responsif karena local state langsung diupdate.
-const DebouncedTextarea = React.memo(function DebouncedTextarea({
-  disabled,
-  value,
-  placeholder,
-  field,
-  studentId,
-  handleScoreChange,
-  autoResize,
-  colorClass,
-}) {
-  const [localValue, setLocalValue] = React.useState(value)
-  const debounceRef = useRef(null)
-  const isMountedRef = useRef(true)
-
-  // Sync dari parent (misal saat handleEditRow menarik data terbaru dari DB)
-  React.useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLocalValue(value)
-  }, [value])
-
-  React.useEffect(() => {
-    isMountedRef.current = true
-    return () => {
-      isMountedRef.current = false
-      if (debounceRef.current) clearTimeout(debounceRef.current)
-    }
-  }, [])
-
-  const handleChange = useCallback((e) => {
-    const newVal = e.target.value
-    setLocalValue(newVal) // update lokal langsung → tampilan responsif
-
-    // Debounce update ke parent state (mencegah re-render seluruh grid)
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => {
-      if (isMountedRef.current) {
-        handleScoreChange(studentId, 'other', field, newVal)
-      }
-    }, 300)
-
-    // autoResize tetap instan
-    autoResize(e)
-  }, [studentId, field, handleScoreChange, autoResize])
-
-  const handlePaste = useCallback((e) => {
-    // Untuk paste, flush debounce dan update langsung setelah sanitasi
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    e.preventDefault()
-    const raw = e.clipboardData.getData('text/plain')
-    const cleaned = sanitizeText(raw)
-    const ta = e.target
-    const start = ta.selectionStart
-    const end = ta.selectionEnd
-    const next = localValue.substring(0, start) + cleaned + localValue.substring(end)
-    setLocalValue(next)
-    handleScoreChange(studentId, 'other', field, next)
-  }, [localValue, studentId, field, handleScoreChange])
-
-  // Saat blur, pastikan value terbaru tersinkron (flush debounce)
-  const handleBlur = useCallback(() => {
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current)
-      handleScoreChange(studentId, 'other', field, localValue)
-    }
-  }, [studentId, field, localValue, handleScoreChange])
-
-  return (
-    <textarea
-      rows={3}
-      placeholder={placeholder}
-      disabled={disabled}
-      value={localValue}
-      onChange={handleChange}
-      onPaste={handlePaste}
-      onBlur={handleBlur}
-      onInput={autoResize}
-      className={`w-full bg-slate-950 border border-slate-800 rounded-lg p-1 text-[11px] text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-1 resize-y disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:cursor-default ${colorClass}`}
-    />
   )
 })

@@ -65,6 +65,19 @@ body {
   background: rgba(5, 150, 105, 0.4);
 }
 
+/* Hilangkan spinner input angka — di layar kecil spinner memakan ruang
+   dan membuat angka susah dibaca/diketik. */
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
 @media print {
   /* Hide sidebar, headers, back buttons, and export buttons */
   .no-print {
