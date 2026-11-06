@@ -60,6 +60,14 @@ export default function ReportConfigPage() {
   const periods = configQuery.data?.periods ?? []
   const subjects = configQuery.data?.subjects ?? []
   const teachers = configQuery.data?.teachers ?? []
+  const kepalaSekolahOptions = teachers.filter((t) =>
+    t.role === 'wali_kelas' || t.role === 'guru_mapel'
+  )
+  const editingKepalaName = editingPeriod?.kepala_sekolah_name || ''
+  const legacyKepalaName = editingKepalaName
+    && !kepalaSekolahOptions.some((teacher) => teacher.name === editingKepalaName)
+    ? editingKepalaName
+    : ''
   const periodSubjects = configQuery.data?.periodSubjects ?? {}
   const formats = configQuery.data?.formats ?? []
   const defaultFormatId = formats.find((f) => f.is_default)?.id ?? formats[0]?.id ?? ''
@@ -584,12 +592,20 @@ export default function ReportConfigPage() {
                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
                   Nama Kepala Sekolah
                 </label>
-                <input
-                  type="text"
-                  placeholder="Nama Kepala Sekolah untuk TTD"
+                <select
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors"
-                  {...periodForm.register('kepala_sekolah_name', { required: 'Nama Kepsek wajib diisi' })}
-                />
+                  {...periodForm.register('kepala_sekolah_name', { required: 'Kepala sekolah wajib dipilih' })}
+                >
+                  <option value="">-- Pilih Kepala Sekolah --</option>
+                  {legacyKepalaName && (
+                    <option value={legacyKepalaName}>{legacyKepalaName} (nama lama)</option>
+                  )}
+                  {kepalaSekolahOptions.map((teacher) => (
+                    <option key={teacher.id} value={teacher.name}>
+                      {teacher.name}
+                    </option>
+                  ))}
+                </select>
                 {periodForm.formState.errors.kepala_sekolah_name && (
                   <span className="text-[11px] text-rose-500 mt-1 block">
                     {periodForm.formState.errors.kepala_sekolah_name.message}
