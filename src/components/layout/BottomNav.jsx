@@ -1,15 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
-import { MoreHorizontal, X } from 'lucide-react'
+import { ChevronLeft, MoreHorizontal, X } from 'lucide-react'
 import { useAuth } from '@/features/auth/useAuth'
-import { getNavLinks } from './navLinks'
+import { getNavLinks, isNavLinkActive } from './navLinks'
 
-function isLinkActive(pathname, to) {
-  if (to === '/') return pathname === '/'
-  return pathname === to || pathname.startsWith(`${to}/`)
-}
+const tileClass =
+  'flex flex-col items-center gap-2 rounded-2xl px-2 py-3 text-center transition duration-150 animate-[menu-item-in_0.25s_ease-out_backwards] hover:bg-[#f1f5f9] active:scale-95 motion-reduce:animate-none'
 
-function MoreSheet({ links, pathname, closing, onClose }) {
+function MoreSheet({ title, links, pathname, closing, onClose }) {
+  const [activeGroup, setActiveGroup] = useState(null)
+  const shownLinks = activeGroup ? activeGroup.children : links
+  const sheetTitle = activeGroup?.label ?? title
+
   return (
     <div className="no-print fixed inset-0 z-50 lg:hidden">
       {/* Backdrop */}
@@ -24,7 +26,7 @@ function MoreSheet({ links, pathname, closing, onClose }) {
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Menu lainnya"
+        aria-label={sheetTitle}
         style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))' }}
         className={`absolute inset-x-0 bottom-0 rounded-t-3xl border-t border-[#e2e8f0] bg-white shadow-2xl motion-reduce:animate-none ${
           closing
@@ -35,7 +37,19 @@ function MoreSheet({ links, pathname, closing, onClose }) {
         <div className="mx-auto mt-3 h-1 w-10 rounded-full bg-[#cbd5e1]" />
 
         <div className="flex items-center justify-between px-5 pb-1 pt-4">
-          <p className="text-sm font-bold text-[#0f172a]">Menu Lainnya</p>
+          {activeGroup ? (
+            <button
+              type="button"
+              onClick={() => setActiveGroup(null)}
+              aria-label="Kembali"
+              className="cursor-pointer rounded-lg p-1.5 text-[#64748b] transition-colors hover:bg-[#f1f5f9] hover:text-[#0f172a]"
+            >
+              <ChevronLeft size={18} />
+            </button>
+          ) : (
+            <span className="w-9" aria-hidden="true" />
+          )}
+          <p className="text-sm font-bold text-[#0f172a]">{sheetTitle}</p>
           <button
             type="button"
             onClick={onClose}
@@ -47,18 +61,12 @@ function MoreSheet({ links, pathname, closing, onClose }) {
         </div>
 
         <div className="grid grid-cols-3 gap-1 px-3 pb-3 pt-2">
-          {links.map((link, index) => {
+          {shownLinks.map((link, index) => {
             const Icon = link.icon
-            const active = isLinkActive(pathname, link.to)
-            return (
-              <NavLink
-                key={link.to}
-                to={link.to}
-                end={link.to === '/'}
-                onClick={onClose}
-                style={{ animationDelay: `${60 + index * 35}ms` }}
-                className="flex flex-col items-center gap-2 rounded-2xl px-2 py-3 text-center transition duration-150 animate-[menu-item-in_0.25s_ease-out_backwards] hover:bg-[#f1f5f9] active:scale-95 motion-reduce:animate-none"
-              >
+            const active = isNavLinkActive(pathname, link)
+            const key = link.to ?? link.key
+            const tileContent = (
+              <>
                 <span
                   className={`flex h-11 w-11 items-center justify-center rounded-2xl ${
                     active ? 'bg-emerald-500/15 text-emerald-600' : 'bg-[#f1f5f9] text-[#64748b]'
@@ -73,6 +81,34 @@ function MoreSheet({ links, pathname, closing, onClose }) {
                 >
                   {link.label}
                 </span>
+              </>
+            )
+
+            if (link.children) {
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setActiveGroup(link)}
+                  aria-label={`Buka menu ${link.label}`}
+                  style={{ animationDelay: `${60 + index * 35}ms` }}
+                  className={tileClass}
+                >
+                  {tileContent}
+                </button>
+              )
+            }
+
+            return (
+              <NavLink
+                key={key}
+                to={link.to}
+                end={link.to === '/'}
+                onClick={onClose}
+                style={{ animationDelay: `${60 + index * 35}ms` }}
+                className={tileClass}
+              >
+                {tileContent}
               </NavLink>
             )
           })}
@@ -87,6 +123,7 @@ export default function BottomNav() {
   const { pathname } = useLocation()
   const [sheetOpen, setSheetOpen] = useState(false)
   const [sheetClosing, setSheetClosing] = useState(false)
+  const [sheetState, setSheetState] = useState(null)
 
   const sheetOpenRef = useRef(false)
   const closeTimerRef = useRef(null)
@@ -104,10 +141,19 @@ export default function BottomNav() {
     }
   }, [])
 
-  const openSheet = () => {
+  const openSheetWith = (nextSheet) => {
     if (closeTimerRef.current) clearTimeout(closeTimerRef.current)
+    setSheetState(nextSheet)
     setSheetClosing(false)
     setSheetOpen(true)
+  }
+
+  const openGroupSheet = (group) => {
+    openSheetWith({ type: 'group', key: group.key, title: group.label, links: group.children })
+  }
+
+  const openMoreSheet = () => {
+    openSheetWith({ type: 'menu', title: 'Menu Lainnya', links: overflow })
   }
 
   const closeSheet = useCallback(() => {
@@ -148,12 +194,20 @@ export default function BottomNav() {
   if (primary.length === 0) return null
 
   const tabs = [
-    ...primary.map((link) => ({ ...link, key: link.to })),
+    ...primary.map((link) => ({ ...link, key: link.key ?? link.to })),
     ...(hasMore ? [{ key: 'more', label: 'Lainnya', icon: MoreHorizontal, isMore: true }] : []),
   ]
 
-  const activePrimaryIndex = primary.findIndex((link) => isLinkActive(pathname, link.to))
-  const moreActive = hasMore && (sheetOpen || overflow.some((link) => isLinkActive(pathname, link.to)))
+  const routeActiveIndex = primary.findIndex((link) => isNavLinkActive(pathname, link))
+  const openGroupIndex =
+    sheetOpen && sheetState?.type === 'group'
+      ? primary.findIndex((link) => link.key === sheetState.key)
+      : -1
+  const moreActive =
+    hasMore &&
+    (overflow.some((link) => isNavLinkActive(pathname, link)) ||
+      (sheetOpen && sheetState?.type === 'menu'))
+  const activePrimaryIndex = openGroupIndex >= 0 ? openGroupIndex : routeActiveIndex
   const hasActiveTab = activePrimaryIndex >= 0 || moreActive
   const activeIndex = moreActive ? primary.length : Math.max(activePrimaryIndex, 0)
 
@@ -186,6 +240,37 @@ export default function BottomNav() {
 
           {primary.map((link) => {
             const Icon = link.icon
+            if (link.children) {
+              const groupOpen =
+                sheetOpen && sheetState?.type === 'group' && sheetState.key === link.key
+              const active = isNavLinkActive(pathname, link) || groupOpen
+              return (
+                <button
+                  key={link.key}
+                  type="button"
+                  onClick={groupOpen ? closeSheet : () => openGroupSheet(link)}
+                  aria-expanded={groupOpen}
+                  aria-haspopup="dialog"
+                  aria-label={link.label}
+                  className={tabBaseClass}
+                >
+                  <span className="flex h-5 items-center justify-center">
+                    <Icon
+                      size={20}
+                      className={
+                        active
+                          ? 'animate-[nav-pop_0.35s_ease-out] text-emerald-600 motion-reduce:animate-none'
+                          : 'text-[#64748b]'
+                      }
+                    />
+                  </span>
+                  <span className={`w-full whitespace-nowrap text-center leading-none ${active ? 'text-emerald-700' : 'text-[#64748b]'}`}>
+                    {link.shortLabel ?? link.label}
+                  </span>
+                </button>
+              )
+            }
+
             return (
               <NavLink
                 key={link.to}
@@ -218,8 +303,8 @@ export default function BottomNav() {
           {hasMore && (
             <button
               type="button"
-              onClick={sheetOpen ? closeSheet : openSheet}
-              aria-expanded={sheetOpen}
+              onClick={sheetOpen && sheetState?.type === 'menu' ? closeSheet : openMoreSheet}
+              aria-expanded={sheetOpen && sheetState?.type === 'menu'}
               aria-label="Buka menu lainnya"
               className={tabBaseClass}
             >
@@ -241,8 +326,14 @@ export default function BottomNav() {
         </div>
       </div>
 
-      {sheetOpen && (
-        <MoreSheet links={overflow} pathname={pathname} closing={sheetClosing} onClose={closeSheet} />
+      {sheetOpen && sheetState && (
+        <MoreSheet
+          title={sheetState.title}
+          links={sheetState.links}
+          pathname={pathname}
+          closing={sheetClosing}
+          onClose={closeSheet}
+        />
       )}
     </nav>
   )

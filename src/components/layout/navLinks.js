@@ -10,14 +10,16 @@ import {
   KeyRound,
   ArrowUpCircle,
   Award,
+  SlidersHorizontal,
 } from 'lucide-react'
 
 // Definisi link dipakai bersama oleh Sidebar (desktop) dan BottomNav (mobile).
 // `primary` = item yang tampil di bottom navigation, `overflow` = sisanya
 // (dibuka lewat sheet "Lainnya"), `all` = urutan lengkap untuk sidebar.
+// Grup memiliki `children` dan dirender sebagai satu menu induk.
 
 const dashboard = { to: '/', label: 'Dashboard', shortLabel: 'Beranda', icon: LayoutDashboard }
-const inputSiswa = { to: '/siswa', label: 'Input Siswa', shortLabel: 'Siswa', icon: Users }
+const inputSiswa = { to: '/siswa', label: 'Input Siswa', icon: Users }
 const buatRapor = { to: '/buat-rapor', label: 'Buat Rapor', shortLabel: 'Buat', icon: FilePlus }
 const formatPenilaian = { to: '/format-penilaian', label: 'Format Penilaian', icon: ListChecks }
 const predikat = { to: '/predikat', label: 'Predikat', icon: Award }
@@ -28,11 +30,26 @@ const gantiPassword = { to: '/ganti-password', label: 'Ganti Password', shortLab
 const inputRapor = { to: '/input-rapor', label: 'Input Rapor', icon: FileEdit }
 const kepatuhan = { to: '/kepatuhan', label: 'Menu Wali Kelas', shortLabel: 'Wali Kelas', icon: ClipboardCheck }
 
+const inputSiswaGroup = {
+  key: 'siswa',
+  label: 'Siswa',
+  shortLabel: 'Siswa',
+  icon: Users,
+  children: [inputSiswa, naikKelas],
+}
+const penilaianGroup = {
+  key: 'penilaian',
+  label: 'Penilaian',
+  shortLabel: 'Penilaian',
+  icon: SlidersHorizontal,
+  children: [formatPenilaian, predikat],
+}
+
 const linksByRole = {
   admin: {
-    primary: [dashboard, inputSiswa, buatRapor, cetakRapor],
-    overflow: [formatPenilaian, predikat, naikKelas, kelolaUser, gantiPassword],
-    all: [dashboard, inputSiswa, buatRapor, formatPenilaian, predikat, naikKelas, cetakRapor, kelolaUser, gantiPassword],
+    primary: [dashboard, inputSiswaGroup, buatRapor, cetakRapor],
+    overflow: [penilaianGroup, kelolaUser, gantiPassword],
+    all: [dashboard, inputSiswaGroup, buatRapor, penilaianGroup, cetakRapor, kelolaUser, gantiPassword],
   },
   guru_mapel: {
     primary: [dashboard, inputRapor, gantiPassword],
@@ -47,6 +64,13 @@ const linksByRole = {
 }
 
 const EMPTY = { primary: [], overflow: [], all: [] }
+
+export function isNavLinkActive(pathname, link) {
+  if (link?.children) return link.children.some((child) => isNavLinkActive(pathname, child))
+  if (!link?.to) return false
+  if (link.to === '/') return pathname === '/'
+  return pathname === link.to || pathname.startsWith(`${link.to}/`)
+}
 
 export function getNavLinks(role) {
   const links = linksByRole[role] ?? EMPTY
