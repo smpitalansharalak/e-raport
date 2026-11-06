@@ -15,7 +15,7 @@ function MoreSheet({ links, pathname, closing, onClose }) {
       {/* Backdrop */}
       <div
         onClick={onClose}
-        className={`absolute inset-0 bg-slate-950/50 backdrop-blur-[2px] motion-reduce:animate-none ${
+        className={`absolute inset-0 bg-[rgba(15,23,42,0.5)] backdrop-blur-[2px] motion-reduce:animate-none ${
           closing ? 'animate-[fade-out_0.18s_ease-in_forwards]' : 'animate-[fade-in_0.2s_ease-out]'
         }`}
       />
@@ -26,21 +26,21 @@ function MoreSheet({ links, pathname, closing, onClose }) {
         aria-modal="true"
         aria-label="Menu lainnya"
         style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))' }}
-        className={`absolute inset-x-0 bottom-0 rounded-t-3xl border-t border-slate-200 bg-white shadow-2xl motion-reduce:animate-none ${
+        className={`absolute inset-x-0 bottom-0 rounded-t-3xl border-t border-[#e2e8f0] bg-white shadow-2xl motion-reduce:animate-none ${
           closing
             ? 'animate-[sheet-down_0.18s_ease-in_forwards]'
             : 'animate-[sheet-up_0.3s_cubic-bezier(0.16,1,0.3,1)]'
         }`}
       >
-        <div className="mx-auto mt-3 h-1 w-10 rounded-full bg-slate-200" />
+        <div className="mx-auto mt-3 h-1 w-10 rounded-full bg-[#cbd5e1]" />
 
         <div className="flex items-center justify-between px-5 pb-1 pt-4">
-          <p className="text-sm font-bold text-slate-900">Menu Lainnya</p>
+          <p className="text-sm font-bold text-[#0f172a]">Menu Lainnya</p>
           <button
             type="button"
             onClick={onClose}
             aria-label="Tutup menu"
-            className="cursor-pointer rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
+            className="cursor-pointer rounded-lg p-1.5 text-[#64748b] transition-colors hover:bg-[#f1f5f9] hover:text-[#0f172a]"
           >
             <X size={18} />
           </button>
@@ -57,18 +57,18 @@ function MoreSheet({ links, pathname, closing, onClose }) {
                 end={link.to === '/'}
                 onClick={onClose}
                 style={{ animationDelay: `${60 + index * 35}ms` }}
-                className="flex flex-col items-center gap-2 rounded-2xl px-2 py-3 text-center transition duration-150 animate-[menu-item-in_0.25s_ease-out_backwards] hover:bg-slate-100 active:scale-95 motion-reduce:animate-none"
+                className="flex flex-col items-center gap-2 rounded-2xl px-2 py-3 text-center transition duration-150 animate-[menu-item-in_0.25s_ease-out_backwards] hover:bg-[#f1f5f9] active:scale-95 motion-reduce:animate-none"
               >
                 <span
                   className={`flex h-11 w-11 items-center justify-center rounded-2xl ${
-                    active ? 'bg-emerald-500/15 text-emerald-600' : 'bg-slate-100 text-slate-600'
+                    active ? 'bg-emerald-500/15 text-emerald-600' : 'bg-[#f1f5f9] text-[#64748b]'
                   }`}
                 >
                   <Icon size={20} />
                 </span>
                 <span
                   className={`text-[11px] font-medium leading-tight ${
-                    active ? 'text-emerald-700' : 'text-slate-600'
+                    active ? 'text-emerald-700' : 'text-[#475569]'
                   }`}
                 >
                   {link.label}
@@ -158,13 +158,13 @@ export default function BottomNav() {
   const activeIndex = moreActive ? primary.length : Math.max(activePrimaryIndex, 0)
 
   const tabBaseClass =
-    'relative flex min-h-[58px] flex-col items-center justify-center gap-1 px-1 pb-1.5 pt-2 text-[10px] font-semibold transition duration-200 active:scale-95'
+    'relative flex min-h-[58px] flex-col items-center justify-center gap-1 px-0.5 pb-1.5 pt-2 text-[10px] font-semibold transition duration-200 active:scale-95'
 
   return (
     <nav aria-label="Navigasi utama" className="no-print fixed inset-x-0 bottom-0 z-40 lg:hidden">
       <div
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
-        className="border-t border-slate-200 bg-white/90 shadow-[0_-6px_24px_rgba(15,23,42,0.08)] backdrop-blur-xl"
+        className="border-t border-[#e2e8f0] bg-white/90 shadow-[0_-6px_24px_rgba(15,23,42,0.08)] backdrop-blur-xl"
       >
         <div
           className="relative grid"
@@ -191,20 +191,23 @@ export default function BottomNav() {
                 key={link.to}
                 to={link.to}
                 end={link.to === '/'}
+                aria-label={link.label}
                 className={tabBaseClass}
               >
                 {({ isActive }) => (
                   <>
-                    <Icon
-                      size={20}
-                      className={
-                        isActive
-                          ? 'animate-[nav-pop_0.35s_ease-out] text-emerald-600 motion-reduce:animate-none'
-                          : 'text-slate-500'
-                      }
-                    />
-                    <span className={`w-full truncate ${isActive ? 'text-emerald-700' : 'text-slate-500'}`}>
-                      {link.label}
+                    <span className="flex h-5 items-center justify-center">
+                      <Icon
+                        size={20}
+                        className={
+                          isActive
+                            ? 'animate-[nav-pop_0.35s_ease-out] text-emerald-600 motion-reduce:animate-none'
+                            : 'text-[#64748b]'
+                        }
+                      />
+                    </span>
+                    <span className={`w-full whitespace-nowrap text-center leading-none ${isActive ? 'text-emerald-700' : 'text-[#64748b]'}`}>
+                      {link.shortLabel ?? link.label}
                     </span>
                   </>
                 )}
@@ -220,15 +223,17 @@ export default function BottomNav() {
               aria-label="Buka menu lainnya"
               className={tabBaseClass}
             >
-              <MoreHorizontal
-                size={20}
-                className={
-                  moreActive
-                    ? 'animate-[nav-pop_0.35s_ease-out] text-emerald-600 motion-reduce:animate-none'
-                    : 'text-slate-500'
-                }
-              />
-              <span className={`w-full truncate ${moreActive ? 'text-emerald-700' : 'text-slate-500'}`}>
+              <span className="flex h-5 items-center justify-center">
+                <MoreHorizontal
+                  size={20}
+                  className={
+                    moreActive
+                      ? 'animate-[nav-pop_0.35s_ease-out] text-emerald-600 motion-reduce:animate-none'
+                      : 'text-[#64748b]'
+                  }
+                />
+              </span>
+              <span className={`w-full whitespace-nowrap text-center leading-none ${moreActive ? 'text-emerald-700' : 'text-[#64748b]'}`}>
                 Lainnya
               </span>
             </button>
