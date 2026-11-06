@@ -14,7 +14,7 @@ export async function listGradePredicates() {
     .order('sort_order', { ascending: true })
 
   if (error) {
-    console.warn('Predikat belum tersedia (jalankan supabase_migration_grade_predicates.sql):', error.message)
+    console.warn('Predikat belum tersedia (jalankan supabase/migrations/grade_predicates.sql):', error.message)
     return []
   }
   return data ?? []

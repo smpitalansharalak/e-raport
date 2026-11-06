@@ -124,8 +124,8 @@ export function useStudents() {
 - **Nilai** disimpan pada `student_scores`: TP → `scores_formative`, input
   langsung item → `scores_summative`, komponen fixed → `fixed_scores`.
   Komponen yang kosong selalu dilewati saat menghitung nilai akhir.
-- **Migrasi** database lama → baru ada di `supabase_migration_assessment_formats.sql`
-  dan `supabase_migration_grade_predicates.sql` (keduanya idempotent, tidak
+- **Migrasi** database lama → baru ada di `supabase/migrations/assessment_formats.sql`
+  dan `supabase/migrations/grade_predicates.sql` (keduanya idempotent, tidak
   menghapus data lama; periode existing di-snapshot ke "Format Legacy" sehingga
   nilai rapor lama tetap dihitung dengan rumus lama).
 - **Predikat** (`predicates/`): daftar predikat global (label + rentang, urutan

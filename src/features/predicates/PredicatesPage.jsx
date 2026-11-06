@@ -148,7 +148,7 @@ export default function PredicatesPage() {
   if (predicatesQuery.isError || placementQuery.isError) {
     return (
       <Alert tone="error" title="Gagal memuat predikat">
-        Pastikan migrasi database (<code>supabase_migration_grade_predicates.sql</code>) sudah dijalankan, lalu muat ulang halaman.
+        Pastikan migrasi database (<code>supabase/migrations/grade_predicates.sql</code>) sudah dijalankan, lalu muat ulang halaman.
       </Alert>
     )
   }
