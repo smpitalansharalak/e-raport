@@ -11,6 +11,7 @@ import {
   ArrowUpCircle,
   Award,
   SlidersHorizontal,
+  FileText,
 } from 'lucide-react'
 
 // Definisi link dipakai bersama oleh Sidebar (desktop) dan BottomNav (mobile).
@@ -20,11 +21,11 @@ import {
 
 const dashboard = { to: '/', label: 'Dashboard', shortLabel: 'Beranda', icon: LayoutDashboard }
 const inputSiswa = { to: '/siswa', label: 'Input Siswa', icon: Users }
-const buatRapor = { to: '/buat-rapor', label: 'Buat Rapor', shortLabel: 'Buat', icon: FilePlus }
+const buatRapor = { to: '/buat-rapor', label: 'Buat Rapor', icon: FilePlus }
 const formatPenilaian = { to: '/format-penilaian', label: 'Format Penilaian', icon: ListChecks }
 const predikat = { to: '/predikat', label: 'Predikat', icon: Award }
 const naikKelas = { to: '/manajemen-status', label: 'Naik Kelas & Alumni', icon: ArrowUpCircle }
-const cetakRapor = { to: '/cetak-rapor', label: 'Cetak Rapor', shortLabel: 'Cetak', icon: Printer }
+const cetakRapor = { to: '/cetak-rapor', label: 'Cetak Rapor', icon: Printer }
 const kelolaUser = { to: '/kelola-user', label: 'Kelola User', icon: UserCog }
 const gantiPassword = { to: '/ganti-password', label: 'Ganti Password', shortLabel: 'Password', icon: KeyRound }
 const inputRapor = { to: '/input-rapor', label: 'Input Rapor', icon: FileEdit }
@@ -44,12 +45,19 @@ const penilaianGroup = {
   icon: SlidersHorizontal,
   children: [formatPenilaian, predikat],
 }
+const raporGroup = {
+  key: 'rapor',
+  label: 'Rapor',
+  shortLabel: 'Rapor',
+  icon: FileText,
+  children: [buatRapor, cetakRapor],
+}
 
 const linksByRole = {
   admin: {
-    primary: [dashboard, inputSiswaGroup, buatRapor, cetakRapor],
+    primary: [dashboard, inputSiswaGroup, raporGroup],
     overflow: [penilaianGroup, kelolaUser, gantiPassword],
-    all: [dashboard, inputSiswaGroup, buatRapor, penilaianGroup, cetakRapor, kelolaUser, gantiPassword],
+    all: [dashboard, inputSiswaGroup, raporGroup, penilaianGroup, kelolaUser, gantiPassword],
   },
   guru_mapel: {
     primary: [dashboard, inputRapor, gantiPassword],
