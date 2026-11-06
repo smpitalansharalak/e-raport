@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { AlertCircle } from 'lucide-react'
+import { STUDENT_STATUS, STUDENT_STATUS_OPTIONS } from '@/constants/studentStatus'
 import { useStudentMutations } from '../useStudents'
 
 export default function StudentForm({ editingStudent, onSaved, onCancel }) {
@@ -19,9 +20,13 @@ export default function StudentForm({ editingStudent, onSaved, onCancel }) {
         academic_year: editingStudent.academic_year,
         phase: editingStudent.phase,
         parent_name: editingStudent.parent_name || '',
+        status: editingStudent.status || 'aktif',
       }
-      : { nisn: '', name: '', class_name: '', academic_year: '2025/2026', phase: 'D', parent_name: '' },
+      : { nisn: '', name: '', class_name: '', academic_year: '2025/2026', phase: 'D', parent_name: '', status: 'aktif' },
   })
+  const unknownStatus = editingStudent?.status && !STUDENT_STATUS[editingStudent.status]
+    ? editingStudent.status
+    : ''
 
   const onSubmit = async (data) => {
     setFormError('')
@@ -86,6 +91,16 @@ export default function StudentForm({ editingStudent, onSaved, onCancel }) {
             className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors"
             {...register('parent_name')} />
         </div>
+      </div>
+      <div>
+        <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Status</label>
+        <select className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors"
+          {...register('status', { required: 'Status wajib dipilih' })}>
+          {unknownStatus && <option value={unknownStatus}>{unknownStatus}</option>}
+          {STUDENT_STATUS_OPTIONS.map(option => (
+            <option key={option.value} value={option.value}>{option.label}</option>
+          ))}
+        </select>
       </div>
       <div className="flex gap-3 justify-end pt-4 border-t border-slate-800">
         <button type="button" onClick={onCancel}

@@ -27,8 +27,10 @@ export function useAvailableClasses({ statusFilter = null } = {}) {
 export function useStudentMutations() {
   const queryClient = useQueryClient()
 
-  const invalidateStudents = () =>
+  const invalidateStudents = () => {
     queryClient.invalidateQueries({ queryKey: queryKeys.students.all })
+    queryClient.invalidateQueries({ queryKey: queryKeys.studentStatus.all })
+  }
 
   const saveStudentMutation = useMutation({
     mutationFn: saveStudent,

@@ -7,10 +7,12 @@ import {
   AlertCircle,
   CheckCircle,
   History,
+  LogOut,
   X,
 } from 'lucide-react'
 import { confirmAction, showSuccess, showError } from '@/lib/swal'
 import Modal from '@/components/ui/Modal'
+import { getStudentStatusClass, getStudentStatusLabel, STUDENT_STATUS } from '@/constants/studentStatus'
 import { getNextClass, isLastClass } from '@/utils/classes'
 import { useAvailableClasses } from '@/features/students/useStudents'
 import {
@@ -19,24 +21,10 @@ import {
   useStudentStatusMutations,
 } from './useStudentStatus'
 
-const STATUS_LABELS = {
-  aktif: { label: 'Aktif', color: 'emerald' },
-  naik_kelas: { label: 'Naik Kelas', color: 'indigo' },
-  lulus: { label: 'Lulus', color: 'amber' },
-  alumni: { label: 'Alumni', color: 'slate' },
-}
-
-const colorMap = {
-  emerald: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
-  indigo: 'bg-indigo-500/10  border-indigo-500/20  text-indigo-400',
-  amber: 'bg-amber-500/10   border-amber-500/20   text-amber-400',
-  slate: 'bg-slate-800/60   border-slate-700/40   text-slate-400',
-}
-
 function StatusBadge({ status }) {
-  const cfg = STATUS_LABELS[status] || { label: status, color: 'slate' }
+  const cfg = STUDENT_STATUS[status] || { label: status }
   return (
-    <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider border ${colorMap[cfg.color]}`}>
+    <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider border ${getStudentStatusClass(status)}`}>
       {cfg.label}
     </span>
   )
@@ -89,7 +77,7 @@ export default function StudentStatusPage() {
     setProcessingIds(prev => new Set([...prev, student.id]))
     try {
       await changeStatusMutation.mutateAsync({ student, toStatus, options })
-      showSuccess(`Status ${student.name} berhasil diubah ke "${STATUS_LABELS[toStatus]?.label}".`)
+      showSuccess(`Status ${student.name} berhasil diubah ke "${getStudentStatusLabel(toStatus)}".`)
     } catch (err) {
       showError('Gagal Mengubah Status', err.message)
     } finally {
@@ -126,6 +114,13 @@ export default function StudentStatusPage() {
     s.class_name.toLowerCase().includes(search.toLowerCase())
   )
 
+  const openBulkModal = (action) => {
+    setShowBulkModal(action)
+    setBulkTargetClass('')
+    setBulkTargetYear('')
+    setBulkNote('')
+  }
+
   const uniqueYears = [...new Set(students.map(s => s.academic_year))].sort().reverse()
 
   const pageError = studentsQuery.isError
@@ -136,7 +131,7 @@ export default function StudentStatusPage() {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-slate-100 m-0">Manajemen Status Siswa</h2>
-        <p className="text-sm text-slate-400 mt-1">Proses naik kelas, kelulusan, dan kelola data alumni siswa SMP IT Al Anshar.</p>
+        <p className="text-sm text-slate-400 mt-1">Proses naik kelas, kelulusan, siswa pindah/keluar, dan kelola data alumni siswa SMP IT Al Anshar.</p>
       </div>
 
       {pageError && (
@@ -152,7 +147,7 @@ export default function StudentStatusPage() {
 
       {/* Tab Status */}
       <div className="flex flex-wrap gap-2 bg-slate-900 border border-slate-800 p-3 rounded-2xl">
-        {Object.entries(STATUS_LABELS).map(([key, val]) => (
+        {Object.entries(STUDENT_STATUS).map(([key, val]) => (
           <button key={key} onClick={() => { setFilterStatus(key); setSelectedIds(new Set()); setFilterClass('') }}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${filterStatus === key ? 'bg-emerald-500 text-slate-950 shadow' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'}`}>
             {val.label}
@@ -197,18 +192,22 @@ export default function StudentStatusPage() {
             <span className="text-xs text-emerald-400 font-bold self-center">{selectedIds.size} dipilih</span>
             {filterStatus === 'aktif' && (
               <>
-                <button onClick={() => setShowBulkModal('naik_kelas')}
+                <button onClick={() => openBulkModal('pindah_keluar')}
+                  className="px-3 py-2 bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-bold rounded-xl hover:bg-rose-500/20 transition-all cursor-pointer flex items-center gap-1.5">
+                  <LogOut size={13} /> Pindah/Keluar
+                </button>
+                <button onClick={() => openBulkModal('naik_kelas')}
                   className="px-3 py-2 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-bold rounded-xl hover:bg-indigo-500/20 transition-all cursor-pointer flex items-center gap-1.5">
                   <ArrowUpCircle size={13} /> Naik Kelas
                 </button>
-                <button onClick={() => setShowBulkModal('lulus')}
+                <button onClick={() => openBulkModal('lulus')}
                   className="px-3 py-2 bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-bold rounded-xl hover:bg-amber-500/20 transition-all cursor-pointer flex items-center gap-1.5">
                   <GraduationCap size={13} /> Luluskan
                 </button>
               </>
             )}
             {(filterStatus === 'lulus' || filterStatus === 'naik_kelas') && (
-              <button onClick={() => setShowBulkModal('alumni')}
+              <button onClick={() => openBulkModal('alumni')}
                 className="px-3 py-2 bg-slate-800 border border-slate-700 text-slate-300 text-xs font-bold rounded-xl hover:bg-slate-700 transition-all cursor-pointer flex items-center gap-1.5">
                 <Users size={13} /> Jadikan Alumni
               </button>
@@ -252,6 +251,7 @@ export default function StudentStatusPage() {
                   const isSelected = selectedIds.has(student.id)
                   const canNaikKelas = student.status === 'aktif' && !isLastClass(student.class_name)
                   const canLulus = student.status === 'aktif' && isLastClass(student.class_name)
+                  const canPindahKeluar = student.status === 'aktif'
                   const canAlumni = student.status === 'lulus' || student.status === 'naik_kelas'
 
                   return (
@@ -302,6 +302,18 @@ export default function StudentStatusPage() {
                               }}
                               className="px-2.5 py-1.5 bg-amber-500/10 border border-amber-500/20 text-amber-400 hover:bg-amber-500/20 text-[11px] font-bold rounded-lg transition-all cursor-pointer disabled:opacity-40 flex items-center gap-1">
                               <GraduationCap size={11} /> Luluskan
+                            </button>
+                          )}
+
+                          {canPindahKeluar && (
+                            <button disabled={isProcessing}
+                              onClick={async () => {
+                                const res = await confirmAction(`Pindahkan/Keluarkan ${student.name}?`, `Dari kelas ${student.class_name}.`, 'Ya, Pindah/Keluar')
+                                if (!res.isConfirmed) return
+                                changeStatus(student, 'pindah_keluar', { note: 'Pindah/keluar' })
+                              }}
+                              className="px-2.5 py-1.5 bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500/20 text-[11px] font-bold rounded-lg transition-all cursor-pointer disabled:opacity-40 flex items-center gap-1">
+                              <LogOut size={11} /> Pindah/Keluar
                             </button>
                           )}
 
@@ -389,6 +401,7 @@ export default function StudentStatusPage() {
               <h3 className="text-sm font-bold text-slate-100">
                 {showBulkModal === 'naik_kelas' && `Naik Kelas — ${selectedIds.size} Siswa`}
                 {showBulkModal === 'lulus' && `Luluskan — ${selectedIds.size} Siswa`}
+                {showBulkModal === 'pindah_keluar' && `Pindah/Keluar — ${selectedIds.size} Siswa`}
                 {showBulkModal === 'alumni' && `Jadikan Alumni — ${selectedIds.size} Siswa`}
               </h3>
               <button onClick={() => setShowBulkModal(null)} className="text-slate-500 hover:text-slate-300 cursor-pointer"><X size={16} /></button>
@@ -404,14 +417,16 @@ export default function StudentStatusPage() {
                   <p className="text-[10px] text-slate-500 mt-1">Kosongkan untuk otomatis sesuai kelas masing-masing.</p>
                 </div>
               )}
-              <div>
-                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Tahun Ajaran Baru</label>
-                <input type="text" placeholder="Contoh: 2026/2027" value={bulkTargetYear} onChange={e => setBulkTargetYear(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500" />
-              </div>
+              {showBulkModal !== 'pindah_keluar' && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Tahun Ajaran Baru</label>
+                  <input type="text" placeholder="Contoh: 2026/2027" value={bulkTargetYear} onChange={e => setBulkTargetYear(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500" />
+                </div>
+              )}
               <div>
                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Catatan (opsional)</label>
-                <textarea rows={2} placeholder="Contoh: Naik kelas reguler T.A. 2026/2027" value={bulkNote} onChange={e => setBulkNote(e.target.value)}
+                <textarea rows={2} placeholder={showBulkModal === 'pindah_keluar' ? 'Contoh: Pindah sekolah / keluar wilayah' : 'Contoh: Naik kelas reguler T.A. 2026/2027'} value={bulkNote} onChange={e => setBulkNote(e.target.value)}
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 resize-none" />
               </div>
             </div>

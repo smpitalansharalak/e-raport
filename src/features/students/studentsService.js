@@ -5,6 +5,27 @@ const STUDENT_LIST_COLUMNS =
 
 const IMPORT_CHUNK_SIZE = 50
 
+async function writeStatusHistory({
+  studentId,
+  fromStatus,
+  toStatus,
+  fromClass,
+  toClass,
+  academicYear,
+  note,
+}) {
+  const { error } = await supabase.from('student_status_history').insert({
+    student_id: studentId,
+    from_status: fromStatus,
+    to_status: toStatus,
+    from_class: fromClass,
+    to_class: toClass,
+    academic_year: academicYear,
+    note: note || null,
+  })
+  if (error) throw error
+}
+
 export async function listStudents() {
   const { data, error } = await supabase
     .from('students')
@@ -50,17 +71,42 @@ export async function saveStudent({ id, values }) {
     academic_year: values.academic_year,
     phase: values.phase,
     parent_name: values.parent_name,
+    status: values.status || 'aktif',
   }
 
   if (id) {
-    const { error } = await supabase.from('students').update(payload).eq('id', id)
+    const { data: current, error: currentError } = await supabase
+      .from('students')
+      .select('status, class_name, academic_year')
+      .eq('id', id)
+      .single()
+    if (currentError) throw currentError
+
+    const statusChanged = current.status !== payload.status
+    const updatePayload = statusChanged
+      ? { ...payload, status_changed_at: new Date().toISOString(), promotion_note: 'Diubah dari form data siswa' }
+      : payload
+
+    const { error } = await supabase.from('students').update(updatePayload).eq('id', id)
     if (error) throw error
+
+    if (statusChanged) {
+      await writeStatusHistory({
+        studentId: id,
+        fromStatus: current.status,
+        toStatus: payload.status,
+        fromClass: current.class_name,
+        toClass: payload.class_name,
+        academicYear: payload.academic_year,
+        note: 'Diubah dari form data siswa',
+      })
+    }
     return
   }
 
   const { error } = await supabase
     .from('students')
-    .insert({ ...payload, status: 'aktif' })
+    .insert(payload)
   if (error) throw error
 }
 

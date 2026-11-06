@@ -12,18 +12,10 @@ import {
 } from 'lucide-react'
 import { confirmDelete, showError, showLoading, closeLoading, showSuccess } from '@/lib/swal'
 import Modal from '@/components/ui/Modal'
+import { getStudentStatusClass, getStudentStatusLabel, STUDENT_STATUS } from '@/constants/studentStatus'
 import { useAvailableClasses, useStudentMutations, useStudents } from './useStudents'
 import StudentForm from './components/StudentForm'
 import BulkImportPanel from './components/BulkImportPanel'
-
-// ─── Status config ─────────────────────────────────────────────────
-const STATUS_COLORS = {
-  aktif: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
-  naik_kelas: 'bg-indigo-500/10  border-indigo-500/20  text-indigo-400',
-  lulus: 'bg-amber-500/10   border-amber-500/20   text-amber-400',
-  alumni: 'bg-slate-800/60   border-slate-700/40   text-slate-400',
-}
-const STATUS_LABELS = { aktif: 'Aktif', naik_kelas: 'Naik Kelas', lulus: 'Lulus', alumni: 'Alumni' }
 
 export default function StudentsPage() {
   const [search, setSearch] = useState('')
@@ -175,7 +167,7 @@ export default function StudentsPage() {
             {/* Filter Status */}
             <div className="flex gap-1.5 flex-wrap items-center border-t border-slate-800/60 pt-3">
               <span className="text-[11px] text-slate-500 font-semibold mr-1">Status:</span>
-              {[{ val: 'semua', label: 'Semua' }, ...Object.entries(STATUS_LABELS).map(([val, label]) => ({ val, label }))].map(opt => (
+              {[{ val: 'semua', label: 'Semua' }, ...Object.entries(STUDENT_STATUS).map(([val, cfg]) => ({ val, label: cfg.label }))].map(opt => (
                 <button key={opt.val} onClick={() => setFilterStatus(opt.val)}
                   className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${filterStatus === opt.val ? 'bg-emerald-500 text-slate-950' : 'bg-slate-950 border border-slate-800 text-slate-400 hover:text-slate-200'}`}>
                   {opt.label}
@@ -228,8 +220,8 @@ export default function StudentsPage() {
                         <td className="py-3.5 px-6 text-center text-slate-400 font-bold">{s.phase}</td>
                         <td className="py-3.5 px-6 text-slate-350">{s.parent_name || '-'}</td>
                         <td className="py-3.5 px-6">
-                          <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider border ${STATUS_COLORS[s.status] || STATUS_COLORS.aktif}`}>
-                            {STATUS_LABELS[s.status] || s.status}
+                          <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider border ${getStudentStatusClass(s.status)}`}>
+                            {getStudentStatusLabel(s.status)}
                           </span>
                         </td>
                         <td className="py-3.5 px-6 text-center">
