@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { X, Plus, Trash2, ArrowUp, ArrowDown, ListChecks, Scale, Equal } from 'lucide-react'
-import Swal from 'sweetalert2'
+import Swal from '@/lib/swal'
 import Alert from '@/components/ui/Alert'
 import Modal from '@/components/ui/Modal'
 import { useAssessmentFormatMutations } from '../useAssessmentFormats'
@@ -240,8 +240,6 @@ export default function FormatFormModal({ format, onClose }) {
         timer: 2200,
         icon: 'success',
         title: isEdit ? 'Format berhasil diperbarui' : 'Format berhasil dibuat',
-        background: '#0f172a',
-        color: '#f8fafc',
       })
       onClose()
     } catch (err) {

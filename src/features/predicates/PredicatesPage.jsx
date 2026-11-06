@@ -9,7 +9,7 @@ import {
   Loader2,
   Sliders,
 } from 'lucide-react'
-import Swal from 'sweetalert2'
+import Swal from '@/lib/swal'
 import Alert from '@/components/ui/Alert'
 import PredicateBadge from '@/components/ui/PredicateBadge'
 import { findPredicateOverlaps } from '@/utils/predicates'
@@ -113,8 +113,6 @@ export default function PredicatesPage() {
         timer: 2000,
         icon: 'success',
         title: 'Predikat tersimpan',
-        background: '#0f172a',
-        color: '#f8fafc',
       })
     } catch (err) {
       console.error('Gagal menyimpan predikat:', err)
@@ -132,12 +130,10 @@ export default function PredicatesPage() {
         timer: 2000,
         icon: 'success',
         title: 'Penempatan predikat tersimpan',
-        background: '#0f172a',
-        color: '#f8fafc',
       })
     } catch (err) {
       console.error('Gagal menyimpan penempatan:', err)
-      Swal.fire({ title: 'Gagal', text: err.message, icon: 'error', background: '#0f172a', color: '#f8fafc' })
+      Swal.fire({ title: 'Gagal', text: err.message, icon: 'error' })
     }
   }
 

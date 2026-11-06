@@ -11,7 +11,7 @@ import {
   Inbox,
   Loader2,
 } from 'lucide-react'
-import Swal from 'sweetalert2'
+import Swal from '@/lib/swal'
 import Alert from '@/components/ui/Alert'
 import { useAssessmentFormats, useAssessmentFormatMutations } from './useAssessmentFormats'
 import FormatFormModal from './components/FormatFormModal'
@@ -57,12 +57,10 @@ export default function AssessmentFormatsPage() {
         timer: 2000,
         icon: 'success',
         title: 'Format dihapus',
-        background: '#0f172a',
-        color: '#f8fafc',
       })
     } catch (err) {
       console.error('Gagal menghapus format:', err)
-      Swal.fire({ title: 'Gagal', text: err.message, icon: 'error', background: '#0f172a', color: '#f8fafc' })
+      Swal.fire({ title: 'Gagal', text: err.message, icon: 'error' })
     }
   }
 
@@ -71,7 +69,7 @@ export default function AssessmentFormatsPage() {
       await duplicateFormat.mutateAsync(format.id)
     } catch (err) {
       console.error('Gagal menduplikasi format:', err)
-      Swal.fire({ title: 'Gagal', text: err.message, icon: 'error', background: '#0f172a', color: '#f8fafc' })
+      Swal.fire({ title: 'Gagal', text: err.message, icon: 'error' })
     }
   }
 
@@ -80,7 +78,7 @@ export default function AssessmentFormatsPage() {
       await setDefaultFormat.mutateAsync(format.id)
     } catch (err) {
       console.error('Gagal mengatur default format:', err)
-      Swal.fire({ title: 'Gagal', text: err.message, icon: 'error', background: '#0f172a', color: '#f8fafc' })
+      Swal.fire({ title: 'Gagal', text: err.message, icon: 'error' })
     }
   }
 

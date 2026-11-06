@@ -4,7 +4,7 @@ import {
   calculateFinalRaporScore,
   toNullableNumber,
 } from '@/utils/scoreCalculations'
-import Swal from 'sweetalert2'
+import Swal from '@/lib/swal'
 import { sanitizeText } from '@/utils/text'
 import {
   createItem,
@@ -293,8 +293,6 @@ export default function useInputRapor() {
         timerProgressBar: true,
         icon: 'success',
         title: 'Tersimpan',
-        background: '#0f172a',
-        color: '#f8fafc',
       })
       return true
     } catch (err) {
@@ -306,8 +304,6 @@ export default function useInputRapor() {
         timer: 3000,
         icon: 'error',
         title: 'Gagal: ' + err.message,
-        background: '#0f172a',
-        color: '#f8fafc',
       })
       return false
     } finally {
@@ -347,8 +343,6 @@ export default function useInputRapor() {
         timer: 3000,
         icon: 'error',
         title: 'Gagal memuat data: ' + err.message,
-        background: '#0f172a',
-        color: '#f8fafc',
       })
     }
   }, []) // ← ZERO deps → stabil
@@ -417,19 +411,15 @@ export default function useInputRapor() {
       text: 'TP di dalamnya (jika ada) akan ikut terhapus.',
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonColor: '#10b981',
-      cancelButtonColor: '#f43f5e',
       confirmButtonText: 'Ya, hapus!',
       cancelButtonText: 'Batal',
-      background: '#0f172a',
-      color: '#f8fafc',
     })
     if (!result.isConfirmed) return
     try {
       await deleteItemRequest(id)
       await fetchItemsAndTps()
     } catch (err) {
-      Swal.fire({ title: 'Gagal', text: err.message, icon: 'error', background: '#0f172a', color: '#f8fafc' })
+      Swal.fire({ title: 'Gagal', text: err.message, icon: 'error' })
     }
   }, [fetchItemsAndTps])
 
@@ -461,19 +451,15 @@ export default function useInputRapor() {
       text: 'Anda yakin ingin menghapus Tujuan Pembelajaran ini?',
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonColor: '#10b981',
-      cancelButtonColor: '#f43f5e',
       confirmButtonText: 'Ya, hapus!',
       cancelButtonText: 'Batal',
-      background: '#0f172a',
-      color: '#f8fafc',
     })
     if (!result.isConfirmed) return
     try {
       await deleteLearningTarget(id)
       await fetchItemsAndTps()
     } catch (err) {
-      Swal.fire({ title: 'Gagal', text: err.message, icon: 'error', background: '#0f172a', color: '#f8fafc' })
+      Swal.fire({ title: 'Gagal', text: err.message, icon: 'error' })
     }
   }, [fetchItemsAndTps])
 

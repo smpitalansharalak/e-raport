@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeft, Loader2, Pencil, Search } from 'lucide-react'
-import Swal from 'sweetalert2'
+import Swal from '@/lib/swal'
 import {
   calculateFinalRaporScore,
   getComponentValue,
@@ -38,8 +38,6 @@ const hasAnyScore = (score, components, items, learningTargets) =>
   components.some((component) => getComponentValue(component, items, learningTargets, score) !== null)
 
 const selectOnFocus = (event) => event.target.select()
-
-const SWAL_DARK = { background: '#0f172a', color: '#f8fafc' }
 
 /**
  * Tampilan input nilai untuk layar kecil.
@@ -111,11 +109,8 @@ export default function MobileScoreList({
         text: 'Perubahan nilai yang belum disimpan akan dibatalkan.',
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonColor: '#059669',
-        cancelButtonColor: '#e11d48',
         confirmButtonText: 'Ya, tutup',
         cancelButtonText: 'Lanjut mengisi',
-        ...SWAL_DARK,
       })
       if (!result.isConfirmed) return
     }

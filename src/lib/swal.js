@@ -2,9 +2,11 @@ import Swal from 'sweetalert2'
 
 // Base instance dengan tema sekolah (light mode sesuai index.css)
 const SwalBase = Swal.mixin({
+    background: '#ffffff',
+    color: '#0f172a',
     customClass: {
         popup:
-            'rounded-2xl border border-slate-200 shadow-2xl font-outfit',
+            'rounded-2xl border border-slate-200 shadow-2xl font-outfit bg-white text-slate-900',
         title: 'text-slate-900 font-bold text-lg',
         htmlContainer: 'text-slate-600 text-sm',
         confirmButton:
