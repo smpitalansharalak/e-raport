@@ -10,6 +10,7 @@ import {
   X,
 } from 'lucide-react'
 import { confirmAction, showSuccess, showError } from '@/lib/swal'
+import Modal from '@/components/ui/Modal'
 import { getNextClass, isLastClass } from '@/utils/classes'
 import { useAvailableClasses } from '@/features/students/useStudents'
 import {
@@ -347,16 +348,16 @@ export default function StudentStatusPage() {
 
       {/* Modal Riwayat */}
       {showHistory && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl shadow-xl p-6 space-y-4">
-            <div className="flex justify-between items-center pb-3 border-b border-slate-800">
+        <Modal onClose={() => setShowHistory(null)} maxWidth="max-w-md" ariaLabel="Riwayat Status">
+          <div className="flex shrink-0 justify-between items-center gap-4 px-6 pt-6 pb-3 border-b border-slate-800">
               <div>
                 <h3 className="text-sm font-bold text-slate-100">Riwayat Status</h3>
                 <p className="text-xs text-slate-400 mt-0.5">{showHistory.name}</p>
               </div>
               <button onClick={() => setShowHistory(null)} className="text-slate-500 hover:text-slate-300 cursor-pointer"><X size={16} /></button>
             </div>
-            <div className="space-y-2 max-h-72 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto overscroll-contain px-6 pb-6 pt-4">
+            <div className="space-y-2">
               {historyQuery.isFetching ? (
                 <p className="text-xs text-slate-500 text-center py-6 animate-pulse">Memuat riwayat...</p>
               ) : history.length === 0 ? (
@@ -378,14 +379,13 @@ export default function StudentStatusPage() {
               )}
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* Modal Aksi Massal */}
       {showBulkModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl shadow-xl p-6 space-y-5">
-            <div className="flex justify-between items-center pb-3 border-b border-slate-800">
+        <Modal onClose={() => setShowBulkModal(null)} maxWidth="max-w-md" ariaLabel="Aksi Massal Status Siswa">
+          <div className="flex shrink-0 justify-between items-center gap-4 px-6 pt-6 pb-3 border-b border-slate-800">
               <h3 className="text-sm font-bold text-slate-100">
                 {showBulkModal === 'naik_kelas' && `Naik Kelas — ${selectedIds.size} Siswa`}
                 {showBulkModal === 'lulus' && `Luluskan — ${selectedIds.size} Siswa`}
@@ -393,6 +393,8 @@ export default function StudentStatusPage() {
               </h3>
               <button onClick={() => setShowBulkModal(null)} className="text-slate-500 hover:text-slate-300 cursor-pointer"><X size={16} /></button>
             </div>
+
+          <div className="flex-1 overflow-y-auto overscroll-contain px-6 pt-5 pb-5 space-y-5">
             <div className="space-y-3">
               {showBulkModal === 'naik_kelas' && (
                 <div>
@@ -421,7 +423,7 @@ export default function StudentStatusPage() {
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   )

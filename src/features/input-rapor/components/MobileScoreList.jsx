@@ -9,6 +9,7 @@ import {
 } from '@/utils/scoreCalculations'
 import { predicateForScore } from '@/utils/predicates'
 import PredicateBadge from '@/components/ui/PredicateBadge'
+import Modal from '@/components/ui/Modal'
 import DescriptionTextarea from './DescriptionTextarea'
 
 const EMPTY_SCORE = {
@@ -301,14 +302,6 @@ function MobileScoreSheet({
     predicatePlacement?.show_on_final && hasScore ? predicateForScore(finalRapor, predicates ?? []) : null
   const filledInputs = useMemo(() => countFilledInputs(score), [score])
 
-  useEffect(() => {
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = previousOverflow
-    }
-  }, [])
-
   const change = useCallback(
     (type, field, value) => {
       onDirty()
@@ -323,7 +316,7 @@ function MobileScoreSheet({
   }, [])
 
   return (
-    <div className="fixed inset-0 z-50 flex h-[100dvh] flex-col bg-slate-950">
+    <Modal onClose={onClose} variant="screen" ariaLabel={`Input nilai — ${student.name}`} panelClassName="bg-slate-950">
       <header
         className="flex shrink-0 items-center gap-2 border-b border-slate-800 bg-slate-900 px-3 py-2.5"
         style={{ paddingTop: 'max(0.625rem, env(safe-area-inset-top))' }}
@@ -458,7 +451,7 @@ function MobileScoreSheet({
           {isSaving ? 'Menyimpan...' : 'Simpan Nilai'}
         </button>
       </footer>
-    </div>
+    </Modal>
   )
 }
 

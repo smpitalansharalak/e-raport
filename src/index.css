@@ -150,7 +150,7 @@ input[type='number'] {
 }
 
 .page-transition {
-  animation: page-enter 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: page-enter 0.28s cubic-bezier(0.16, 1, 0.3, 1) backwards;
 }
 
 @media (prefers-reduced-motion: reduce) {

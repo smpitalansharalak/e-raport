@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { X, Plus, Trash2, ArrowUp, ArrowDown, ListChecks, Scale, Equal } from 'lucide-react'
 import Swal from 'sweetalert2'
 import Alert from '@/components/ui/Alert'
+import Modal from '@/components/ui/Modal'
 import { useAssessmentFormatMutations } from '../useAssessmentFormats'
 
 const newId = () => crypto.randomUUID()
@@ -250,10 +251,9 @@ export default function FormatFormModal({ format, onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-slate-900 border border-slate-800 w-full max-w-2xl rounded-2xl shadow-xl overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between gap-3 px-6 py-4 border-b border-slate-800">
+    <Modal onClose={onClose} maxWidth="max-w-2xl" ariaLabel={isEdit ? 'Edit Format Penilaian' : 'Buat Format Penilaian'}>
+      {/* Header */}
+      <div className="flex shrink-0 items-center justify-between gap-3 px-6 py-4 border-b border-slate-800">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-500">
               <ListChecks size={18} />
@@ -276,7 +276,7 @@ export default function FormatFormModal({ format, onClose }) {
           </button>
         </div>
 
-        <form onSubmit={handleSave} className="max-h-[75vh] overflow-y-auto px-6 py-5 space-y-5">
+      <form onSubmit={handleSave} className="flex-1 overflow-y-auto overscroll-contain px-6 py-5 space-y-5">
           {errors.length > 0 && (
             <Alert tone="error" title="Periksa kembali isian berikut:">
               <ul className="list-disc pl-4 space-y-0.5">
@@ -458,8 +458,7 @@ export default function FormatFormModal({ format, onClose }) {
             </div>
           </div>
         </form>
-      </div>
-    </div>
+    </Modal>
   )
 }
 

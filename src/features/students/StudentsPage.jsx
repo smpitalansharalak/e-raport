@@ -11,6 +11,7 @@ import {
   Upload,
 } from 'lucide-react'
 import { confirmDelete, showError, showLoading, closeLoading, showSuccess } from '@/lib/swal'
+import Modal from '@/components/ui/Modal'
 import { useAvailableClasses, useStudentMutations, useStudents } from './useStudents'
 import StudentForm from './components/StudentForm'
 import BulkImportPanel from './components/BulkImportPanel'
@@ -255,19 +256,19 @@ export default function StudentsPage() {
 
       {/* CRUD MODAL */}
       {showModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl shadow-xl overflow-hidden p-6 space-y-6">
-            <div className="flex justify-between items-center pb-3 border-b border-slate-800">
-              <h3 className="text-lg font-bold text-slate-100">
-                {editingStudent ? 'Edit Data Siswa' : 'Tambah Siswa Baru'}
-              </h3>
-              <button onClick={closeModal} className="text-slate-500 hover:text-slate-300 transition-colors cursor-pointer">
-                <X size={18} />
-              </button>
-            </div>
+        <Modal onClose={closeModal} maxWidth="max-w-md" ariaLabel={editingStudent ? 'Edit Data Siswa' : 'Tambah Siswa Baru'}>
+          <div className="flex shrink-0 justify-between items-center gap-4 px-6 pt-6 pb-3 border-b border-slate-800">
+            <h3 className="text-lg font-bold text-slate-100">
+              {editingStudent ? 'Edit Data Siswa' : 'Tambah Siswa Baru'}
+            </h3>
+            <button onClick={closeModal} aria-label="Tutup" className="text-slate-500 hover:text-slate-300 transition-colors cursor-pointer">
+              <X size={18} />
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto overscroll-contain px-6 pb-6 pt-5">
             <StudentForm key={modalKey} editingStudent={editingStudent} onSaved={handleSaved} onCancel={closeModal} />
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   )

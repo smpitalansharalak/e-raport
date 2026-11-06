@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useMemo } from 'react'
 import { X, Loader2, AlertCircle, Archive, ClipboardCheck, ClipboardX } from 'lucide-react'
 import {
   calculateFinalRaporScore,
@@ -8,6 +8,7 @@ import {
 } from '@/utils/scoreCalculations'
 import { predicateForScore } from '@/utils/predicates'
 import PredicateBadge from '@/components/ui/PredicateBadge'
+import Modal from '@/components/ui/Modal'
 
 const EMPTY_SCORE = {
   scores_formative: {},
@@ -36,20 +37,6 @@ export default function RincianModal({
   isError = false,
   onClose,
 }) {
-  // tutup dengan Escape + kunci scroll body
-  useEffect(() => {
-    const handleKeyDown = (event) => {
-      if (event.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', handleKeyDown)
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown)
-      document.body.style.overflow = previousOverflow
-    }
-  }, [onClose])
-
   const scoresBySubject = useMemo(() => {
     const map = new Map()
     ;(allScores ?? []).forEach((sc) => {
@@ -68,13 +55,13 @@ export default function RincianModal({
   }, [learningTargets])
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-stretch sm:items-center justify-center sm:p-4 print:hidden">
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={`Rincian nilai ${student.name}`}
-        className="bg-slate-900 border border-slate-800 w-full max-w-3xl flex flex-col sm:rounded-2xl sm:max-h-[90vh] h-full sm:h-auto overflow-hidden shadow-2xl"
-      >
+    <Modal
+      onClose={onClose}
+      variant="sheet"
+      maxWidth="max-w-3xl"
+      ariaLabel={`Rincian nilai ${student.name}`}
+      overlayClassName="print:hidden"
+    >
         {/* Header */}
         <div className="shrink-0 flex items-start justify-between gap-3 px-5 py-4 border-b border-slate-800 bg-slate-950/60">
           <div className="min-w-0">
@@ -106,7 +93,7 @@ export default function RincianModal({
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto px-4 sm:px-5 py-4 space-y-4">
+        <div className="flex-1 overflow-y-auto overscroll-contain px-4 sm:px-5 py-4 space-y-4">
           {loading ? (
             <div className="flex items-center justify-center py-16 text-slate-500 gap-2 text-sm">
               <Loader2 size={18} className="animate-spin" /> Memuat rincian nilai...
@@ -136,8 +123,7 @@ export default function RincianModal({
             ))
           )}
         </div>
-      </div>
-    </div>
+    </Modal>
   )
 }
 

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { X, GripVertical, Square, ChevronUp, ChevronDown, Save, Loader2 } from 'lucide-react'
+import Modal from '@/components/ui/Modal'
 import { usePeriodSubjectOrder, useReportConfigMutations } from '../useReportConfig'
 
 /**
@@ -101,10 +102,9 @@ export default function SubjectOrderModal({ period, allSubjects, onClose, onSave
   const displayError = error || (queryError ? 'Gagal memuat data: ' + queryError.message : '')
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-2xl shadow-xl overflow-hidden p-6 space-y-5">
+    <Modal onClose={onClose} maxWidth="max-w-lg" ariaLabel="Konfigurasi dan urutan mata pelajaran">
         {/* Header */}
-        <div className="flex justify-between items-start pb-3 border-b border-slate-800">
+        <div className="flex shrink-0 justify-between items-start gap-4 px-6 pt-6 pb-3 border-b border-slate-800">
           <div>
             <h3 className="text-lg font-bold text-slate-100">Konfigurasi & Urutan Mapel</h3>
             <p className="text-xs text-slate-400 mt-0.5">
@@ -119,6 +119,7 @@ export default function SubjectOrderModal({ period, allSubjects, onClose, onSave
           </button>
         </div>
 
+      <div className="flex-1 overflow-y-auto overscroll-contain px-6 py-4 space-y-5">
         {displayError && (
           <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-xl text-xs">
             {displayError}
@@ -239,8 +240,10 @@ export default function SubjectOrderModal({ period, allSubjects, onClose, onSave
           </>
         )}
 
-        {/* Footer */}
-        <div className="flex justify-between items-center pt-4 border-t border-slate-800">
+      </div>
+
+      {/* Footer */}
+      <div className="flex shrink-0 justify-between items-center gap-4 px-6 pb-6 pt-4 border-t border-slate-800">
           <p className="text-[10px] text-slate-600 italic">
             Urutan ini akan diterapkan saat cetak rapor.
           </p>
@@ -264,7 +267,6 @@ export default function SubjectOrderModal({ period, allSubjects, onClose, onSave
             </button>
           </div>
         </div>
-      </div>
-    </div>
+    </Modal>
   )
 }
