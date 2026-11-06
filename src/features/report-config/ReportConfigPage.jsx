@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import {
   FilePlus,
@@ -9,14 +9,15 @@ import {
   X,
   AlertCircle,
   Check,
-  Settings,
-  Minus,
   Archive,
-  ArchiveRestore,
+  Minus,
 } from 'lucide-react'
 import { groupSubjectsByClass, sortClassNames } from '@/utils/classes'
+import { useAvailableClasses } from '@/features/students/useStudents'
 import { useReportConfig, useReportConfigMutations } from './useReportConfig'
 import SubjectOrderModal from './components/SubjectOrderModal'
+import PeriodList from './components/PeriodList'
+import Modal from '@/components/ui/Modal'
 
 export default function ReportConfigPage() {
   const [activeTab, setActiveTab] = useState('periode') // 'periode' or 'mapel'
@@ -44,6 +45,18 @@ export default function ReportConfigPage() {
   const subjectForm = useForm()
 
   const configQuery = useReportConfig()
+  const { classes: availableClasses, isPending: classesLoading, isError: classesError } =
+    useAvailableClasses({ statusFilter: ['aktif', 'naik_kelas'] })
+
+  // Opsi kelas dari data siswa; saat edit, kelas lama selalu disertakan
+  // agar periode yang sudah tidak punya siswa tetap bisa disimpan.
+  const classOptions = useMemo(() => {
+    const current = editingPeriod?.class_name
+    const base = availableClasses ?? []
+    return sortClassNames(current && !base.includes(current) ? [...base, current] : base)
+  }, [availableClasses, editingPeriod])
+  const hasClassOptions = classOptions.length > 0
+
   const periods = configQuery.data?.periods ?? []
   const subjects = configQuery.data?.subjects ?? []
   const teachers = configQuery.data?.teachers ?? []
@@ -293,90 +306,16 @@ export default function ReportConfigPage() {
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {periods.length === 0 ? (
-              <div className="md:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-12 text-center text-slate-500">
-                <FilePlus size={36} className="mx-auto text-slate-650 mb-2" />
-                Belum ada periode rapor. Silakan tambahkan.
-              </div>
-            ) : (
-              periods.map((p) => (
-                <div
-                  key={p.id}
-                  className="bg-slate-900/40 border border-slate-800 rounded-2xl p-6 space-y-4 transition-all duration-200 hover:border-slate-700/60 flex flex-col justify-between"
-                >
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-start">
-                      <h3 className="font-bold text-slate-100 text-lg leading-tight">
-                        {p.name}
-                      </h3>
-                      <span
-                        className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase ${p.is_active
-                          ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                          : 'bg-slate-800 text-slate-500 border border-slate-700/60'
-                          }`}
-                      >
-                        {p.is_active ? 'Aktif' : 'Arsip'}
-                      </span>
-                    </div>
+          <PeriodList
+            periods={periods}
+            periodSubjects={periodSubjects}
+            isTogglingArchive={setActivePeriod.isPending}
+            onEditPeriod={openEditPeriodModal}
+            onToggleArchive={handleToggleArchivePeriod}
+            onDeletePeriod={handleDeletePeriod}
+            onManageSubjects={openConfigModal}
+          />
 
-                    <div className="grid grid-cols-2 gap-x-2 gap-y-1.5 text-xs text-slate-400 pt-2">
-                      <p> Kelas: <span className="text-slate-200 font-semibold">{p.class_name}</span></p>
-                      <p> Semester: <span className="text-slate-200 font-semibold">{p.semester}</span></p>
-                      <p> Tahun Ajaran: <span className="text-slate-200 font-semibold">{p.academic_year}</span></p>
-                      <p> Wali Kelas: <span className="text-emerald-450 font-semibold">{p.wali_kelas?.name || 'Belum diatur'}</span></p>
-                      <p className="col-span-2 truncate"> Kepala Sekolah: <span className="text-slate-200 font-semibold">{p.kepala_sekolah_name}</span></p>
-                    </div>
-                  </div>
-
-                  <div className="border-t border-slate-800/80 pt-4 flex items-center justify-between">
-                    {/* Subject Setup */}
-                    <button
-                      onClick={() => openConfigModal(p)}
-                      className="px-3 py-1.5 bg-slate-950 hover:bg-slate-900 border border-slate-800 hover:border-slate-750 text-slate-350 hover:text-slate-200 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer"
-                    >
-                      <Settings size={14} className="text-slate-500" />
-                      Mapel Rapor ({periodSubjects[p.id]?.length || 0})
-                    </button>
-
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleToggleArchivePeriod(p)}
-                        disabled={setActivePeriod.isPending}
-                        className={`p-2 rounded-xl transition-all cursor-pointer border ${
-                          p.is_active
-                            ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border-amber-500/20 hover:border-amber-500/35'
-                            : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20 hover:border-emerald-500/35'
-                        } disabled:opacity-50`}
-                        title={p.is_active ? 'Arsipkan periode (nilai tetap tersimpan)' : 'Aktifkan kembali periode'}
-                      >
-                        {p.is_active ? <Archive size={13} /> : <ArchiveRestore size={13} />}
-                      </button>
-                      <button
-                        onClick={() => openEditPeriodModal(p)}
-                        className="p-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/20 hover:border-indigo-500/35 rounded-xl transition-all cursor-pointer"
-                        title="Edit Periode"
-                      >
-                        <Edit2 size={13} />
-                      </button>
-                      <button
-                        onClick={() => handleDeletePeriod(p.id)}
-                        disabled={!p.is_active}
-                        className={`p-2 rounded-xl border transition-all ${
-                          p.is_active
-                            ? 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border-rose-500/20 hover:border-rose-500/35 cursor-pointer'
-                            : 'bg-slate-800/40 text-slate-600 border-slate-800 cursor-not-allowed'
-                        }`}
-                        title={p.is_active ? 'Hapus Periode' : 'Periode arsip tidak dapat dihapus'}
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
         </div>
       )}
 
@@ -478,9 +417,8 @@ export default function ReportConfigPage() {
 
       {/* PERIOD EDIT/CREATE MODAL */}
       {showPeriodModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl shadow-xl overflow-hidden p-6 space-y-6">
-            <div className="flex justify-between items-center pb-3 border-b border-slate-800">
+        <Modal onClose={() => setShowPeriodModal(false)} maxWidth="max-w-md" ariaLabel={editingPeriod ? 'Edit Periode Rapor' : 'Buat Periode Rapor Baru'}>
+          <div className="flex shrink-0 justify-between items-center gap-4 px-6 pt-6 pb-3 border-b border-slate-800">
               <h3 className="text-lg font-bold text-slate-100">
                 {editingPeriod ? 'Edit Periode Rapor' : 'Buat Periode Rapor Baru'}
               </h3>
@@ -492,7 +430,7 @@ export default function ReportConfigPage() {
               </button>
             </div>
 
-            <form onSubmit={periodForm.handleSubmit(onPeriodSubmit)} className="space-y-4">
+            <form onSubmit={periodForm.handleSubmit(onPeriodSubmit)} className="flex-1 overflow-y-auto overscroll-contain px-6 pb-6 pt-5 space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
                   Nama Rapor
@@ -515,12 +453,30 @@ export default function ReportConfigPage() {
                   <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
                     Kelas
                   </label>
-                  <input
-                    type="text"
-                    placeholder="Contoh: VII A"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors"
+                  <select
+                    disabled={classesLoading || (!hasClassOptions && !editingPeriod?.class_name)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors disabled:opacity-60"
                     {...periodForm.register('class_name', { required: 'Kelas wajib diisi' })}
-                  />
+                  >
+                    <option value="">
+                      {classesLoading ? '-- Memuat kelas --' : '-- Pilih Kelas --'}
+                    </option>
+                    {classOptions.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                  {classesError && (
+                    <p className="text-[11px] text-rose-500 mt-1">
+                      Gagal memuat daftar kelas. Periksa koneksi lalu muat ulang.
+                    </p>
+                  )}
+                  {!classesLoading && !classesError && classOptions.length === 0 && (
+                    <p className="text-[11px] text-amber-500 mt-1">
+                      Belum ada kelas di data siswa. Tambahkan siswa dulu di menu Input Siswa.
+                    </p>
+                  )}
                   {periodForm.formState.errors.class_name && (
                     <span className="text-[11px] text-rose-500 mt-1 block">
                       {periodForm.formState.errors.class_name.message}
@@ -659,22 +615,20 @@ export default function ReportConfigPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={submittingPeriod}
+                  disabled={submittingPeriod || !hasClassOptions}
                   className="px-4 py-2 text-xs font-bold text-slate-950 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 rounded-xl transition-all cursor-pointer"
                 >
                   {submittingPeriod ? 'Menyimpan...' : 'Simpan'}
                 </button>
               </div>
             </form>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {/* SUBJECT EDIT/CREATE MODAL */}
       {showSubjectModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 w-full max-w-sm rounded-2xl shadow-xl overflow-hidden p-6 space-y-6">
-            <div className="flex justify-between items-center pb-3 border-b border-slate-800">
+        <Modal onClose={() => setShowSubjectModal(false)} maxWidth="max-w-sm" ariaLabel={editingSubject ? 'Edit Mata Pelajaran' : 'Tambah Mata Pelajaran'}>
+          <div className="flex shrink-0 justify-between items-center gap-4 px-6 pt-6 pb-3 border-b border-slate-800">
               <h3 className="text-lg font-bold text-slate-100">
                 {editingSubject ? 'Edit Mata Pelajaran' : 'Tambah Mata Pelajaran'}
               </h3>
@@ -686,7 +640,7 @@ export default function ReportConfigPage() {
               </button>
             </div>
 
-            <form onSubmit={subjectForm.handleSubmit(onSubjectSubmit)} className="space-y-4">
+            <form onSubmit={subjectForm.handleSubmit(onSubjectSubmit)} className="flex-1 overflow-y-auto overscroll-contain px-6 pb-6 pt-5 space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
                   Nama Mata Pelajaran
@@ -736,8 +690,7 @@ export default function ReportConfigPage() {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {/* CONFIGURE SUBJECTS FOR A SPECIFIC REPORT PERIOD — pakai SubjectOrderModal */}

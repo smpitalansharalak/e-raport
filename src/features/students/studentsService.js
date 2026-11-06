@@ -18,7 +18,8 @@ export async function listStudents() {
 
 export async function listAvailableClasses({ statusFilter = null } = {}) {
   let query = supabase.from('students').select('class_name')
-  if (statusFilter) query = query.eq('status', statusFilter)
+  if (Array.isArray(statusFilter)) query = query.in('status', statusFilter)
+  else if (statusFilter) query = query.eq('status', statusFilter)
 
   const { data, error } = await query
   if (error) throw error
