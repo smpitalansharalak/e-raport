@@ -16,6 +16,7 @@ import {
 import PredicateBadge from '@/components/ui/PredicateBadge'
 import useMediaQuery from '@/hooks/useMediaQuery'
 import DescriptionTextarea from './DescriptionTextarea'
+import PredicateLegend from './PredicateLegend'
 
 const selectOnFocus = (e) => e.target.select()
 
@@ -24,8 +25,8 @@ const COL_WIDTHS = {
   tp: 65,
   item: 88,
   fixed: 65,
-  avg: 55,
-  rapor: 70,
+  avg: 64,
+  rapor: 86,
   description: 340,
   action: 50,
 }
@@ -179,6 +180,12 @@ export default function ScoreGrid({
       {totalInputCols === 0 && (
         <div className="px-4 py-6 text-center text-xs text-amber-500/90 border-b border-slate-800 bg-amber-500/5">
           Belum ada item penilaian untuk komponen countable. Klik <b>Atur Komponen Penilaian</b> di atas untuk menambah (mis. Bab 1, Bab 2…).
+        </div>
+      )}
+
+      {(predicatePlacement?.show_on_inputs || predicatePlacement?.show_on_component_averages || predicatePlacement?.show_on_final) && (
+        <div className="px-4 py-2.5 border-b border-slate-800">
+          <PredicateLegend predicates={predicates} />
         </div>
       )}
 
@@ -538,7 +545,7 @@ const ScoreRow = React.memo(function ScoreRow({
                 className={`py-2 px-1 border-l border-slate-800 text-center font-bold text-xs ${section.tone.text} ${section.tone.soft}`}
               >
                 <span className="block">{value === null ? '—' : value}</span>
-                {badgeFor(value, { enabled: showAverageBadges && value !== null, className: 'mt-0.5' })}
+                {badgeFor(value, { enabled: showAverageBadges && value !== null, size: 'sm', className: 'mt-1' })}
               </td>
             )
           })()}
@@ -548,7 +555,7 @@ const ScoreRow = React.memo(function ScoreRow({
       {/* Nilai Rapor */}
       <td className="py-2 px-1 border-l border-slate-800 text-center font-extrabold text-sm text-emerald-400 bg-emerald-500/5">
         <span className="block">{finalRapor}</span>
-        {badgeFor(finalRapor, { enabled: showFinalBadge && anyFilled, size: 'sm', className: 'mt-0.5' })}
+        {badgeFor(finalRapor, { enabled: showFinalBadge && anyFilled, size: 'sm', className: 'mt-1' })}
       </td>
 
       {/* Deskripsi Capaian */}

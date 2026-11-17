@@ -15,12 +15,13 @@ export default function PredicateBadge({ predicate, predicates = [], size = 'xs'
   const count = activePredicates(predicates).length
   const tone = predicateToneClass(index, count)
 
-  const padding = size === 'sm' ? 'px-1.5 py-0.5 text-[10px]' : 'px-1 py-px text-[9px]'
+  const padding =
+    size === 'sm' ? 'px-2 py-0.5 text-[11px]' : 'px-1.5 py-0.5 text-[10px]'
 
   return (
     <span
       title={predicate.description ? `${predicate.label} — ${predicate.description}` : predicate.label}
-      className={`inline-flex items-center justify-center rounded border font-bold leading-none ${padding} ${tone} ${className}`}
+      className={`inline-flex max-w-full items-center justify-center truncate rounded-md border font-extrabold leading-none ${padding} ${tone} ${className}`}
     >
       {predicate.label}
     </span>

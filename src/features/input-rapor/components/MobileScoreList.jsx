@@ -8,6 +8,7 @@ import {
   itemsOfComponent,
 } from '@/utils/scoreCalculations'
 import { predicateForScore } from '@/utils/predicates'
+import PredicateLegend from './PredicateLegend'
 import {
   sanitizeScoreTyping,
   clampScore,
@@ -344,6 +345,11 @@ function MobileScoreSheet({
         </div>
       </header>
 
+      {(predicatePlacement?.show_on_inputs || predicatePlacement?.show_on_component_averages || predicatePlacement?.show_on_final) && (
+        <div className="px-3 pt-2">
+          <PredicateLegend predicates={predicates} />
+        </div>
+      )}
       <div className="flex-1 overflow-y-auto overscroll-contain px-3 py-3">
         <fieldset
           disabled={!isEditing}
@@ -473,7 +479,7 @@ function ComponentSection({ component, score, items, learningTargets, change, pr
     <span className="flex items-center gap-1.5">
       Rrt {value === null ? '—' : value}
       {showAverageBadges && value !== null && (
-        <PredicateBadge predicate={predicateForScore(value, predicates ?? [])} predicates={predicates ?? []} />
+        <PredicateBadge predicate={predicateForScore(value, predicates ?? [])} predicates={predicates ?? []} size="sm" />
       )}
     </span>
   )

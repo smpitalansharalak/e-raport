@@ -4,6 +4,7 @@ import useInputRapor from './useInputRapor'
 import useMediaQuery from '@/hooks/useMediaQuery'
 import ScoreGrid from './components/ScoreGrid'
 import MobileScoreList from './components/MobileScoreList'
+import PredicateLegend from './components/PredicateLegend'
 import ComponentManagerModal from './components/ComponentManagerModal'
 
 const MOBILE_VIEW_KEY = 'input-rapor:mobile-view'
@@ -247,7 +248,11 @@ export default function InputRaporPage() {
               editingRows={editingRows}
             />
           ) : (
-            <MobileScoreList
+            <>
+              {(predicatePlacement?.show_on_inputs || predicatePlacement?.show_on_component_averages || predicatePlacement?.show_on_final) && (
+                <PredicateLegend predicates={gradePredicates} />
+              )}
+              <MobileScoreList
               students={students}
               components={components}
               items={items}
@@ -263,6 +268,7 @@ export default function InputRaporPage() {
               savingRows={savingRows}
               editingRows={editingRows}
             />
+            </>
           )}
         </div>
       )}
