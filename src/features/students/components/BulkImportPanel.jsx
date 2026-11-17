@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { showLoading, closeLoading, showSuccess } from '@/lib/swal'
 import { useStudentMutations } from '../useStudents'
+import { sanitizeText, sanitizeBasicText } from '@/utils/text'
 
 const CSV_HEADERS = ['NISN', 'Nama Lengkap', 'Kelas', 'Tahun Ajaran', 'Fase', 'Nama Orang Tua/Wali']
 
@@ -57,12 +58,12 @@ export default function BulkImportPanel({ onImportDone }) {
 
         const parsed = dataRows.map((r, idx) => ({
           _row: idx + 2, // Excel row number
-          nisn: String(r[0] ?? '').trim(),
-          name: String(r[1] ?? '').trim(),
-          class_name: String(r[2] ?? '').trim(),
-          academic_year: String(r[3] ?? '').trim(),
-          phase: String(r[4] ?? '').trim() || 'D',
-          parent_name: String(r[5] ?? '').trim(),
+          nisn: sanitizeText(String(r[0] ?? '')).replace(/\D/g, ''),
+          name: sanitizeText(String(r[1] ?? '')),
+          class_name: sanitizeText(String(r[2] ?? '')),
+          academic_year: sanitizeText(String(r[3] ?? '')),
+          phase: sanitizeBasicText(String(r[4] ?? '')).toUpperCase() || 'D',
+          parent_name: sanitizeText(String(r[5] ?? '')),
           _status: 'pending', // pending | ok | error | duplicate
           _error: '',
         }))

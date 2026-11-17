@@ -1,5 +1,5 @@
 import React, { useCallback, useRef } from 'react'
-import { sanitizeText } from '@/utils/text'
+import { sanitizeBasicText, sanitizePastedText } from '@/utils/text'
 
 /**
  * Textarea deskripsi menggunakan local state + debounce ke parent.
@@ -40,7 +40,7 @@ const DescriptionTextarea = React.memo(function DescriptionTextarea({
   }, [])
 
   const handleChange = useCallback((e) => {
-    const newVal = e.target.value
+    const newVal = sanitizeBasicText(e.target.value)
     setLocalValue(newVal) // update lokal langsung → tampilan responsif
 
     // Debounce update ke parent state (mencegah re-render seluruh grid)
@@ -60,7 +60,7 @@ const DescriptionTextarea = React.memo(function DescriptionTextarea({
     if (debounceRef.current) clearTimeout(debounceRef.current)
     e.preventDefault()
     const raw = e.clipboardData.getData('text/plain')
-    const cleaned = sanitizeText(raw)
+    const cleaned = sanitizePastedText(raw, { keepNewlines: true })
     const ta = e.target
     const start = ta.selectionStart
     const end = ta.selectionEnd

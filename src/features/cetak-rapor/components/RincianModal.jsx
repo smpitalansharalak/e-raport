@@ -9,6 +9,7 @@ import {
 import { predicateForScore } from '@/utils/predicates'
 import PredicateBadge from '@/components/ui/PredicateBadge'
 import Modal from '@/components/ui/Modal'
+import { sanitizeText } from '@/utils/text'
 
 const EMPTY_SCORE = {
   scores_formative: {},
@@ -234,8 +235,8 @@ function SubjectSection({
         {/* Capaian kompetensi */}
         {score && (studentScore.highest_achievement || studentScore.lowest_achievement) && (
           <div className="border-t border-slate-800/80 pt-3 space-y-2">
-            <CapaianBlock label="Capaian Tertinggi" text={studentScore.highest_achievement} tone="emerald" />
-            <CapaianBlock label="Capaian Terendah" text={studentScore.lowest_achievement} tone="rose" />
+            <CapaianBlock label="Capaian Tertinggi" text={sanitizeText(studentScore.highest_achievement)} tone="emerald" />
+            <CapaianBlock label="Capaian Terendah" text={sanitizeText(studentScore.lowest_achievement)} tone="rose" />
           </div>
         )}
       </div>

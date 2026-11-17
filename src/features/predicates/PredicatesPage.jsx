@@ -13,6 +13,8 @@ import Swal from '@/lib/swal'
 import Alert from '@/components/ui/Alert'
 import PredicateBadge from '@/components/ui/PredicateBadge'
 import { findPredicateOverlaps } from '@/utils/predicates'
+import { applySanitizedPaste } from '@/utils/paste'
+import { applySanitizedNumberPaste } from '@/utils/scoreInput'
 import { usePredicates, usePredicatePlacement, usePredicateMutations } from './usePredicates'
 import { DEFAULT_PLACEMENT } from './predicatesService'
 
@@ -255,6 +257,9 @@ export default function PredicatesPage() {
                   value={row.label}
                   onChange={(e) => updateRow(index, { label: e.target.value })}
                   placeholder="A"
+                  onPaste={(e) =>
+                    applySanitizedPaste(e, row.label, (value) => updateRow(index, { label: value }))
+                  }
                   className="bg-slate-950 border border-slate-800 rounded-lg py-1.5 px-2 text-xs font-bold text-slate-100 text-center focus:outline-none focus:border-emerald-500 transition-colors"
                   aria-label="Label predikat"
                 />
@@ -263,23 +268,40 @@ export default function PredicatesPage() {
                   value={row.description ?? ''}
                   onChange={(e) => updateRow(index, { description: e.target.value })}
                   placeholder="Sangat Baik"
+                  onPaste={(e) =>
+                    applySanitizedPaste(e, row.description ?? '', (value) =>
+                      updateRow(index, { description: value }),
+                    )
+                  }
                   className="bg-slate-950 border border-slate-800 rounded-lg py-1.5 px-2 text-xs text-slate-200 min-w-0 focus:outline-none focus:border-emerald-500 transition-colors max-md:col-span-1"
                   aria-label="Deskripsi predikat"
                 />
                 <input
-                  type="number"
-                  step="any"
+                  type="text"
+                  inputMode="decimal"
+                  autoComplete="off"
                   value={row.min_score}
-                  onChange={(e) => updateRow(index, { min_score: e.target.value })}
+                  onChange={(e) => updateRow(index, { min_score: e.target.value.replace(/[^0-9.]/g, '') })}
+                  onPaste={(e) =>
+                    applySanitizedNumberPaste(e, row.min_score, (value) =>
+                      updateRow(index, { min_score: value }),
+                    )
+                  }
                   placeholder="80"
                   className="bg-slate-950 border border-slate-800 rounded-lg py-1.5 px-2 text-xs text-slate-200 text-center focus:outline-none focus:border-emerald-500 transition-colors"
                   aria-label="Nilai minimum"
                 />
                 <input
-                  type="number"
-                  step="any"
+                  type="text"
+                  inputMode="decimal"
+                  autoComplete="off"
                   value={row.max_score}
-                  onChange={(e) => updateRow(index, { max_score: e.target.value })}
+                  onChange={(e) => updateRow(index, { max_score: e.target.value.replace(/[^0-9.]/g, '') })}
+                  onPaste={(e) =>
+                    applySanitizedNumberPaste(e, row.max_score, (value) =>
+                      updateRow(index, { max_score: value }),
+                    )
+                  }
                   placeholder="100"
                   className="bg-slate-950 border border-slate-800 rounded-lg py-1.5 px-2 text-xs text-slate-200 text-center focus:outline-none focus:border-emerald-500 transition-colors"
                   aria-label="Nilai maksimum"

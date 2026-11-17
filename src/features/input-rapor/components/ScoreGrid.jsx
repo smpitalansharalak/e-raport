@@ -7,6 +7,12 @@ import {
   itemsOfComponent,
 } from '@/utils/scoreCalculations'
 import { predicateForScore } from '@/utils/predicates'
+import {
+  sanitizeScoreTyping,
+  clampScore,
+  parseScoreList,
+  applySanitizedNumberPaste,
+} from '@/utils/scoreInput'
 import PredicateBadge from '@/components/ui/PredicateBadge'
 import useMediaQuery from '@/hooks/useMediaQuery'
 import DescriptionTextarea from './DescriptionTextarea'
@@ -287,6 +293,7 @@ export default function ScoreGrid({
               return (
                 <ScoreRow
                   key={student.id}
+                  students={students}
                   student={student}
                   studentScore={studentScore}
                   plan={plan}
@@ -325,6 +332,7 @@ export default function ScoreGrid({
 
 // ─── ScoreRow ─────────────────────────────────────────────────────────────────
 const ScoreRow = React.memo(function ScoreRow({
+  students,
   student,
   studentScore,
   plan,
@@ -390,14 +398,32 @@ const ScoreRow = React.memo(function ScoreRow({
                   className={`py-2 px-0.5 text-center ${section.tone.soft} ${idx === 0 ? 'border-l border-slate-800' : ''}`}
                 >
                   <input
-                    type="number"
+                    type="text"
                     inputMode="decimal"
-                    min="0"
-                    max="100"
+                    autoComplete="off"
                     disabled={!isEditing}
                     onFocus={selectOnFocus}
                     value={value}
-                    onChange={(e) => handleScoreChange(student.id, 'formative', tp.id, e.target.value)}
+                    onChange={(e) =>
+                      handleScoreChange(student.id, 'formative', tp.id, sanitizeScoreTyping(e.target.value))
+                    }
+                    onPaste={(e) => {
+                      const raw = e.clipboardData?.getData('text/plain') ?? ''
+                      const list = parseScoreList(raw)
+                      if (list.length > 1) {
+                        e.preventDefault()
+                        list.forEach((val, offset) => {
+                          const target = students[rowIdx + offset]
+                          if (!target) return
+                          handleScoreChange(target.id, 'formative', tp.id, val)
+                        })
+                        return
+                      }
+                      applySanitizedNumberPaste(e, value, (next) =>
+                        handleScoreChange(student.id, 'formative', tp.id, next),
+                      )
+                    }}
+                    onBlur={() => handleScoreChange(student.id, 'formative', tp.id, clampScore(value))}
                     className={`${numberInputClass} ${section.tone.ring}`}
                     title={`${item.name} — ${tp.code}: ${tp.description}`}
                   />
@@ -415,14 +441,32 @@ const ScoreRow = React.memo(function ScoreRow({
                   className={`py-2 px-0.5 text-center bg-slate-900/40 ${idx === 0 ? 'border-l border-slate-800' : ''}`}
                 >
                   <input
-                    type="number"
+                    type="text"
                     inputMode="decimal"
-                    min="0"
-                    max="100"
+                    autoComplete="off"
                     disabled={!isEditing}
                     onFocus={selectOnFocus}
                     value={value}
-                    onChange={(e) => handleScoreChange(student.id, 'summative', item.id, e.target.value)}
+                    onChange={(e) =>
+                      handleScoreChange(student.id, 'summative', item.id, sanitizeScoreTyping(e.target.value))
+                    }
+                    onPaste={(e) => {
+                      const raw = e.clipboardData?.getData('text/plain') ?? ''
+                      const list = parseScoreList(raw)
+                      if (list.length > 1) {
+                        e.preventDefault()
+                        list.forEach((val, offset) => {
+                          const target = students[rowIdx + offset]
+                          if (!target) return
+                          handleScoreChange(target.id, 'summative', item.id, val)
+                        })
+                        return
+                      }
+                      applySanitizedNumberPaste(e, value, (next) =>
+                        handleScoreChange(student.id, 'summative', item.id, next),
+                      )
+                    }}
+                    onBlur={() => handleScoreChange(student.id, 'summative', item.id, clampScore(value))}
                     className={`${numberInputClass} ${section.tone.ring}`}
                     title={`${section.component.name} — ${item.name}`}
                   />
@@ -440,14 +484,44 @@ const ScoreRow = React.memo(function ScoreRow({
                   className={`py-2 px-0.5 text-center bg-slate-900/40 ${idx === 0 ? 'border-l border-slate-800' : ''}`}
                 >
                   <input
-                    type="number"
+                    type="text"
                     inputMode="decimal"
-                    min="0"
-                    max="100"
+                    autoComplete="off"
                     disabled={!isEditing}
                     onFocus={selectOnFocus}
                     value={value}
-                    onChange={(e) => handleScoreChange(student.id, 'fixed', `${section.component.id}:${sub.key}`, e.target.value)}
+                    onChange={(e) =>
+                      handleScoreChange(
+                        student.id,
+                        'fixed',
+                        `${section.component.id}:${sub.key}`,
+                        sanitizeScoreTyping(e.target.value),
+                      )
+                    }
+                    onPaste={(e) => {
+                      const raw = e.clipboardData?.getData('text/plain') ?? ''
+                      const list = parseScoreList(raw)
+                      if (list.length > 1) {
+                        e.preventDefault()
+                        list.forEach((val, offset) => {
+                          const target = students[rowIdx + offset]
+                          if (!target) return
+                          handleScoreChange(target.id, 'fixed', `${section.component.id}:${sub.key}`, val)
+                        })
+                        return
+                      }
+                      applySanitizedNumberPaste(e, value, (next) =>
+                        handleScoreChange(student.id, 'fixed', `${section.component.id}:${sub.key}`, next),
+                      )
+                    }}
+                    onBlur={() =>
+                      handleScoreChange(
+                        student.id,
+                        'fixed',
+                        `${section.component.id}:${sub.key}`,
+                        clampScore(value),
+                      )
+                    }
                     className={`${numberInputClass} ${section.tone.ring}`}
                     title={`${section.component.name} — ${sub.label}`}
                   />

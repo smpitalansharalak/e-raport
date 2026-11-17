@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { applySanitizedPaste } from '@/utils/paste'
 import { X, Trash2, Plus, Info } from 'lucide-react'
 import Modal from '@/components/ui/Modal'
 
@@ -110,6 +111,11 @@ export default function ComponentManagerModal({
                   type="text"
                   value={draft ?? suggestion}
                   onChange={(e) => setItemDraft(component.id, e.target.value)}
+                    onPaste={(e) =>
+                      applySanitizedPaste(e, draft ?? suggestion, (value) =>
+                        setItemDraft(component.id, value),
+                      )
+                    }
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault()
@@ -138,6 +144,11 @@ export default function ComponentManagerModal({
                       <input
                         key={item.id}
                         defaultValue={item.name}
+                        onPaste={(e) =>
+                          applySanitizedPaste(e, item.name, (value) => {
+                            e.target.value = value
+                          })
+                        }
                         onBlur={(e) => {
                           const val = e.target.value.trim()
                           if (val && val !== item.name) onRenameItem(item.id, val)
@@ -185,6 +196,11 @@ export default function ComponentManagerModal({
                       value={tpInputs.code}
                       onChange={(e) => setTpInputs((prev) => ({ ...prev, code: e.target.value }))}
                       placeholder="Kode (TP1)"
+                      onPaste={(e) =>
+                        applySanitizedPaste(e, tpInputs.code, (value) =>
+                          setTpInputs((prev) => ({ ...prev, code: value })),
+                        )
+                      }
                       className="w-20 bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors"
                     />
                     <input
@@ -198,6 +214,11 @@ export default function ComponentManagerModal({
                         }
                       }}
                       placeholder="Deskripsi TP..."
+                      onPaste={(e) =>
+                        applySanitizedPaste(e, tpInputs.description, (value) =>
+                          setTpInputs((prev) => ({ ...prev, description: value })),
+                        )
+                      }
                       className="flex-1 min-w-[160px] bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors"
                     />
                     <button

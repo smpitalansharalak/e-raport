@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Sliders, AlertCircle, CheckCircle, LayoutGrid, Table2 } from 'lucide-react'
+import { Sliders, AlertCircle, CheckCircle, LayoutGrid, Table2, ChevronDown } from 'lucide-react'
 import useInputRapor from './useInputRapor'
 import useMediaQuery from '@/hooks/useMediaQuery'
 import ScoreGrid from './components/ScoreGrid'
@@ -109,53 +109,65 @@ export default function InputRaporPage() {
       )}
 
       {/* Selectors Panel */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col md:flex-row gap-4 items-end">
-        <div className="flex-1 space-y-2">
-          <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 md:p-6 flex flex-col md:flex-row gap-4 items-stretch md:items-end">
+        <div className="w-full md:flex-1 space-y-2">
+          <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider min-h-4">
             Periode Rapor (Aktif)
           </label>
-          <select
-            value={selectedPeriodId}
-            onChange={(e) => {
-              setSelectedPeriodId(e.target.value)
-              setIsGridLoaded(false)
-            }}
-            className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2.5 px-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors"
-          >
-            <option value="">-- Pilih Periode Rapor --</option>
-            {periods.map((p) => (
-              <option key={p.id} value={p.id}>
-                Kelas {p.class_name} — Semester {p.semester} ({p.academic_year})
-              </option>
-            ))}
-          </select>
+          <div className="relative">
+            <select
+              value={selectedPeriodId}
+              onChange={(e) => {
+                setSelectedPeriodId(e.target.value)
+                setIsGridLoaded(false)
+              }}
+              className="w-full h-11 bg-slate-950 border border-slate-800 rounded-xl py-2.5 px-3 pr-9 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors cursor-pointer appearance-none"
+            >
+              <option value="">-- Pilih Periode Rapor --</option>
+              {periods.map((p) => (
+                <option key={p.id} value={p.id}>
+                  Kelas {p.class_name} — Semester {p.semester} ({p.academic_year})
+                </option>
+              ))}
+            </select>
+            <ChevronDown
+              size={16}
+              className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500"
+            />
+          </div>
         </div>
 
-        <div className="flex-1 space-y-2">
-          <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
+        <div className="w-full md:flex-1 space-y-2">
+          <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider min-h-4">
             Mata Pelajaran
           </label>
-          <select
-            value={selectedSubjectId}
-            onChange={(e) => {
-              setSelectedSubjectId(e.target.value)
-              setIsGridLoaded(false)
-            }}
-            className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2.5 px-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors"
-          >
-            <option value="">-- Pilih Mata Pelajaran --</option>
-            {filteredTeacherSubjects.map((sub) => (
-              <option key={sub.id} value={sub.id}>
-                {sub.name} {sub.class_name ? `(Kelas ${sub.class_name})` : ''}
-              </option>
-            ))}
-          </select>
+          <div className="relative">
+            <select
+              value={selectedSubjectId}
+              onChange={(e) => {
+                setSelectedSubjectId(e.target.value)
+                setIsGridLoaded(false)
+              }}
+              className="w-full h-11 bg-slate-950 border border-slate-800 rounded-xl py-2.5 px-3 pr-9 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors cursor-pointer appearance-none"
+            >
+              <option value="">-- Pilih Mata Pelajaran --</option>
+              {filteredTeacherSubjects.map((sub) => (
+                <option key={sub.id} value={sub.id}>
+                  {sub.name} {sub.class_name ? `(Kelas ${sub.class_name})` : ''}
+                </option>
+              ))}
+            </select>
+            <ChevronDown
+              size={16}
+              className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500"
+            />
+          </div>
         </div>
 
         <button
           onClick={handleLoadGrid}
           disabled={loadingGrid}
-          className="w-full md:w-auto px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl font-bold text-sm tracking-wide shadow-md transition-colors cursor-pointer disabled:opacity-50"
+          className="w-full md:w-auto h-11 px-5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl font-bold text-sm tracking-wide shadow-md transition-colors cursor-pointer disabled:opacity-50"
         >
           {loadingGrid ? 'Memuat...' : 'Mulai Nilai'}
         </button>

@@ -8,6 +8,11 @@ import {
   itemsOfComponent,
 } from '@/utils/scoreCalculations'
 import { predicateForScore } from '@/utils/predicates'
+import {
+  sanitizeScoreTyping,
+  clampScore,
+  applySanitizedNumberPaste,
+} from '@/utils/scoreInput'
 import PredicateBadge from '@/components/ui/PredicateBadge'
 import Modal from '@/components/ui/Modal'
 import DescriptionTextarea from './DescriptionTextarea'
@@ -596,12 +601,13 @@ function NumberField({ label, description, value, onChange, accent, badge }) {
         </span>
       )}
       <input
-        type="number"
+        type="text"
         inputMode="decimal"
-        min="0"
-        max="100"
+        autoComplete="off"
         value={value ?? ''}
-        onChange={(event) => onChange(event.target.value)}
+        onChange={(event) => onChange(sanitizeScoreTyping(event.target.value))}
+        onPaste={(event) => applySanitizedNumberPaste(event, value ?? '', onChange)}
+        onBlur={(event) => onChange(clampScore(event.target.value))}
         onFocus={selectOnFocus}
         placeholder="—"
         className={`h-11 w-full rounded-xl border border-slate-800 bg-slate-950 px-2 text-center text-base font-semibold text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-1 disabled:opacity-60 ${accent}`}

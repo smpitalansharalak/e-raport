@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { sanitizeText } from '@/utils/text'
 
 // scores_formative: { <learning_target_id>: number } — input TP komponen with_tp
 // scores_summative: { <assessment_item_id>: number } — input langsung komponen countable
@@ -151,8 +152,8 @@ export async function loadInputRaporGrid({ periodId, subjectId, className }) {
       scores_formative: row.scores_formative || {},
       scores_summative: row.scores_summative || {},
       fixed_scores: fixedScoresAsString,
-      highest_achievement: row.highest_achievement || '',
-      lowest_achievement: row.lowest_achievement || '',
+      highest_achievement: sanitizeText(row.highest_achievement || ''),
+      lowest_achievement: sanitizeText(row.lowest_achievement || ''),
     }
   })
 

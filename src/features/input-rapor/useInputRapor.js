@@ -6,6 +6,7 @@ import {
 } from '@/utils/scoreCalculations'
 import Swal from '@/lib/swal'
 import { sanitizeText } from '@/utils/text'
+import { supabase } from '@/lib/supabase'
 import {
   createItem,
   createLearningTarget,
@@ -405,6 +406,58 @@ export default function useInputRapor() {
     }
   }, [fetchItemsAndTps])
 
+  const recalcFinalScores = useCallback(async (newItems, newTps) => {
+    const periodId = selectedPeriodIdRef.current
+    const subjectId = selectedSubjectIdRef.current
+    const currentComponents = componentsRef.current
+    const currentMode = calculationModeRef.current
+    const currentScores = scoresRef.current
+
+    const { data: existingRows } = await supabase
+      .from('student_scores')
+      .select('student_id')
+      .eq('report_period_id', periodId)
+      .eq('subject_id', subjectId)
+
+    const existingIds = new Set((existingRows ?? []).map((row) => row.student_id))
+
+    for (const studentId of Object.keys(currentScores)) {
+      if (!existingIds.has(studentId)) continue
+
+      const studentScore = currentScores[studentId] || {}
+      const scoresFormativeNumeric = {}
+      Object.entries(studentScore.scores_formative || {}).forEach(([key, val]) => {
+        const n = toNullableNumber(val)
+        if (n !== null) scoresFormativeNumeric[key] = n
+      })
+      const scoresSummativeNumeric = {}
+      Object.entries(studentScore.scores_summative || {}).forEach(([key, val]) => {
+        const n = toNullableNumber(val)
+        if (n !== null) scoresSummativeNumeric[key] = n
+      })
+      const fixedScoresNumeric = fixedScoresToNumber(studentScore.fixed_scores)
+      const finalScore = calculateFinalRaporScore(
+        studentScore,
+        currentComponents,
+        newItems,
+        newTps,
+        currentMode,
+      )
+
+      await saveStudentScore({
+        student_id: studentId,
+        report_period_id: periodId,
+        subject_id: subjectId,
+        scores_formative: scoresFormativeNumeric,
+        scores_summative: scoresSummativeNumeric,
+        fixed_scores: fixedScoresNumeric,
+        highest_achievement: studentScore.highest_achievement || null,
+        lowest_achievement: studentScore.lowest_achievement || null,
+        final_score: finalScore,
+      })
+    }
+  }, [])
+
   const handleDeleteItem = useCallback(async (id) => {
     const result = await Swal.fire({
       title: 'Hapus item ini?',
@@ -417,11 +470,21 @@ export default function useInputRapor() {
     if (!result.isConfirmed) return
     try {
       await deleteItemRequest(id)
-      await fetchItemsAndTps()
+      const periodId = selectedPeriodIdRef.current
+      const subjectId = selectedSubjectIdRef.current
+      const { items: itemData, learningTargets: tpData } = await fetchItemsAndTargets({
+        periodId,
+        subjectId,
+      })
+      setItems(itemData)
+      setLearningTargets(tpData)
+      itemsRef.current = itemData
+      learningTargetsRef.current = tpData
+      await recalcFinalScores(itemData, tpData)
     } catch (err) {
       Swal.fire({ title: 'Gagal', text: err.message, icon: 'error' })
     }
-  }, [fetchItemsAndTps])
+  }, [recalcFinalScores])
 
   const handleAddTp = useCallback(async () => {
     setModalError('')
@@ -457,11 +520,21 @@ export default function useInputRapor() {
     if (!result.isConfirmed) return
     try {
       await deleteLearningTarget(id)
-      await fetchItemsAndTps()
+      const periodId = selectedPeriodIdRef.current
+      const subjectId = selectedSubjectIdRef.current
+      const { items: itemData, learningTargets: tpData } = await fetchItemsAndTargets({
+        periodId,
+        subjectId,
+      })
+      setItems(itemData)
+      setLearningTargets(tpData)
+      itemsRef.current = itemData
+      learningTargetsRef.current = tpData
+      await recalcFinalScores(itemData, tpData)
     } catch (err) {
       Swal.fire({ title: 'Gagal', text: err.message, icon: 'error' })
     }
-  }, [fetchItemsAndTps])
+  }, [recalcFinalScores])
 
   const handleCloseComponentModal = useCallback(async () => {
     setShowComponentModal(false)

@@ -4,6 +4,8 @@ import Swal from '@/lib/swal'
 import Alert from '@/components/ui/Alert'
 import Modal from '@/components/ui/Modal'
 import { useAssessmentFormatMutations } from '../useAssessmentFormats'
+import { applySanitizedPaste } from '@/utils/paste'
+import { applySanitizedNumberPaste } from '@/utils/scoreInput'
 
 const newId = () => crypto.randomUUID()
 
@@ -295,6 +297,7 @@ export default function FormatFormModal({ format, onClose }) {
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                onPaste={(e) => applySanitizedPaste(e, name, setName)}
                 placeholder="Contoh: Format Kurikulum Merdeka 2026/2027"
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors"
               />
@@ -322,6 +325,7 @@ export default function FormatFormModal({ format, onClose }) {
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
+                onPaste={(e) => applySanitizedPaste(e, description, setDescription)}
               placeholder="Catatan singkat tentang format ini..."
               className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors"
             />
@@ -505,6 +509,11 @@ function ComponentRow({
           type="text"
           value={component.name}
           onChange={(e) => onChange(component.id, { name: e.target.value })}
+           onPaste={(e) =>
+             applySanitizedPaste(e, component.name, (value) =>
+               onChange(component.id, { name: value }),
+             )
+           }
           placeholder="Nama komponen (mis. Sumatif per Bab)"
           className={`${inputClass} flex-1 min-w-0`}
         />
@@ -515,7 +524,12 @@ function ComponentRow({
               min="0"
               step="any"
               value={component.weight}
-              onChange={(e) => onChange(component.id, { weight: e.target.value })}
+              onChange={(e) => onChange(component.id, { weight: e.target.value.replace(/[^0-9.]/g, '') })}
+                  onPaste={(e) =>
+                    applySanitizedNumberPaste(e, component.weight, (value) =>
+                      onChange(component.id, { weight: value }),
+                    )
+                  }
               placeholder="0"
               className={`${inputClass} w-16 text-center`}
               aria-label="Bobot komponen"
@@ -621,6 +635,11 @@ function ComponentRow({
                       value={sub.label}
                       onChange={(e) => onUpdateCustomSub(component.id, sub.key, e.target.value)}
                       placeholder="Label sub-nilai"
+                      onPaste={(e) =>
+                        applySanitizedPaste(e, sub.label, (value) =>
+                          onUpdateCustomSub(component.id, sub.key, value),
+                        )
+                      }
                       className={`${inputClass} flex-1 min-w-0`}
                     />
                     <button

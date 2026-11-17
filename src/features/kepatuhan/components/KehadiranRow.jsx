@@ -1,5 +1,7 @@
 import { memo } from 'react'
 import { Save } from 'lucide-react'
+import { applySanitizedPaste } from '@/utils/paste'
+import { applySanitizedNumberPaste } from '@/utils/scoreInput'
 
 const KehadiranRow = memo(function KehadiranRow({
   student,
@@ -19,10 +21,16 @@ const KehadiranRow = memo(function KehadiranRow({
       {['sakit', 'izin', 'alpha'].map((field) => (
         <td key={field} className="py-3 px-4 text-center">
           <input
-            type="number"
-            min="0"
+            type="text"
+            inputMode="numeric"
+            autoComplete="off"
             value={rec[field]}
-            onChange={(e) => onChange(student.id, field, e.target.value)}
+            onChange={(e) => onChange(student.id, field, e.target.value.replace(/\D/g, ''))}
+            onPaste={(e) =>
+              applySanitizedNumberPaste(e, rec[field], (value) =>
+                onChange(student.id, field, value.replace(/\D/g, '')),
+              { integer: true },
+            )}
             className="w-14 bg-slate-950 border border-slate-800 rounded-lg text-center text-sm py-1.5 text-slate-200 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 transition-colors"
           />
         </td>
@@ -33,6 +41,11 @@ const KehadiranRow = memo(function KehadiranRow({
           placeholder="Catatan khusus (opsional)..."
           value={rec.catatan || ''}
           onChange={(e) => onChange(student.id, 'catatan', e.target.value)}
+            onPaste={(e) =>
+              applySanitizedPaste(e, rec.catatan || '', (value) =>
+                onChange(student.id, 'catatan', value),
+              { keepNewlines: true },
+            )}
           className="w-full bg-slate-950 border border-slate-800 rounded-lg text-sm py-2 px-3 text-slate-200 placeholder-slate-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 transition-colors resize-y min-h-[42px]"
         />
       </td>

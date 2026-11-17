@@ -20,6 +20,7 @@ import {
   useStudentStatusList,
   useStudentStatusMutations,
 } from './useStudentStatus'
+import { applySanitizedPaste } from '@/utils/paste'
 
 function StatusBadge({ status }) {
   const cfg = STUDENT_STATUS[status] || { label: status }
@@ -413,6 +414,7 @@ export default function StudentStatusPage() {
                 <div>
                   <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Kelas Tujuan</label>
                   <input type="text" placeholder="Contoh: VIII A" value={bulkTargetClass} onChange={e => setBulkTargetClass(e.target.value)}
+                    onPaste={(e) => applySanitizedPaste(e, bulkTargetClass, setBulkTargetClass)}
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500" />
                   <p className="text-[10px] text-slate-500 mt-1">Kosongkan untuk otomatis sesuai kelas masing-masing.</p>
                 </div>
@@ -421,12 +423,14 @@ export default function StudentStatusPage() {
                 <div>
                   <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Tahun Ajaran Baru</label>
                   <input type="text" placeholder="Contoh: 2026/2027" value={bulkTargetYear} onChange={e => setBulkTargetYear(e.target.value)}
+                    onPaste={(e) => applySanitizedPaste(e, bulkTargetYear, setBulkTargetYear)}
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500" />
                 </div>
               )}
               <div>
                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Catatan (opsional)</label>
                 <textarea rows={2} placeholder={showBulkModal === 'pindah_keluar' ? 'Contoh: Pindah sekolah / keluar wilayah' : 'Contoh: Naik kelas reguler T.A. 2026/2027'} value={bulkNote} onChange={e => setBulkNote(e.target.value)}
+                    onPaste={(e) => applySanitizedPaste(e, bulkNote, setBulkNote, { keepNewlines: true })}
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 resize-none" />
               </div>
             </div>

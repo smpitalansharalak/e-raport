@@ -122,6 +122,31 @@ export async function saveReportPeriod({ id, values }) {
     }))
     const { error: snapshotError } = await supabase.from('period_components').insert(rows)
     if (snapshotError) throw snapshotError
+
+    // Seed mata pelajaran yang cocok dengan kelas periode ini agar rapor
+    // langsung bisa dicetak tanpa konfigurasi manual.
+    const { data: subjectRows, error: subjectError } = await supabase
+      .from('subjects')
+      .select('id, class_name')
+    if (subjectError) throw subjectError
+
+    const matchingSubjects = (subjectRows ?? []).filter((subject) => {
+      if (!subject.class_name) return true
+      const regex = new RegExp('\\b' + subject.class_name + '\\b', 'i')
+      return regex.test(payload.class_name || '')
+    })
+
+    if (matchingSubjects.length > 0) {
+      const reportSubjectRows = matchingSubjects.map((subject, index) => ({
+        report_period_id: inserted.id,
+        subject_id: subject.id,
+        sort_order: index,
+      }))
+      const { error: reportSubjectError } = await supabase
+        .from('report_subjects')
+        .insert(reportSubjectRows)
+      if (reportSubjectError) throw reportSubjectError
+    }
   } catch (err) {
     // rollback periode yang baru dibuat agar tidak ada periode tanpa komponen
     await supabase.from('report_periods').delete().eq('id', inserted.id)

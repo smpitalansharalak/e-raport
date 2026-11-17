@@ -1,5 +1,6 @@
 import { memo, useCallback, useRef, useState } from 'react'
 import { Save, Plus, Edit2, Trash2 } from 'lucide-react'
+import { applySanitizedPaste } from '@/utils/paste'
 import { sanitizeBasicText } from '@/utils/text'
 
 const ActivityManager = memo(function ActivityManager({
@@ -97,6 +98,11 @@ const ActivityManager = memo(function ActivityManager({
               </label>
               <input
                 ref={nameRef}
+                onPaste={(e) =>
+                  applySanitizedPaste(e, nameRef.current?.value ?? '', (value) => {
+                    if (nameRef.current) nameRef.current.value = value
+                  })
+                }
                 type="text"
                 placeholder={`Contoh: ${type === 'kokurikuler' ? 'Pramuka' : 'Futsal'}`}
                 className="w-full bg-slate-900 border border-slate-700 rounded-lg py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500"
@@ -108,6 +114,11 @@ const ActivityManager = memo(function ActivityManager({
               </label>
               <textarea
                 ref={descRef}
+                onPaste={(e) =>
+                  applySanitizedPaste(e, descRef.current?.value ?? '', (value) => {
+                    if (descRef.current) descRef.current.value = value
+                  }, { keepNewlines: true })
+                }
                 placeholder="Contoh: Sangat Baik"
                 className="w-full bg-slate-900 border border-slate-700 rounded-lg py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 resize-y min-h-[40px]"
                 rows="1"

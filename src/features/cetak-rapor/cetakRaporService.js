@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabase'
 
 const PERIOD_COLUMNS =
-  'id, name, class_name, semester, academic_year, kepala_sekolah_name, is_active, wali_kelas:profiles(id, name)'
+  'id, name, class_name, semester, academic_year, kepala_sekolah_name, is_active, calculation_mode, wali_kelas:profiles(id, name)'
 
 const STUDENT_COLUMNS =
   'id, name, nisn, class_name, academic_year, phase, parent_name, status, graduation_year, previous_class'

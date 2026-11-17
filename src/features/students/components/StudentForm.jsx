@@ -3,6 +3,8 @@ import { useForm } from 'react-hook-form'
 import { AlertCircle } from 'lucide-react'
 import { STUDENT_STATUS, STUDENT_STATUS_OPTIONS } from '@/constants/studentStatus'
 import { useStudentMutations } from '../useStudents'
+import { applySanitizedPaste } from '@/utils/paste'
+import { sanitizePastedText } from '@/utils/text'
 
 export default function StudentForm({ editingStudent, onSaved, onCancel }) {
   const [formError, setFormError] = useState('')
@@ -10,6 +12,8 @@ export default function StudentForm({ editingStudent, onSaved, onCancel }) {
   const {
     register,
     handleSubmit,
+    setValue,
+    getValues,
     formState: { errors, isSubmitting },
   } = useForm({
     defaultValues: editingStudent
@@ -48,6 +52,14 @@ export default function StudentForm({ editingStudent, onSaved, onCancel }) {
       <div>
         <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">NISN</label>
         <input type="text" placeholder="Nomor Induk Siswa Nasional"
+          onPaste={(e) => {
+            const raw = e.clipboardData?.getData('text/plain') ?? ''
+            const clean = sanitizePastedText(raw).replace(/\D/g, '')
+            if (clean) {
+              e.preventDefault()
+              setValue('nisn', clean)
+            }
+          }}
           className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors"
           {...register('nisn', { required: 'NISN wajib diisi', pattern: { value: /^\d+$/, message: 'NISN harus berupa angka' } })} />
         {errors.nisn && <span className="text-[11px] text-rose-500 mt-1 block">{errors.nisn.message}</span>}
@@ -55,6 +67,7 @@ export default function StudentForm({ editingStudent, onSaved, onCancel }) {
       <div>
         <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Nama Lengkap Siswa</label>
         <input type="text" placeholder="Nama Lengkap Siswa"
+          onPaste={(e) => applySanitizedPaste(e, getValues('name'), (v) => setValue('name', v))}
           className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors"
           {...register('name', { required: 'Nama lengkap wajib diisi' })} />
         {errors.name && <span className="text-[11px] text-rose-500 mt-1 block">{errors.name.message}</span>}
@@ -63,6 +76,7 @@ export default function StudentForm({ editingStudent, onSaved, onCancel }) {
         <div>
           <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Kelas</label>
           <input type="text" placeholder="Contoh: VII A"
+            onPaste={(e) => applySanitizedPaste(e, getValues('class_name'), (v) => setValue('class_name', v))}
             className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors"
             {...register('class_name', { required: 'Kelas wajib diisi' })} />
           {errors.class_name && <span className="text-[11px] text-rose-500 mt-1 block">{errors.class_name.message}</span>}
@@ -81,6 +95,7 @@ export default function StudentForm({ editingStudent, onSaved, onCancel }) {
         <div>
           <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Tahun Ajaran</label>
           <input type="text" placeholder="Contoh: 2025/2026"
+            onPaste={(e) => applySanitizedPaste(e, getValues('academic_year'), (v) => setValue('academic_year', v))}
             className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors"
             {...register('academic_year', { required: 'Tahun ajaran wajib diisi' })} />
           {errors.academic_year && <span className="text-[11px] text-rose-500 mt-1 block">{errors.academic_year.message}</span>}
@@ -88,6 +103,7 @@ export default function StudentForm({ editingStudent, onSaved, onCancel }) {
         <div>
           <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Orang Tua / Wali</label>
           <input type="text" placeholder="Nama Orang Tua"
+            onPaste={(e) => applySanitizedPaste(e, getValues('parent_name'), (v) => setValue('parent_name', v))}
             className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors"
             {...register('parent_name')} />
         </div>

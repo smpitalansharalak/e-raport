@@ -18,6 +18,7 @@ import { useReportConfig, useReportConfigMutations } from './useReportConfig'
 import SubjectOrderModal from './components/SubjectOrderModal'
 import PeriodList from './components/PeriodList'
 import Modal from '@/components/ui/Modal'
+import { applySanitizedPaste } from '@/utils/paste'
 
 export default function ReportConfigPage() {
   const [activeTab, setActiveTab] = useState('periode') // 'periode' or 'mapel'
@@ -87,11 +88,14 @@ export default function ReportConfigPage() {
   // PERIOD CRUD ACTIONS
   const openAddPeriodModal = () => {
     setEditingPeriod(null)
+    const now = new Date()
+    const year = now.getFullYear()
+    const defaultAcademicYear = now.getMonth() >= 6 ? `${year}/${year + 1}` : `${year - 1}/${year}`
     periodForm.reset({
       name: '',
       class_name: '',
       semester: 'I',
-      academic_year: '2025/2026',
+      academic_year: defaultAcademicYear,
       wali_kelas_id: '',
       kepala_sekolah_name: '',
       is_active: true,
@@ -446,6 +450,11 @@ export default function ReportConfigPage() {
                 <input
                   type="text"
                   placeholder="Contoh: Rapor Kelas VII A Semester I"
+                    onPaste={(e) =>
+                      applySanitizedPaste(e, periodForm.getValues('name'), (value) =>
+                        periodForm.setValue('name', value),
+                      )
+                    }
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors"
                   {...periodForm.register('name', { required: 'Nama rapor wajib diisi' })}
                 />
@@ -514,6 +523,11 @@ export default function ReportConfigPage() {
                   <input
                     type="text"
                     placeholder="Contoh: 2025/2026"
+                    onPaste={(e) =>
+                      applySanitizedPaste(e, periodForm.getValues('academic_year'), (value) =>
+                        periodForm.setValue('academic_year', value),
+                      )
+                    }
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors"
                     {...periodForm.register('academic_year', { required: 'Tahun ajaran wajib diisi' })}
                   />
@@ -664,6 +678,11 @@ export default function ReportConfigPage() {
                 <input
                   type="text"
                   placeholder="Contoh: Matematika"
+                  onPaste={(e) =>
+                    applySanitizedPaste(e, subjectForm.getValues('name'), (value) =>
+                      subjectForm.setValue('name', value),
+                    )
+                  }
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors"
                   {...subjectForm.register('name', { required: 'Nama mapel wajib diisi' })}
                 />

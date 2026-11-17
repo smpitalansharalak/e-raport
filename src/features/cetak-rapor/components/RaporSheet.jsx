@@ -1,4 +1,5 @@
 import React from 'react'
+import { sanitizeText } from '@/utils/text'
 
 /**
  * Komponen template lembar rapor untuk cetak / pratinjau.
@@ -15,16 +16,24 @@ const RaporSheet = React.forwardRef(function RaporSheet(
     [scores],
   )
 
-  let catatanKhusus = att.catatan_khusus || ''
+  let catatanKhusus = sanitizeText(att.catatan_khusus || '')
   let kokurikuler = []
   let ekstrakurikuler = []
 
   try {
     const parsed = JSON.parse(catatanKhusus)
     if (typeof parsed === 'object' && parsed !== null && ('catatan' in parsed || 'kokurikuler' in parsed || 'ekstrakurikuler' in parsed)) {
-      catatanKhusus = parsed.catatan || ''
-      kokurikuler = parsed.kokurikuler || []
-      ekstrakurikuler = parsed.ekstrakurikuler || []
+      catatanKhusus = sanitizeText(parsed.catatan || '')
+      kokurikuler = (parsed.kokurikuler || []).map((item) => ({
+        ...item,
+        name: sanitizeText(item?.name ?? ''),
+        description: sanitizeText(item?.description ?? ''),
+      }))
+      ekstrakurikuler = (parsed.ekstrakurikuler || []).map((item) => ({
+        ...item,
+        name: sanitizeText(item?.name ?? ''),
+        description: sanitizeText(item?.description ?? ''),
+      }))
     }
   } catch {
     // string fallback
@@ -135,8 +144,8 @@ const RaporSheet = React.forwardRef(function RaporSheet(
                   <td className="py-2.5 px-3 text-center font-mono" style={{ border: '1px solid black' }}>{index + 1}</td>
                   <td className="py-2.5 px-3 font-semibold" style={{ border: '1px solid black' }}>{sub.name}</td>
                   <td className="py-2.5 px-3 text-center font-bold" style={{ border: '1px solid black' }}>{score ? score.final_score : '-'}</td>
-                  <td className="py-2 px-3 text-[10px] leading-snug" style={{ border: '1px solid black' }}>{score?.highest_achievement || '-'}</td>
-                  <td className="py-2 px-3 text-[10px] leading-snug" style={{ border: '1px solid black' }}>{score?.lowest_achievement || '-'}</td>
+                  <td className="py-2 px-3 text-[10px] leading-snug" style={{ border: '1px solid black' }}>{sanitizeText(score?.highest_achievement || '-')}</td>
+                  <td className="py-2 px-3 text-[10px] leading-snug" style={{ border: '1px solid black' }}>{sanitizeText(score?.lowest_achievement || '-')}</td>
                 </tr>
               )
             })
@@ -192,7 +201,7 @@ const RaporSheet = React.forwardRef(function RaporSheet(
             </div>
 
             <div className="text-center w-1/2">
-              <p>Kota Kupang, 14 Juni 2026</p>
+              <p>Kota Kupang, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
               <p>Wali Kelas,</p>
             </div>
           </div>
