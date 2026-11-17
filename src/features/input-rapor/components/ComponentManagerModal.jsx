@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { applySanitizedPaste } from '@/utils/paste'
-import { X, Trash2, Plus, Info, Pencil, Check } from 'lucide-react'
+import { X, Trash2, Plus, Info } from 'lucide-react'
 import Modal from '@/components/ui/Modal'
 
 /**
@@ -20,8 +20,6 @@ export default function ComponentManagerModal({
   setItemDraft,
   onAddItem,
   onRenameItem,
-  onRenameComponent,
-  canRenameComponents = false,
   onDeleteItem,
   tpInputs,
   setTpInputs,
@@ -51,9 +49,6 @@ export default function ComponentManagerModal({
     return map
   }, [learningTargets])
 
-  const [editingComponentId, setEditingComponentId] = useState(null)
-  const [editingComponentName, setEditingComponentName] = useState('')
-
   return (
     <Modal onClose={onClose} maxWidth="max-w-3xl" ariaLabel="Atur Komponen Penilaian">
       {/* Header */}
@@ -79,81 +74,6 @@ export default function ComponentManagerModal({
           <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-xl flex items-center gap-2 text-xs">
             <span className="font-semibold">Perhatian:</span> {modalError}
           </div>
-        )}
-
-        {canRenameComponents && components.length > 0 && (
-          <section className="border border-slate-800 rounded-2xl p-4 bg-slate-950/30 space-y-3">
-            <div className="flex items-center justify-between gap-2">
-              <div>
-                <h4 className="text-sm font-bold text-slate-100">Nama Kolom Komponen</h4>
-                <p className="text-[10px] text-slate-500 mt-0.5">
-                  Nama berlaku untuk semua mata pelajaran pada periode ini. Nilai tidak terpengaruh.
-                </p>
-              </div>
-            </div>
-            <div className="space-y-2">
-              {components.map((component) => (
-                <div key={component.id} className="flex items-center gap-2 min-w-0">
-                  {editingComponentId === component.id ? (
-                    <>
-                      <input
-                        type="text"
-                        value={editingComponentName}
-                        onChange={(e) => setEditingComponentName(e.target.value)}
-                        onPaste={(e) =>
-                          applySanitizedPaste(e, editingComponentName, setEditingComponentName)
-                        }
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault()
-                            onRenameComponent?.(component.id, editingComponentName)
-                            setEditingComponentId(null)
-                          }
-                          if (e.key === 'Escape') setEditingComponentId(null)
-                        }}
-                        onBlur={() => {
-                          onRenameComponent?.(component.id, editingComponentName)
-                          setEditingComponentId(null)
-                        }}
-                        autoFocus
-                        className="flex-1 min-w-0 bg-slate-950 border border-emerald-500 rounded-xl py-1.5 px-3 text-sm text-slate-200 focus:outline-none"
-                      />
-                      <button
-                        type="button"
-                        onMouseDown={(e) => e.preventDefault()}
-                        onClick={() => {
-                          onRenameComponent?.(component.id, editingComponentName)
-                          setEditingComponentId(null)
-                        }}
-                        className="text-emerald-400 hover:text-emerald-300 p-1 cursor-pointer"
-                        aria-label="Simpan nama"
-                      >
-                        <Check size={14} />
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <span className="flex-1 min-w-0 text-sm text-slate-200 truncate">{component.name}</span>
-                      <span className="shrink-0 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border border-slate-800 bg-slate-950 text-slate-500">
-                        {component.kind === 'countable' ? 'Countable' : 'Fixed'}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditingComponentId(component.id)
-                          setEditingComponentName(component.name)
-                        }}
-                        className="text-slate-500 hover:text-slate-300 p-1 cursor-pointer"
-                        aria-label="Ubah nama komponen"
-                      >
-                        <Pencil size={12} />
-                      </button>
-                    </>
-                  )}
-                </div>
-              ))}
-            </div>
-          </section>
         )}
 
         {countableComponents.length === 0 && (

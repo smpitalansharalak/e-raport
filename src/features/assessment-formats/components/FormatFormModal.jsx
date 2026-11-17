@@ -382,6 +382,9 @@ export default function FormatFormModal({ format, onClose }) {
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                 Komponen Penilaian ({components.length})
               </label>
+              <p className="w-full text-[10px] text-slate-500">
+                Nama komponen menjadi judul kolom pada periode aktif yang memakai format ini. Nilai tidak berubah.
+              </p>
               <div className="flex items-center gap-1.5 text-[10px] text-slate-500">
                 <span className="hidden sm:inline">Isi dari preset:</span>
                 {Object.entries(PRESETS).map(([key, preset]) => (

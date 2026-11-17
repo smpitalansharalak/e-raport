@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react'
 import { Sliders, AlertCircle, CheckCircle, LayoutGrid, Table2, ChevronDown } from 'lucide-react'
 import useInputRapor from './useInputRapor'
 import useMediaQuery from '@/hooks/useMediaQuery'
-import { useAuth } from '@/features/auth/useAuth'
 import ScoreGrid from './components/ScoreGrid'
 import MobileScoreList from './components/MobileScoreList'
 import ComponentManagerModal from './components/ComponentManagerModal'
@@ -20,7 +19,6 @@ function getInitialMobileView() {
 
 export default function InputRaporPage() {
   const isDesktop = useMediaQuery('(min-width: 768px)')
-  const { profile } = useAuth()
   const [mobileView, setMobileView] = useState(getInitialMobileView)
   const {
     periods,
@@ -58,7 +56,6 @@ export default function InputRaporPage() {
     restoreStudentScore,
     handleAddItem,
     handleRenameItem,
-    handleRenameComponent,
     handleDeleteItem,
     handleAddTp,
     handleDeleteTp,
@@ -280,8 +277,6 @@ export default function InputRaporPage() {
           setItemDraft={setItemDraft}
           onAddItem={handleAddItem}
           onRenameItem={handleRenameItem}
-          onRenameComponent={handleRenameComponent}
-          canRenameComponents={profile?.role === 'admin'}
           onDeleteItem={handleDeleteItem}
           tpInputs={tpInputs}
           setTpInputs={setTpInputs}

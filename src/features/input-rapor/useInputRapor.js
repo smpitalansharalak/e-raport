@@ -20,7 +20,6 @@ import {
   listSubjectsForUser,
   loadInputRaporGrid,
   renameItem as renameItemRequest,
-  renamePeriodComponent as renamePeriodComponentRequest,
   saveStudentScore,
 } from './inputRaporService'
 
@@ -407,22 +406,6 @@ export default function useInputRapor() {
     }
   }, [fetchItemsAndTps])
 
-  const handleRenameComponent = useCallback(async (componentId, name) => {
-    const clean = sanitizeText((name ?? '').trim())
-    if (!clean) {
-      setModalError('Nama komponen wajib diisi.')
-      return
-    }
-    try {
-      await renamePeriodComponentRequest({ id: componentId, name: clean })
-      setComponents((prev) => prev.map((component) =>
-        component.id === componentId ? { ...component, name: clean } : component))
-      setModalError('')
-    } catch (err) {
-      setModalError('Gagal mengubah nama komponen: ' + (err?.message ?? ''))
-    }
-  }, [])
-
   const recalcFinalScores = useCallback(async (newItems, newTps) => {
     const periodId = selectedPeriodIdRef.current
     const subjectId = selectedSubjectIdRef.current
@@ -599,7 +582,6 @@ export default function useInputRapor() {
     restoreStudentScore,
     handleAddItem,
     handleRenameItem,
-    handleRenameComponent,
     handleDeleteItem,
     handleAddTp,
     handleDeleteTp,

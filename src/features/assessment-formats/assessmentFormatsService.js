@@ -77,6 +77,31 @@ export async function saveAssessmentFormat({ id, format, components }) {
     if (upsertError) throw upsertError
   }
 
+  // Sinkronkan nama komponen ke periode aktif yang memakai format ini.
+  // Hanya kolom name; struktur, bobot, dan nilai tidak diubah.
+  if (formatId) {
+    const { data: activePeriods, error: activePeriodsError } = await supabase
+      .from('report_periods')
+      .select('id')
+      .eq('format_id', formatId)
+      .eq('is_active', true)
+
+    if (activePeriodsError) throw activePeriodsError
+    const periodIds = (activePeriods ?? []).map((row) => row.id)
+
+    if (periodIds.length > 0) {
+      for (const component of rows) {
+        if (!component.id) continue
+        const { error: renameError } = await supabase
+          .from('period_components')
+          .update({ name: component.name })
+          .in('report_period_id', periodIds)
+          .eq('source_component_id', component.id)
+        if (renameError) throw renameError
+      }
+    }
+  }
+
   return formatId
 }
 
