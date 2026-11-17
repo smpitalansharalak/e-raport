@@ -214,6 +214,11 @@ export async function renameItem({ id, name }) {
   if (error) throw error
 }
 
+export async function renamePeriodComponent({ id, name }) {
+  const { error } = await supabase.from('period_components').update({ name }).eq('id', id)
+  if (error) throw error
+}
+
 export async function deleteItem(id) {
   const { error } = await supabase.from('assessment_items').delete().eq('id', id)
   if (error) throw error
