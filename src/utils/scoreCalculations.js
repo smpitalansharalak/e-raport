@@ -155,7 +155,7 @@ export const computeComponentValues = (components, items, learningTargets, stude
  */
 export const calculateFinalRaporScore = (studentScore, components, items, learningTargets, calculationMode = 'equal') => {
   const comps = components ?? []
-  if (comps.length === 0) return 0
+  if (comps.length === 0) return null
 
   const filled = comps
     .map((component) => ({
@@ -164,7 +164,7 @@ export const calculateFinalRaporScore = (studentScore, components, items, learni
     }))
     .filter((entry) => entry.value !== null)
 
-  if (filled.length === 0) return 0
+  if (filled.length === 0) return null
 
   if (calculationMode === 'weighted') {
     const totalWeight = filled.reduce((sum, entry) => sum + entry.weight, 0)

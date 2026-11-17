@@ -554,7 +554,7 @@ const ScoreRow = React.memo(function ScoreRow({
 
       {/* Nilai Rapor */}
       <td className="py-2 px-1 border-l border-slate-800 text-center font-extrabold text-sm text-emerald-400 bg-emerald-500/5">
-        <span className="block">{finalRapor}</span>
+        <span className="block">{finalRapor === null ? '—' : finalRapor}</span>
         {badgeFor(finalRapor, { enabled: showFinalBadge && anyFilled, size: 'sm', className: 'mt-1' })}
       </td>
 

@@ -143,7 +143,7 @@ const RaporSheet = React.forwardRef(function RaporSheet(
                 <tr key={sub.id}>
                   <td className="py-2.5 px-3 text-center font-mono" style={{ border: '1px solid black' }}>{index + 1}</td>
                   <td className="py-2.5 px-3 font-semibold" style={{ border: '1px solid black' }}>{sub.name}</td>
-                  <td className="py-2.5 px-3 text-center font-bold" style={{ border: '1px solid black' }}>{score ? score.final_score : '-'}</td>
+                  <td className="py-2.5 px-3 text-center font-bold" style={{ border: '1px solid black' }}>{score ? (score.final_score ?? '-') : '-'}</td>
                   <td className="py-2 px-3 text-[10px] leading-snug" style={{ border: '1px solid black' }}>{sanitizeText(score?.highest_achievement || '-')}</td>
                   <td className="py-2 px-3 text-[10px] leading-snug" style={{ border: '1px solid black' }}>{sanitizeText(score?.lowest_achievement || '-')}</td>
                 </tr>
