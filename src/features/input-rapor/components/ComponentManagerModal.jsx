@@ -85,9 +85,6 @@ export default function ComponentManagerModal({
         {/* Satu section per komponen countable */}
         {countableComponents.map((component) => {
           const componentItems = itemsByComponent.get(component.id) ?? []
-          const suggestion = component.with_tp
-            ? `Bab ${componentItems.length + 1}`
-            : `${component.name} ${componentItems.length + 1}`
           const draft = itemDrafts[component.id]
 
           return (
@@ -109,24 +106,24 @@ export default function ComponentManagerModal({
               <div className="flex gap-2">
                 <input
                   type="text"
-                  value={draft ?? suggestion}
+                  value={draft ?? ''}
                   onChange={(e) => setItemDraft(component.id, e.target.value)}
                     onPaste={(e) =>
-                      applySanitizedPaste(e, draft ?? suggestion, (value) =>
+                      applySanitizedPaste(e, draft ?? '', (value) =>
                         setItemDraft(component.id, value),
                       )
                     }
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault()
-                      onAddItem(component.id, suggestion)
+                      onAddItem(component.id)
                     }
                   }}
-                  placeholder={suggestion}
+                  placeholder="Nama item baru..."
                   className="flex-1 min-w-0 bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 transition-colors"
                 />
                 <button
-                  onClick={() => onAddItem(component.id, suggestion)}
+                  onClick={() => onAddItem(component.id)}
                   className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-3 rounded-xl font-bold text-xs cursor-pointer transition-colors flex items-center gap-1"
                 >
                   <Plus size={12} /> Tambah

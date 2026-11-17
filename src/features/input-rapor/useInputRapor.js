@@ -369,10 +369,10 @@ export default function useInputRapor() {
     setItemDrafts((prev) => ({ ...prev, [componentId]: value }))
   }, [])
 
-  const handleAddItem = useCallback(async (componentId, suggestedName) => {
+  const handleAddItem = useCallback(async (componentId) => {
     setModalError('')
     const draft = itemDrafts[componentId]
-    const name = sanitizeText((draft ?? suggestedName ?? '').trim())
+    const name = sanitizeText((draft ?? '').trim())
     if (!name) {
       setModalError('Gagal: Nama item tidak boleh kosong.')
       return
