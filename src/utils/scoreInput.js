@@ -21,7 +21,9 @@ export function sanitizeScoreTyping(value) {
 }
 
 export function clampScore(value) {
-  const n = Number(String(value ?? '').trim())
+  const raw = String(value ?? '').trim()
+  if (raw === '') return ''
+  const n = Number(raw)
   if (!Number.isFinite(n)) return ''
   return String(Math.min(100, Math.max(0, n)))
 }
